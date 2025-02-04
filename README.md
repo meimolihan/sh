@@ -9,29 +9,48 @@
 ```bash
 sudo apt update && sudo apt install python3 -y
 ```
-
+wget
 2、 把 `DnsParse.py` 下载下来，导入到群晖群晖的你想放的文件夹里面。
+```bash
+wget -c -O /mnt/mydisk/my-sh/hosts/DnsParse.py https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/DnsParse.py && chmod +x /mnt/mydisk/my-sh/hosts/DnsParse.py && /usr/bin/python3 /mnt/mydisk/my-sh/hosts/DnsParse.py
+```
 
 3、查询自己的PY目录 SHH命令查询如下
 ```bash
 which python which python3
 ```
-3、windows打开控制面板，任务计划新建任务，用户账户类型：Root，计划每天某个时间点就行，任务设置-运行命令用户自定义脚本写入
+
+4、windows打开控制面板，任务计划新建任务，用户账户类型：Root，计划每天某个时间点就行，任务设置-运行命令用户自定义脚本写入
 ```bash
-/bin/python3 /volume1/docker/DnsParse.py
+/usr/bin/python3 /mnt/mydisk/my-sh/hosts/DnsParse.py
 ```
 
 > 其中“/bin/python3”替换自己which python which python3查询得到的目录；  
 其中“/volume1/docker/DnsParse.py”修改为自己的存放的DnsParse.py文件的路径。
 
-4、ssh命令查询是否修改成功，输入 
+5、ssh命令查询是否修改成功，输入 
 ```bash
 cat /etc/hosts
 ```
 
+6、 一键加入到计划任务
+```bash
+{ crontab -l; echo ""; } | crontab - echo "插入空行"
+{ crontab -l; echo "## 添加更新hosts文件定时任务，每天凌晨一点十分执行"; } | crontab - echo "添加注释"
+{ crontab -l; echo "10 1 * * * /usr/bin/python3 /mnt/mydisk/my-sh/hosts/DnsParse.py"; } | crontab - echo "执行已完成，任务已设置。"
+```
+
 ### 2025-02-04 初次提交
 
-#### ⭐`linux-check.sh` 是 linux 开机脚本
+#### ⭐linux-check.sh
+
+* linux 开机脚本
+
+安装 wget
+
+```bash
+sudo apt update && sudo apt install wget -y
+```
 
 🍽️ **使用方法**
 ```bash
