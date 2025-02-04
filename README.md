@@ -1,6 +1,5 @@
 ## linux-sh脚本
 
-
 ### 2025-02-04 初次提交
 
 #### `linux-check.sh`linux开机脚本
