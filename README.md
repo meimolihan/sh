@@ -4,7 +4,7 @@
 
 #### ⭐`linux-check.sh` 是 linux 开机脚本
 
-* **使用方法**
+🍽️ **使用方法**
 ```bash
 wget -c -O /etc/profile.d/linux-check.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/linux-check.sh && chmod +x /etc/profile.d/linux-check.sh && ln -sf /etc/profile.d/linux-check.sh /usr/local/bin/m && /etc/profile.d/linux-check.sh
 ```
