@@ -2,7 +2,7 @@
 
 ### 2025-02-04 初次提交
 
-#### `linux-check.sh`linux开机脚本
+#### `linux-check.sh` 是 linux 开机脚本
 
 * **使用方法**
 ```bash
