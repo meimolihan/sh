@@ -12,6 +12,17 @@ Samba共享已配置完成！
 在资源管理器中输入：\\10.10.10.245\mysmb
 访问时使用用户名：root 或 admin
 ```
+#### 使用方法
+
+* github下载地址
+```bash
+wget -c -O ~/samba.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/samba.sh && chmod +x ~/samba.sh && ~/samba.sh
+```
+
+* cdn加速下载地址
+```bash
+wget -c -O ~/samba.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/samba.sh && chmod +x ~/samba.sh && ~/samba.sh
+```
 
 ### 2025-02-05
 #### ⭐DnsParse.py

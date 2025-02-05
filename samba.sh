@@ -31,7 +31,7 @@ get_internal_ip() {
 # 安装Samba
 install_samba() {
     echo "检测到系统：$OS 版本：$VER"
-    if [[ "$OS" == *"Debian"* ]]; then
+    if [[ "$OS" == *"Debian"* || "$OS" == "Ubuntu" ]]; then
         sudo apt update
         sudo apt install -y samba
     elif [[ "$OS" == "CentOS" || "$OS" == "Red Hat Enterprise Linux" ]]; then
