@@ -79,7 +79,6 @@ $samba_password"; then
     sudo tee -a /etc/samba/smb.conf <<EOF
 
 [$(basename "$share_path")]
-     path = $share_path
      ## 指定共享是否应该在网络邻居中被浏览到，yes显示共享名称，no隐藏共享名称。
      browseable = yes
      ## 是否允许用户写入此共享，yes为可写入，no为不可写入。
