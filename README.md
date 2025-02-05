@@ -15,7 +15,7 @@ Samba共享已配置完成！
 访问时使用用户名：root 或 admin
 ```
 
-🍽️ **samba.sh使用方法**
+🍽️ **samba.sh 使用方法**
 
 * **安装 wget**
 
@@ -38,7 +38,9 @@ wget -c -O ~/samba.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/samba.sh 
 
 🚀 适合群晖系统，解决自动更新访问TMDB API的DNS写入到群晖系统hosts文件，搭配群晖任务技术实现自动更新。(用某位大佬的代码基础上结合ai修改得到的，忘记那位大佬的一下子搜索不到抱歉）
 
-1、套件安装Python和wget
+🍽️ **DnsParse.py 使用方法**
+
+1、套件安装`Python` 和 `wget`
 ```bash
 sudo apt update && sudo apt install python3 wget -y
 ```
@@ -90,7 +92,7 @@ cat /etc/hosts
 sudo apt update && sudo apt install wget -y
 ```
 
-🍽️ **check.sh使用方法**
+🍽️ **check.sh 使用方法**
 
 * **github下载地址**
 ```bash
