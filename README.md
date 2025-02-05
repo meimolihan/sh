@@ -14,6 +14,12 @@ Samba共享已配置完成！
 ```
 #### 使用方法
 
+安装 wget
+
+```bash
+sudo apt update && sudo apt install wget -y
+```
+
 * github下载地址
 ```bash
 wget -c -O ~/samba.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/samba.sh && chmod +x ~/samba.sh && ~/samba.sh
@@ -29,14 +35,20 @@ wget -c -O ~/samba.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/samba.sh 
 
 适合群晖系统，解决自动更新访问TMDB API的DNS写入到群晖系统hosts文件，搭配群晖任务技术实现自动更新。(用某位大佬的代码基础上结合ai修改得到的，忘记那位大佬的一下子搜索不到抱歉）
 
-1、套件安装Python
+1、套件安装Python和wget
 ```bash
-sudo apt update && sudo apt install python3 -y
+sudo apt update && sudo apt install python3 wget -y
 ```
 
 2、 把 `DnsParse.py` 下载下来，导入到群晖群晖的你想放的文件夹里面。
+* github下载地址
 ```bash
-wget -c -O /mnt/mydisk/my-sh/hosts/DnsParse.py https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/DnsParse.py && chmod +x /mnt/mydisk/my-sh/hosts/DnsParse.py && /usr/bin/python3 /mnt/mydisk/my-sh/hosts/DnsParse.py
+wget -c -O ~/DnsParse.py https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/DnsParse.py && chmod +x ~/DnsParse.py && /usr/bin/python3 ~/DnsParse.py
+```
+
+* cdn加速下载地址
+```bash
+wget -c -O ~/DnsParse.py https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/DnsParse.py && chmod +x ~/DnsParse.py && /usr/bin/python3 ~/DnsParse.py
 ```
 
 3、查询自己的PY目录 SHH命令查询如下
@@ -77,8 +89,15 @@ sudo apt update && sudo apt install wget -y
 ```
 
 🍽️ **使用方法**
+
+* github下载地址
 ```bash
 wget -c -O /etc/profile.d/linux-check.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/linux-check.sh && chmod +x /etc/profile.d/linux-check.sh && ln -sf /etc/profile.d/linux-check.sh /usr/local/bin/m && /etc/profile.d/linux-check.sh
+```
+
+* cdn加速下载地址
+```bash
+wget -c -O /etc/profile.d/linux-check.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/linux-check.sh && chmod +x /etc/profile.d/linux-check.sh && ln -sf /etc/profile.d/linux-check.sh /usr/local/bin/m && /etc/profile.d/linux-check.sh
 ```
 
 * `/etc/profile.d` 目录是一个用于存放 shell 脚本的目录，这些脚本会在用户登录系统并启动一个交互式登录 shell 时被自动执行。
