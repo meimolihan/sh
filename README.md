@@ -1,11 +1,52 @@
 ## linux-sh脚本
 
-### 2025-02-06
+### 2025-02-05
+#### ⭐nfs.sh
+
+🚀 Linux自动部署nfs服务，自动检测系统版本安装nfs。只需要输入：共享文件夹路径。    
+
+终端会有如下提示：  
+
+```
+NFS共享已配置完成！
+服务端使用sudo showmount -e查看本机NFS共享目录
+共享路径：/mynfs
+内网IP地址：10.10.10.247
+允许访问的客户端：所有客户端（*）
+在客户端上，可以使用以下命令挂载共享：
+sudo mount 10.10.10.247:/mynfs /mnt/mynfs
+```
+
+🍽️ **nfs.sh 使用方法**
+
+* **安装 wget**
+
+```bash
+sudo apt update && sudo apt install wget -y
+```
+
+* **github下载地址**
+```bash
+wget -c -O ~/nfs.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/nfs.sh && chmod +x ~/nfs.sh && ~/nfs.sh
+```
+
+* **cdn加速下载地址**
+```bash
+wget -c -O ~/nfs.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/nfs.sh && chmod +x ~/nfs.sh && ~/nfs.sh
+```
+
+> 服务端查看本机NFS共享目录,使用 `sudo showmount -e`   
+> 服务端查看取消挂载,使用 `nano /etc/exports`  
+> 客户端查看本机挂载目录,使用 `sudo df -hT`   
+> 客户端取消挂载,使用 `sudo umount /mnt/mynfs`
+
+
+### 2025-02-05
 #### ⭐samba.sh
 
-🚀 Linux自动部署samba服务，自动检测系统版本安装samba ,默认开启root用户samba共享。  
-只需要输入：共享文件夹路径，samba用户名和密码  
-会有如下提示：  
+🚀 Linux自动部署samba服务，自动检测系统版本安装samba ,默认开启root用户samba共享。只需要输入：共享文件夹路径，samba用户名和密码。  
+  
+终端会有如下提示：  
 
 ```
 Samba共享已配置完成！
@@ -33,7 +74,7 @@ wget -c -O ~/samba.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads
 wget -c -O ~/samba.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/samba.sh && chmod +x ~/samba.sh && ~/samba.sh
 ```
 
-### 2025-02-05
+### 2025-02-04
 #### ⭐DnsParse.py
 
 🚀 适合群晖系统，解决自动更新访问TMDB API的DNS写入到群晖系统hosts文件，搭配群晖任务技术实现自动更新。(用某位大佬的代码基础上结合ai修改得到的，忘记那位大佬的一下子搜索不到抱歉）
@@ -81,7 +122,7 @@ cat /etc/hosts
 { crontab -l; echo "10 1 * * * /usr/bin/python3 /mnt/mydisk/my-sh/hosts/DnsParse.py"; } | crontab - echo "执行已完成，任务已设置。"
 ```
 
-### 2025-02-04 初次提交
+### 2025-02-03 初次提交
 #### ⭐check.sh
 
 🚀 linux 开机显示系统信息的脚本
