@@ -2,9 +2,11 @@
 
 ### 2025-02-06
 #### ⭐samba.sh
+
 🚀 Linux自动部署samba服务，自动检测系统版本安装samba ,默认开启root用户samba共享。  
 只需要输入：共享文件夹路径，samba用户名和密码  
 会有如下提示：  
+
 ```
 Samba共享已配置完成！
 共享路径：/mysmb
@@ -15,18 +17,18 @@ Samba共享已配置完成！
 
 🍽️ **samba.sh使用方法**
 
-安装 wget
+* **安装 wget**
 
 ```bash
 sudo apt update && sudo apt install wget -y
 ```
 
-* github下载地址
+* **github下载地址**
 ```bash
 wget -c -O ~/samba.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/samba.sh && chmod +x ~/samba.sh && ~/samba.sh
 ```
 
-* cdn加速下载地址
+* **cdn加速下载地址**
 ```bash
 wget -c -O ~/samba.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/samba.sh && chmod +x ~/samba.sh && ~/samba.sh
 ```
@@ -42,12 +44,12 @@ sudo apt update && sudo apt install python3 wget -y
 ```
 
 2、 把 `DnsParse.py` 下载下来，导入到群晖群晖的你想放的文件夹里面。
-* github下载地址
+* **github下载地址**
 ```bash
 wget -c -O ~/DnsParse.py https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/DnsParse.py && chmod +x ~/DnsParse.py && /usr/bin/python3 ~/DnsParse.py
 ```
 
-* cdn加速下载地址
+* **cdn加速下载地址**
 ```bash
 wget -c -O ~/DnsParse.py https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/DnsParse.py && chmod +x ~/DnsParse.py && /usr/bin/python3 ~/DnsParse.py
 ```
@@ -82,7 +84,7 @@ cat /etc/hosts
 
 🚀 linux 开机显示系统信息的脚本
 
-安装 wget
+* **安装 wget**
 
 ```bash
 sudo apt update && sudo apt install wget -y
@@ -90,12 +92,12 @@ sudo apt update && sudo apt install wget -y
 
 🍽️ **check.sh使用方法**
 
-* github下载地址
+* **github下载地址**
 ```bash
 wget -c -O /etc/profile.d/check.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/check.sh && chmod +x /etc/profile.d/check.sh && ln -sf /etc/profile.d/check.sh /usr/local/bin/m && /etc/profile.d/check.sh
 ```
 
-* cdn加速下载地址
+* **cdn加速下载地址**
 ```bash
 wget -c -O /etc/profile.d/check.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/check.sh && chmod +x /etc/profile.d/check.sh && ln -sf /etc/profile.d/check.sh /usr/local/bin/m && /etc/profile.d/check.sh
 ```
