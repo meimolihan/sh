@@ -12,7 +12,8 @@ Samba共享已配置完成！
 在资源管理器中输入：\\10.10.10.245\mysmb
 访问时使用用户名：root 或 admin
 ```
-#### 使用方法
+
+🍽️ **samba.sh使用方法**
 
 安装 wget
 
@@ -77,7 +78,6 @@ cat /etc/hosts
 ```
 
 ### 2025-02-04 初次提交
-
 #### ⭐check.sh
 
 🚀 linux 开机显示系统信息的脚本
@@ -88,7 +88,7 @@ cat /etc/hosts
 sudo apt update && sudo apt install wget -y
 ```
 
-🍽️ **使用方法**
+🍽️ **check.sh使用方法**
 
 * github下载地址
 ```bash
