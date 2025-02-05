@@ -86,13 +86,13 @@ cat /etc/hosts
 
 🚀 linux 开机显示系统信息的脚本
 
+🍽️ **check.sh 使用方法**
+
 * **安装 wget**
 
 ```bash
 sudo apt update && sudo apt install wget -y
 ```
-
-🍽️ **check.sh 使用方法**
 
 * **github下载地址**
 ```bash
