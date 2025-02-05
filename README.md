@@ -2,7 +2,7 @@
 
 ### 2025-02-06
 #### ⭐samba.sh
-Linux自动部署samba服务，自动检测系统版本安装samba ,默认开启root用户samba共享。  
+🚀 Linux自动部署samba服务，自动检测系统版本安装samba ,默认开启root用户samba共享。  
 只需要输入：共享文件夹路径，samba用户名和密码  
 会有如下提示：  
 ```
@@ -33,7 +33,7 @@ wget -c -O ~/samba.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/samba.sh 
 ### 2025-02-05
 #### ⭐DnsParse.py
 
-适合群晖系统，解决自动更新访问TMDB API的DNS写入到群晖系统hosts文件，搭配群晖任务技术实现自动更新。(用某位大佬的代码基础上结合ai修改得到的，忘记那位大佬的一下子搜索不到抱歉）
+🚀 适合群晖系统，解决自动更新访问TMDB API的DNS写入到群晖系统hosts文件，搭配群晖任务技术实现自动更新。(用某位大佬的代码基础上结合ai修改得到的，忘记那位大佬的一下子搜索不到抱歉）
 
 1、套件安装Python和wget
 ```bash
@@ -78,9 +78,9 @@ cat /etc/hosts
 
 ### 2025-02-04 初次提交
 
-#### ⭐linux-check.sh
+#### ⭐check.sh
 
-* linux 开机脚本
+🚀 linux 开机显示系统信息的脚本
 
 安装 wget
 
@@ -92,14 +92,14 @@ sudo apt update && sudo apt install wget -y
 
 * github下载地址
 ```bash
-wget -c -O /etc/profile.d/linux-check.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/linux-check.sh && chmod +x /etc/profile.d/linux-check.sh && ln -sf /etc/profile.d/linux-check.sh /usr/local/bin/m && /etc/profile.d/linux-check.sh
+wget -c -O /etc/profile.d/check.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/check.sh && chmod +x /etc/profile.d/check.sh && ln -sf /etc/profile.d/check.sh /usr/local/bin/m && /etc/profile.d/check.sh
 ```
 
 * cdn加速下载地址
 ```bash
-wget -c -O /etc/profile.d/linux-check.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/linux-check.sh && chmod +x /etc/profile.d/linux-check.sh && ln -sf /etc/profile.d/linux-check.sh /usr/local/bin/m && /etc/profile.d/linux-check.sh
+wget -c -O /etc/profile.d/check.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/check.sh && chmod +x /etc/profile.d/check.sh && ln -sf /etc/profile.d/check.sh /usr/local/bin/m && /etc/profile.d/check.sh
 ```
 
 * `/etc/profile.d` 目录是一个用于存放 shell 脚本的目录，这些脚本会在用户登录系统并启动一个交互式登录 shell 时被自动执行。
 
-* `ln -sf /etc/profile.d/linux-check.sh /usr/local/bin/m`执行这条命令后，会在 `/usr/local/bin` 目录下创建一个名为 m 的符号链接，该符号链接指向 `/etc/profile.d/linux-check.sh` 文件。这样，当你在终端中输入 `m` 并按下回车键时，实际上就相当于执行了 `/etc/profile.d/linux-check.sh` 脚本。
+* `ln -sf /etc/profile.d/check.sh /usr/local/bin/m`执行这条命令后，会在 `/usr/local/bin` 目录下创建一个名为 m 的符号链接，该符号链接指向 `/etc/profile.d/check.sh` 文件。这样，当你在终端中输入 `m` 并按下回车键时，实际上就相当于执行了 `/etc/profile.d/check.sh` 脚本。
