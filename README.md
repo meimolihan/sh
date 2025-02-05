@@ -9,7 +9,7 @@
 ```bash
 sudo apt update && sudo apt install python3 -y
 ```
-wget
+
 2、 把 `DnsParse.py` 下载下来，导入到群晖群晖的你想放的文件夹里面。
 ```bash
 wget -c -O /mnt/mydisk/my-sh/hosts/DnsParse.py https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/DnsParse.py && chmod +x /mnt/mydisk/my-sh/hosts/DnsParse.py && /usr/bin/python3 /mnt/mydisk/my-sh/hosts/DnsParse.py
