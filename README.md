@@ -1,20 +1,46 @@
 ## linux-sh脚本
 
-### 2025-02-05
+### 2025-02-06
+#### ⭐ssh.sh
+
+🚀 Linux自动开启ssh服务，自动检测系统版本安装ssh。终端会有如下提示：  
+
+```
+SSH服务已启动并设置为开机自启。
+内网IP地址：10.10.10.245
+```
+
+🍽️ **ssh.sh 使用方法**
+
+* **安装 wget**
+
+```bash
+sudo apt update && sudo apt install wget -y
+```
+
+* **github下载地址**
+```bash
+wget -c -O ~/ssh.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/ssh.sh && chmod +x ~/ssh.sh && ~/ssh.sh
+```
+
+* **cdn加速下载地址**
+```bash
+wget -c -O ~/ssh.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/ssh.sh && chmod +x ~/ssh.sh && ~/ssh.sh
+```
+
+### 2025-02-06
 #### ⭐nfs.sh
 
-🚀 Linux自动部署nfs服务，自动检测系统版本安装nfs。只需要输入：共享文件夹路径。    
-
-终端会有如下提示：  
+🚀 Linux自动部署nfs服务，自动检测系统版本安装nfs。只需要输入：共享文件夹路径。终端会有如下提示：  
 
 ```
 NFS共享已配置完成！
 服务端使用sudo showmount -e查看本机NFS共享目录
 共享路径：/mynfs
-内网IP地址：10.10.10.247
+内网IP地址：10.10.10.245
 允许访问的客户端：所有客户端（*）
 在客户端上，可以使用以下命令挂载共享：
-sudo mount 10.10.10.247:/mynfs /mnt/mynfs
+sudo mount 10.10.10.245:/mynfs /mnt/mynfs
 ```
 
 🍽️ **nfs.sh 使用方法**
@@ -44,9 +70,7 @@ wget -c -O ~/nfs.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/nfs.sh && c
 ### 2025-02-05
 #### ⭐samba.sh
 
-🚀 Linux自动部署samba服务，自动检测系统版本安装samba ,默认开启root用户samba共享。只需要输入：共享文件夹路径，samba用户名和密码。  
-  
-终端会有如下提示：  
+🚀 Linux自动部署samba服务，自动检测系统版本安装samba ,默认开启root用户samba共享。只需要输入：共享文件夹路径，samba用户名和密码。终端会有如下提示：  
 
 ```
 Samba共享已配置完成！
