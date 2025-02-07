@@ -51,8 +51,8 @@ IF %ERRORLEVEL% EQU 0 (
 echo ===========================================
 
 REM 创建新标签 v1.0.0
-echo 正在创建新标签 v1.0.0，标签信息为 "为最新提交重新创建标签--sh存储库"...
-git tag -a v1.0.0 -m "Recreate the tag --sh repository for the latest submission"
+echo 正在创建新标签 v1.0.0，标签信息为 "为最新提交的重新创建标签"...
+git tag -a v1.0.0 -m "Recreate tags for the latest submission"
 echo ===========================================
 
 REM 推送新标签到远程仓库
