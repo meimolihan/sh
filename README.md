@@ -3,7 +3,8 @@
 ### 2025-02-08
 #### ⭐certbot-update.sh
 
-🚀 certbot 更新证书脚本 
+🚀 certbot 更新证书脚本   
+同时也会检查你所有证书到期时间，并在终端打印出来
 
 🍽️ **certbot-update.sh 使用方法**
 
@@ -34,31 +35,6 @@ wget -c -O ~/certbot-update.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/
 ```bash
 crontab -l
 ```
-
-### 2025-02-08
-#### ⭐certbot_dates.sh
-
-🚀 certbot 查看证书到期时间脚本 
-
-🍽️ **certbot_dates.sh 使用方法**
-
-* **安装 wget**
-
-```bash
-sudo apt update && sudo apt install wget -y
-```
-
-* **github下载地址**
-```bash
-wget -c -O ~/certbot_dates.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/certbot_dates.sh && chmod +x ~/certbot_dates.sh && ~/certbot_dates.sh
-```
-
-* **cdn加速下载地址**
-```bash
-wget -c -O ~/certbot_dates.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/certbot_dates.sh && chmod +x ~/certbot_dates.sh && ~/certbot_dates.sh
-```
-
-> 执行脚本后会打印出 certbot 证书目录下的所有文件夹，如：example.com，输入查询到的证书文件夹名称即可。
 
 ### 2025-02-07
 #### ⭐ssh.sh
