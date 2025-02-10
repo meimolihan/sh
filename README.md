@@ -1,6 +1,41 @@
 ## linux-sh脚本
 
 ### 2025-02-08
+#### ⭐certbot-update.sh
+
+🚀 certbot 更新证书脚本 
+
+🍽️ **certbot-update.sh 使用方法**
+
+* **安装 wget**
+
+```bash
+sudo apt update && sudo apt install wget -y
+```
+
+* **github下载地址**
+```bash
+wget -c -O ~/certbot-update.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/certbot-update.sh && chmod +x ~/certbot-update.sh && ~/certbot-update.sh
+```
+
+* **cdn加速下载地址**
+```bash
+wget -c -O ~/certbot-update.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/certbot-update.sh && chmod +x ~/certbot-update.sh && ~/certbot-update.sh
+```
+
+* **Linux 添加计划任务**
+```bash
+{ crontab -l; echo ""; } | crontab - echo "插入空行"
+{ crontab -l; echo "## 每日01:25，certbot 自动续签证书"; } | crontab - echo "添加注释"
+{ crontab -l; echo "25 1 * * * ~/certbot-update.sh"; } | crontab - echo "执行已完成，任务已设置。"
+```
+
+* **列出所有计划任务**
+```bash
+crontab -l
+```
+
+### 2025-02-08
 #### ⭐certbot_dates.sh
 
 🚀 certbot 查看证书到期时间脚本 
@@ -169,6 +204,11 @@ cat /etc/hosts
 { crontab -l; echo ""; } | crontab - echo "插入空行"
 { crontab -l; echo "## 添加更新hosts文件定时任务，每天凌晨一点十分执行"; } | crontab - echo "添加注释"
 { crontab -l; echo "10 1 * * * /usr/bin/python3 /mnt/mydisk/my-sh/hosts/DnsParse.py"; } | crontab - echo "执行已完成，任务已设置。"
+```
+
+* **列出所有计划任务**
+```bash
+crontab -l
 ```
 
 ### 2025-02-03 初次提交
