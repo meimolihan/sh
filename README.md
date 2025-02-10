@@ -4,7 +4,7 @@
 #### ⭐certbot-update.sh
 
 🚀 certbot 更新证书脚本   
-同时也会检查你所有证书到期时间，并在终端打印出来。  
+这个脚本同时也会检查你所有证书到期时间，并在终端打印出来。  
 强制续签所有配置的证书命令：`certbot renew --force-renewal`
 
 🍽️ **certbot-update.sh 使用方法**
