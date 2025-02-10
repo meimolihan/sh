@@ -15,12 +15,12 @@ sudo apt update && sudo apt install wget -y
 
 * **github下载地址**
 ```bash
-wget -c -O ~/ssh.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/certbot_dates.sh && chmod +x ~/certbot_dates.sh && ~/certbot_dates.sh
+wget -c -O ~/certbot_dates.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/certbot_dates.sh && chmod +x ~/certbot_dates.sh && ~/certbot_dates.sh
 ```
 
 * **cdn加速下载地址**
 ```bash
-wget -c -O ~/ssh.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/certbot_dates.sh && chmod +x ~/certbot_dates.sh && ~/certbot_dates.sh
+wget -c -O ~/certbot_dates.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/certbot_dates.sh && chmod +x ~/certbot_dates.sh && ~/certbot_dates.sh
 ```
 
 > 执行脚本后会打印出 certbot 证书目录下的所有文件夹，如：example.com，输入查询到的证书文件夹名称即可。
