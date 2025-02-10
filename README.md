@@ -1,6 +1,31 @@
 ## linux-sh脚本
 
-### 2025-02-06
+### 2025-02-08
+#### ⭐certbot_dates.sh
+
+🚀 certbot 查看证书到期时间脚本 
+
+🍽️ **certbot_dates.sh 使用方法**
+
+* **安装 wget**
+
+```bash
+sudo apt update && sudo apt install wget -y
+```
+
+* **github下载地址**
+```bash
+wget -c -O ~/ssh.sh https://raw.githubusercontent.com/meimolihan/sh/refs/heads/main/certbot_dates.sh && chmod +x ~/certbot_dates.sh && ~/certbot_dates.sh
+```
+
+* **cdn加速下载地址**
+```bash
+wget -c -O ~/ssh.sh https://cdn.jsdelivr.net/gh/meimolihan/sh@v1.0.0/certbot_dates.sh && chmod +x ~/certbot_dates.sh && ~/certbot_dates.sh
+```
+
+> 执行脚本后会打印出 certbot 证书目录下的所有文件夹，如：example.com，输入查询到的证书文件夹名称即可。
+
+### 2025-02-07
 #### ⭐ssh.sh
 
 🚀 Linux自动开启ssh服务，自动检测系统版本安装ssh。终端会有如下提示：  
