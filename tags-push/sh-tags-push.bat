@@ -1,6 +1,11 @@
 @echo off
 REM Windows 批处理脚本：更新 Git 标签
 
+REM 设置颜色为绿色背景，默认亮白色文字
+COLOR 0A
+CLS
+PROMPT $P$G
+
 REM 设置 Git 仓库路径
 SET REPO_PATH=%USERPROFILE%\Desktop\GitHub\sh
 
