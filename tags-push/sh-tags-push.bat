@@ -2,7 +2,7 @@
 REM Windows 批处理脚本：更新 Git 标签
 
 REM 设置 Git 仓库路径
-SET REPO_PATH=C:\Users\Administrator\Desktop\Git\sh
+SET REPO_PATH=%USERPROFILE%\Desktop\GitHub\sh
 
 REM 切换到指定的 Git 仓库目录
 CD /D %REPO_PATH%
