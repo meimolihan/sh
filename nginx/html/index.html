@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Nginx</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
+        }
+        
+        body {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* 动态背景元素 */
+        .bg-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .bg-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(200, 230, 201, 0.4);
+            animation: float 15s infinite linear;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+            z-index: 1;
+        }
+        
+        .logo {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            color: #388e3c;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            animation: pulse 3s infinite;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            margin-bottom: 30px;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            color: #1b5e20;
+        }
+        
+        p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: #2e7d32;
+        }
+        
+        .status-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        
+        .status-item {
+            background: rgba(232, 245, 233, 0.8);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 10px;
+            min-width: 180px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(200, 230, 201, 0.5);
+        }
+        
+        .status-item:hover {
+            background: rgba(200, 230, 201, 0.9);
+            transform: translateY(-3px);
+        }
+        
+        .status-label {
+            font-size: 0.9rem;
+            color: #4caf50;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #1b5e20;
+        }
+        
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 14px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+            min-width: 160px;
+            text-align: center;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        .btn:hover, .btn:active {
+            background: #45a049;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .btn-secondary:hover, .btn-secondary:active {
+            background: rgba(76, 175, 80, 0.1);
+        }
+        
+        .footer {
+            margin-top: 30px;
+            color: #4caf50;
+            font-size: 0.9rem;
+        }
+        
+        /* 修复链接样式 */
+        .link-btn {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 14px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            font-size: 1rem;
+            min-width: 160px;
+            text-align: center;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        .link-btn:hover, .link-btn:active {
+            background: #45a049;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+            text-decoration: none;
+            color: white;
+        }
+        
+        .link-btn-secondary {
+            background: transparent;
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .link-btn-secondary:hover, .link-btn-secondary:active {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4CAF50;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-1000px) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        
+        /* 平板设备适配 */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 4rem;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .card {
+                padding: 25px;
+            }
+            
+            .status-item {
+                min-width: 140px;
+            }
+            
+            .btn, .link-btn {
+                padding: 12px 25px;
+                min-width: 140px;
+            }
+        }
+        
+        /* 手机设备适配 */
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            
+            .logo {
+                font-size: 3rem;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .card {
+                padding: 20px 15px;
+            }
+            
+            p {
+                font-size: 1.1rem;
+            }
+            
+            .status-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .status-item {
+                width: 100%;
+                max-width: 250px;
+                margin: 8px 0;
+            }
+            
+            .btn-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn, .link-btn {
+                width: 100%;
+                max-width: 280px;
+                margin: 8px 0;
+                padding: 16px 20px;
+                font-size: 1.1rem;
+            }
+            
+            .footer {
+                font-size: 0.8rem;
+            }
+        }
+        
+        /* 小屏幕手机适配 */
+        @media (max-width: 360px) {
+            .logo {
+                font-size: 2.5rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .card {
+                padding: 15px 10px;
+            }
+            
+            p {
+                font-size: 1rem;
+            }
+            
+            .status-item {
+                padding: 12px 15px;
+            }
+            
+            .status-value {
+                font-size: 1.2rem;
+            }
+        }
+        
+        /* 防止移动端横屏时字体过大 */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .container {
+                max-height: 100vh;
+                overflow-y: auto;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            .logo {
+                font-size: 3rem;
+                margin-bottom: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+                margin-bottom: 15px;
+            }
+            
+            p {
+                margin-bottom: 15px;
+            }
+            
+            .status-container {
+                margin: 15px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation" id="bg-animation"></div>
+    
+    <div class="container">
+        <div class="logo">🌿</div>
+        
+        <div class="card">
+            <h1>Welcome to Nginx!</h1>
+            <p>您已成功安装并运行了Nginx服务器。这个页面是默认的欢迎页面，表明您的服务器正在正常工作。</p>
+            
+            <div class="status-container">
+                <div class="status-item">
+                    <div class="status-label">服务器状态</div>
+                    <div class="status-value">运行中</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Nginx版本</div>
+                    <div class="status-value">1.18.0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">服务器时间</div>
+                    <div class="status-value" id="server-time">加载中...</div>
+                </div>
+            </div>
+            
+            <p>要替换此页面，请将您的网站文件上传到服务器文档根目录。</p>
+            
+            <div class="btn-container">
+                <!-- 使用真实的链接而不是按钮 -->
+                <a href="https://nginx.org/en/docs/" class="link-btn" target="_blank" id="docs-link">Nginx 文档</a>
+                <a href="https://nginx.org/" class="link-btn link-btn-secondary" target="_blank" id="support-link">社区支持</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>感谢您选择 Nginx - 高性能的HTTP和反向代理服务器</p>
+        </div>
+    </div>
+    
+    <script>
+        // 更新服务器时间
+        function updateServerTime() {
+            const now = new Date();
+            const options = { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            document.getElementById('server-time').textContent = now.toLocaleDateString('zh-CN', options);
+        }
+        
+        // 初始加载时更新时间
+        updateServerTime();
+        
+        // 每秒更新时间
+        setInterval(updateServerTime, 1000);
+        
+        // 添加动态背景元素
+        document.addEventListener('DOMContentLoaded', function() {
+            const bgAnimation = document.getElementById('bg-animation');
+            const colors = ['rgba(200, 230, 201, 0.3)', 'rgba(165, 214, 167, 0.3)', 'rgba(129, 199, 132, 0.3)'];
+            
+            // 根据屏幕大小调整气泡数量
+            const isMobile = window.innerWidth <= 768;
+            const circleCount = isMobile ? 5 : 10;
+            
+            for (let i = 0; i < circleCount; i++) {
+                const circle = document.createElement('div');
+                circle.classList.add('bg-circle');
+                
+                // 移动端使用更小的气泡
+                const maxSize = isMobile ? 60 : 80;
+                const minSize = isMobile ? 20 : 30;
+                const size = Math.random() * maxSize + minSize;
+                circle.style.width = `${size}px`;
+                circle.style.height = `${size}px`;
+                
+                circle.style.left = `${Math.random() * 100}%`;
+                circle.style.top = `${Math.random() * 100}%`;
+                
+                circle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                
+                const duration = Math.random() * 20 + 10;
+                const delay = Math.random() * -20;
+                circle.style.animation = `float ${duration}s infinite linear`;
+                circle.style.animationDelay = `${delay}s`;
+                
+                bgAnimation.appendChild(circle);
+            }
+            
+            // 为移动端添加额外的点击处理
+            const docsLink = document.getElementById('docs-link');
+            const supportLink = document.getElementById('support-link');
+            
+            // 添加触摸事件处理
+            function handleTouchStart(e) {
+                this.style.transform = 'translateY(-1px)';
+            }
+            
+            function handleTouchEnd(e) {
+                this.style.transform = '';
+                // 允许默认行为（链接跳转）
+            }
+            
+            // 为移动端添加触摸事件
+            if ('ontouchstart' in window) {
+                docsLink.addEventListener('touchstart', handleTouchStart, {passive: true});
+                docsLink.addEventListener('touchend', handleTouchEnd, {passive: true});
+                
+                supportLink.addEventListener('touchstart', handleTouchStart, {passive: true});
+                supportLink.addEventListener('touchend', handleTouchEnd, {passive: true});
+            }
+            
+            // 添加点击事件作为备用
+            docsLink.addEventListener('click', function(e) {
+                // 允许默认行为
+            });
+            
+            supportLink.addEventListener('click', function(e) {
+                // 允许默认行为
+            });
+        });
+        
+        // 窗口大小改变时重新调整布局
+        window.addEventListener('resize', function() {
+            // 可以添加响应式调整逻辑
+        });
+    </script>
+</body>
+</html>

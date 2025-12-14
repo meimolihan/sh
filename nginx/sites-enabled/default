@@ -1,0 +1,52 @@
+# 80端口默认页
+server {
+  listen 80 default_server;      # 添加 default_server
+  listen [::]:80 default_server; # 添加 default_server
+  server_name _;
+
+  # 阻止不良爬虫和机器人
+  if ($http_user_agent ~* (Spider|bot|python|curl|wget)) {
+      return 403;
+  }
+
+  root /etc/nginx/html;
+  index index.html;
+
+  location / {
+      try_files $uri $uri/ =404;
+  }
+
+  error_page 404 /404.html;
+  location = /404.html {
+      internal;
+  }
+}  
+
+# 虚拟主机默认页
+server {
+  listen 666 ssl default_server;      # 监听 IPv4 的 666 端口，启用 SSL，并设为默认虚拟主机
+  listen [::]:666 ssl default_server; # 监听 IPv6 的 666 端口，启用 SSL，并设为默认虚拟主机
+  server_name _;                      # 匹配任意 Host 头（当请求未命中其他 server 块时落到此处）
+
+  # 阻止不良爬虫和机器人
+  if ($http_user_agent ~* (Spider|bot|python|curl|wget)) {
+      return 403;
+  }
+
+  # SSL 证书路径 & SSL 私钥路径
+  ssl_certificate /etc/nginx/keyfile/mobufan.eu.org.pem;
+  ssl_certificate_key /etc/nginx/keyfile/mobufan.eu.org.key;
+
+  # 网站根目录
+  root /etc/nginx/html;
+  error_page 404 /404.html; # 自定义 404 错误页面：出现 404 时返回 /404.html
+  # 精确匹配 /404.html，允许所有客户端访问（防止被其他规则拦截）
+  location = /404.html {
+      allow all;
+  }
+
+  # 对所有其他请求直接返回 404
+  location / {
+      return 404;
+  }
+}

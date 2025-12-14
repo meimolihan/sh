@@ -3,7 +3,15 @@
 ## 🚀 一键安装命令
 
 ```bash
+# curl
 bash <(curl -sL gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
+
+bash <(curl -sL sh.meimolihan.eu.org/install/mobufan.sh)
+
+# wget
+bash <(wget -qO- gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
+
+bash <(wget -qO- sh.meimolihan.eu.org/install/mobufan.sh)
 ```
 
 ## ⚠️ 重要声明
