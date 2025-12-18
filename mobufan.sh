@@ -8184,6 +8184,126 @@ check_partition() {
 }
 
 
+# 添加到fstab实现开机自动挂载
+add_to_fstab() {
+    echo ""
+    echo -e "${gl_zi}>>> 添加到开机自动挂载"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 读取要添加的分区
+    read -r -e -p "$(echo -e "${gl_bai}请输入分区名称（例如 ${gl_huang}sda1${gl_bai}）: ")" PARTITION
+    
+    # 检查分区是否存在
+    if [ ! -b "/dev/$PARTITION" ]; then
+        log_error "分区 /dev/$PARTITION 不存在！"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        return
+    fi
+    
+    # 检查分区是否已挂载
+    MOUNT_POINT=$(findmnt -n -o TARGET "/dev/$PARTITION" 2>/dev/null)
+    if [ -z "$MOUNT_POINT" ]; then
+        read -r -e -p "$(echo -e "${gl_bai}分区未挂载，请输入挂载点路径: ")" MOUNT_POINT
+        if [ -z "$MOUNT_POINT" ]; then
+            log_error "挂载点不能为空！"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            return
+        fi
+        
+        # 创建挂载点目录
+        mkdir -p "$MOUNT_POINT" 2>/dev/null
+        
+        # 尝试挂载
+        echo -e "正在挂载分区..."
+        mount "/dev/$PARTITION" "$MOUNT_POINT" 2>/dev/null
+        if [ $? -ne 0 ]; then
+            log_error "挂载失败，请检查分区状态！"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            return
+        fi
+    fi
+    
+    # 获取分区信息
+    UUID=$(blkid -s UUID -o value "/dev/$PARTITION" 2>/dev/null)
+    FSTYPE=$(blkid -s TYPE -o value "/dev/$PARTITION" 2>/dev/null | tr -d '"')
+    
+    if [ -z "$UUID" ] || [ -z "$FSTYPE" ]; then
+        log_error "无法获取分区UUID或文件系统类型！"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        return
+    fi
+    
+    echo -e "${gl_bai}分区信息："
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "设备: ${gl_huang}/dev/$PARTITION${gl_bai}"
+    echo -e "UUID: ${gl_lv}$UUID${gl_bai}"
+    echo -e "文件系统: ${gl_lv}$FSTYPE${gl_bai}"
+    echo -e "挂载点: ${gl_huang}$MOUNT_POINT${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 选择挂载选项
+    echo -e "${gl_bai}请选择挂载选项："
+    echo -e "${gl_bufan}1. ${gl_bai}默认选项 (defaults)"
+    echo -e "${gl_bufan}2. ${gl_bai}读写选项 (rw,defaults)"
+    echo -e "${gl_bufan}3. ${gl_bai}用户可读写 (users,rw,defaults)"
+    echo -e "${gl_bufan}4. ${gl_bai}自定义选项"
+    read -r -e -p "请选择 [1-4]: " OPT_CHOICE
+    
+    case $OPT_CHOICE in
+    1) MOUNT_OPTS="defaults" ;;
+    2) MOUNT_OPTS="rw,defaults" ;;
+    3) MOUNT_OPTS="users,rw,defaults" ;;
+    4)
+        read -r -e -p "请输入自定义选项: " MOUNT_OPTS
+        if [ -z "$MOUNT_OPTS" ]; then
+            MOUNT_OPTS="defaults"
+        fi
+        ;;
+    *) MOUNT_OPTS="defaults" ;;
+    esac
+    
+    # 确认添加
+    echo ""
+    echo -e "${gl_hong}将要添加到 /etc/fstab 的内容："
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "UUID=$UUID  $MOUNT_POINT  $FSTYPE  $MOUNT_OPTS  0  2"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    read -r -e -p "$(echo -e "${gl_bai}确认添加到 /etc/fstab 吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" CONFIRM
+    if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+        log_info "操作已取消。"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        return
+    fi
+    
+    # 备份原fstab文件
+    FSTAB_BACKUP="/etc/fstab.backup.$(date +%Y%m%d%H%M%S)"
+    cp /etc/fstab "$FSTAB_BACKUP"
+    echo -e "${gl_bai}已备份 /etc/fstab 到 $FSTAB_BACKUP"
+    
+    # 添加注释和条目
+    echo "" >> /etc/fstab
+    echo "# Added by disk_manager script on $(date)" >> /etc/fstab
+    echo "UUID=$UUID  $MOUNT_POINT  $FSTYPE  $MOUNT_OPTS  0  2" >> /etc/fstab
+    
+    if [ $? -eq 0 ]; then
+        log_ok "已成功添加到 /etc/fstab！"
+        
+        # 测试挂载
+        echo -e "${gl_bai}测试挂载配置..."
+        mount -a 2>/dev/null
+        if [ $? -eq 0 ]; then
+            log_ok "fstab配置测试通过！"
+        else
+            log_warn "fstab配置测试失败，请检查配置！"
+        fi
+    else
+        log_error "添加失败，请检查权限！"
+    fi
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+}
+
+
 # 主菜单
 disk_manager() {
     while true; do
@@ -8194,8 +8314,8 @@ disk_manager() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}挂载分区             ${gl_bufan}2.  ${gl_bai}卸载分区"
         echo -e "${gl_bufan}3.  ${gl_bai}挂载Video分区        ${gl_bufan}4.  ${gl_bai}查看已挂载分区"
-        echo -e "${gl_bufan}5.  ${gl_bai}格式化分区           ${gl_bufan}6.  ${gl_bai}检查分区状态"
-        echo -e "${gl_bufan}7.  ${gl_bai}格式化硬盘"
+        echo -e "${gl_bufan}5.  ${gl_bai}格式化分区           ${gl_bufan}6.  ${gl_bai}格式化硬盘"
+        echo -e "${gl_bufan}7.  ${gl_bai}检查分区状态         ${gl_bufan}8.  ${gl_bai}开机自动挂载"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}00. ${gl_bai}退出脚本             ${gl_huang}0.  ${gl_bai}返回上一级选单"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -8206,8 +8326,9 @@ disk_manager() {
         3) mount_fnos_partition ; break_end ;;
         4) list_mounted_partitions ; break_end ;;
         5) format_partition ; break_end ;;
-        6) check_partition ; break_end ;;
-        7) format_disk ; break_end ;;
+        6) format_disk ; break_end ;;
+        7) check_partition ; break_end ;;
+        8) add_to_fstab ; break_end ;;
         0) break ;; # 立即终止整个循环，跳出循环体
         00 | 000 | 0000) exit_script ;; # 感谢使用，再见！ N 秒后自动退出
         *) handle_invalid_input ;; # 无效的输入,请重新输入! 2 秒后返回，继续执行循环的下一次迭代。
@@ -29257,7 +29378,6 @@ else
         ;;
     app)
         shift
-        #
         linux_panel "$@"
         ;;
     info)
