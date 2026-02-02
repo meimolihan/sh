@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.2.3"
+sh_v="1.2.4"
 
 gl_hui='\e[37m'     # 定义灰色（或浅白）字体的ANSI转义序列
 gl_hong='\033[31m'  # 定义红色字体的ANSI转义序列
@@ -828,7 +828,15 @@ temp_dir_menu() {
 
     while true; do
         clear
-        cd "$target_dir" && list_dir_colorful # 当前目录列表
+        cd "$target_dir"
+        # cd "$target_dir" && list_dir_colorful # 当前目录列表
+        if [ -z "$(ls -A)" ]; then
+            echo -e "${gl_huang}>>> 当前目录 ${gl_lv}$(pwd) ${gl_huang}文件列表：${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_huang}当前目录为空${gl_bai}"
+        else
+            list_dir_colorful
+        fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_zi}>>> 临时目录管理器${gl_bai}"
@@ -837,7 +845,8 @@ temp_dir_menu() {
         echo -e "${gl_bufan}3.  ${gl_bai}文件删除工具           ${gl_bufan}4.  ${gl_bai}文件压缩/解压"
         echo -e "${gl_bufan}5.  ${gl_bai}克隆Compose项目        ${gl_bufan}6.  ${gl_bai}Compose工具"
         echo -e "${gl_bufan}7.  ${gl_bai}Git克隆工具            ${gl_bufan}8.  ${gl_bai}文件回收站"
-        echo -e "${gl_bufan}9.  ${gl_bai}清空临时目录"
+        echo -e "${gl_bufan}9.  ${gl_bai}rsync远程同步工具      ${gl_bufan}10. ${gl_bai}rsync本地同步工具"
+        echo -e "${gl_bufan}11. ${gl_bai}硬盘分区管理           ${gl_bufan}12. ${gl_bai}清空临时目录"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}00. ${gl_bai}退出脚本               ${gl_huang}0.  ${gl_bai}返回上一级选单"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -868,6 +877,18 @@ temp_dir_menu() {
             ;;
         8) manage_trash_menu ;; # 文件回收站
         9)
+            # rsync远程同步工具
+            rsync_manager
+            ;;
+        10)
+            # rsync本地同步工具
+            local_rsync_manager
+            ;;
+        11)
+            # 硬盘分区管理
+            disk_manager
+            ;;
+        12)
             echo -e ""
             echo -e "${gl_zi}>>> 清空临时目录${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -887,7 +908,13 @@ temp_dir_menu() {
 file_chmod() {
     while :; do
         clear
-        list_dir_colorful # 当前目录列表
+        if [ -z "$(ls -A)" ]; then
+            echo -e "${gl_huang}>>> 当前目录 ${gl_lv}$(pwd) ${gl_huang}文件列表：${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_huang}当前目录为空${gl_bai}"
+        else
+            list_dir_colorful
+        fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_zi}>>> 修改文件权限${gl_bai}"
@@ -7717,12 +7744,12 @@ linux_trash() {
         echo -e "启用后rm删除的文件先进入回收站，防止误删重要文件！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         ls -l --color=auto "$TRASH_DIR" 2>/dev/null || echo "回收站为空"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}启用回收站          ${gl_bufan}2.  ${gl_bai}关闭回收站"
         echo -e "${gl_bufan}3.  ${gl_bai}还原内容            ${gl_bufan}4.  ${gl_bai}清空回收站"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}00. ${gl_bai}退出脚本            ${gl_huang}0.  ${gl_bai}返回上一级选单"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "输入你的选择: " choice
 
         case $choice in
@@ -9000,30 +9027,55 @@ disk_manager() {
 list_tasks() {
     echo "已保存的同步任务:"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 检查配置文件是否存在[3](@ref)
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        echo -e "${gl_huang}配置文件不存在，暂无同步任务${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        return 0
+    fi
+    
+    # 检查文件是否为空[1](@ref)
+    if [[ ! -s "$CONFIG_FILE" ]]; then
+        echo -e "${gl_huang}暂无同步任务${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        return 0
+    fi
+    
+    # 显示任务列表
     awk -F'|' '{print NR " - " $1 " ( " $2 " -> " $3":"$4 " )"}' "$CONFIG_FILE"
+    
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
 # 添加新任务
 add_task() {
+    clear
+    echo ""
+    echo -e "${gl_huang}>>> 创建新任务${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo "创建新同步任务示例："
-    echo "  - 任务名称: backup_www"
-    echo "  - 本地目录: /var/www"
-    echo "  - 远程地址: user@192.168.1.100"
-    echo "  - 远程目录: /backup/www"
-    echo "  - 端口号 (默认 22)"
+    echo -e "  ${gl_bai}- 任务名称: ${gl_huang}backup_www${gl_bai}"
+    echo -e "  ${gl_bai}- 本地目录: ${gl_huang}/var/www${gl_bai}"
+    echo -e "  ${gl_bai}- 远程地址: ${gl_huang}user@192.168.1.100${gl_bai}"
+    echo -e "  ${gl_bai}- 远程目录: ${gl_huang}/backup/www${gl_bai}"
+    echo -e "  ${gl_bai}- 端口号  : ${gl_huang}(默认 22)${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "请输入任务名称: " name
     read -r -e -p "请输入本地目录: " local_path
-    read -r -e -p "请输入远程目录: " remote_path
     read -r -e -p "请输入远程用户@IP: " remote
+    read -r -e -p "请输入远程目录: " remote_path
     read -r -e -p "请输入 SSH 端口 (默认 22): " port
     port=${port:-22}
+
+    # 规范化目录路径，确保以斜杠结尾
+    local_path="${local_path%/}/"
+    remote_path="${remote_path%/}/"
 
     echo "请选择身份验证方式:"
     echo -e "${gl_bufan}1. ${gl_bai}密码"
     echo -e "${gl_bufan}2. ${gl_bai}密钥"
-    read -r -e -p "请选择 (1/2): " auth_choice
+    read -r -e -p "请输入你的选择: " auth_choice
 
     case $auth_choice in
     1)
@@ -9034,7 +9086,7 @@ add_task() {
     2)
         echo "请粘贴密钥内容 (粘贴完成后按两次回车)："
         local password_or_key=""
-        while IFS= read -r -r line; do
+        while IFS= read -r line; do
             # 如果输入为空行且密钥内容已经包含了开头，则结束输入
             if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
                 break
@@ -9053,12 +9105,12 @@ add_task() {
             password_or_key="$key_file"
             auth_method="key"
         else
-            echo "无效的密钥内容！"
+            echo -e "${gl_hong}无效的密钥内容！${gl_bai}"
             return
         fi
         ;;
     *)
-        echo "无效的选择！"
+        echo -e "${gl_hong}无效的选择！${gl_bai}"
         return
         ;;
     esac
@@ -9066,7 +9118,7 @@ add_task() {
     echo "请选择同步模式:"
     echo -e "${gl_bufan}1. ${gl_bai}标准模式 (-avz)"
     echo -e "${gl_bufan}2. ${gl_bai}删除目标文件 (-avz --delete)"
-    read -r -e -p "请选择 (1/2): " mode
+    read -r -e -p "请输入你的选择: " mode
     case $mode in
     1) options="-avz" ;;
     2) options="-avz --delete" ;;
@@ -9078,19 +9130,24 @@ add_task() {
 
     echo "$name|$local_path|$remote|$remote_path|$port|$options|$auth_method|$password_or_key" >>"$CONFIG_FILE"
 
-    install rsync rsync
+    install rsync
 
-    echo "任务已保存!"
+    echo -e "${gl_lv}任务已保存!${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
 # 删除任务
 delete_task() {
+    echo ""
+    echo -e "${gl_huang}>>> 删除任务${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "请输入要删除的任务编号: " num
 
     local task
     task=$(sed -n "${num}p" "$CONFIG_FILE")
     if [[ -z "$task" ]]; then
-        echo "错误：未找到对应的任务。"
+        echo -e "${gl_hong}错误：未找到对应的任务。${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         return
     fi
 
@@ -9102,86 +9159,93 @@ delete_task() {
     fi
 
     sed -i "${num}d" "$CONFIG_FILE"
-    echo "任务已删除!"
+    echo -e "${gl_lv}任务已删除!${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
 run_task() {
+        echo ""
+        echo -e "${gl_huang}>>> 执行同步任务${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    CONFIG_FILE="$HOME/.rsync_tasks"
-    CRON_FILE="$HOME/.rsync_cron"
+	CONFIG_FILE="$HOME/.rsync_tasks"
+	CRON_FILE="$HOME/.rsync_cron"
 
-    # 解析参数
-    local direction="push" # 默认是推送到远端
-    local num
+	# 解析参数
+	local direction="push"  # 默认是推送到远端
+	local num
 
-    if [[ "$1" == "push" || "$1" == "pull" ]]; then
-        direction="$1"
-        num="$2"
-    else
-        num="$1"
-    fi
+	if [[ "$1" == "push" || "$1" == "pull" ]]; then
+		direction="$1"
+		num="$2"
+	else
+		num="$1"
+	fi
 
-    # 如果没有传入任务编号，提示用户输入
-    if [[ -z "$num" ]]; then
-        read -r -e -p "请输入要执行的任务编号: " num
-    fi
+	# 如果没有传入任务编号，提示用户输入
+	if [[ -z "$num" ]]; then
+		read -e -p "请输入要执行的任务编号: " num
+	fi
 
-    local task=$(sed -n "${num}p" "$CONFIG_FILE")
-    if [[ -z "$task" ]]; then
-        echo "错误: 未找到该任务!"
-        return
-    fi
+	local task=$(sed -n "${num}p" "$CONFIG_FILE")
+	if [[ -z "$task" ]]; then
+		echo -e "${gl_hong}错误: 未找到该任务!${gl_bai}"
+		return
+	fi
 
-    IFS='|' read -r -r name local_path remote remote_path port options auth_method password_or_key <<<"$task"
+	IFS='|' read -r name local_path remote remote_path port options auth_method password_or_key <<< "$task"
 
-    # 根据同步方向调整源和目标路径
-    if [[ "$direction" == "pull" ]]; then
-        echo "正在拉取同步到本地: $remote:$local_path -> $remote_path"
-        source="$remote:$local_path"
-        destination="$remote_path"
-    else
-        echo "正在推送同步到远端: $local_path -> $remote:$remote_path"
-        source="$local_path"
-        destination="$remote:$remote_path"
-    fi
+	# 根据同步方向调整源和目标路径
+	if [[ "$direction" == "pull" ]]; then
+		echo -e "${gl_bai}正在拉取同步到本地: ${gl_huang}$remote:$local_path ${gl_bai}-> ${gl_lv}$remote_path${gl_bai}"
+		source="$remote:$local_path"
+		destination="$remote_path"
+	else
+		echo -e "${gl_bai}正在推送同步到远端: ${gl_huang}$local_path ${gl_bai}-> ${gl_lv}$remote:$remote_path${gl_bai}"
+		source="$local_path"
+		destination="$remote:$remote_path"
+	fi
 
-    # 添加 SSH 连接通用参数
-    local ssh_options
-    ssh_options="-p $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+	# 添加 SSH 连接通用参数
+	local ssh_options="-p $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
-    if [[ "$auth_method" == "password" ]]; then
-        if ! command -v sshpass &>/dev/null; then
-            echo "错误：未安装 sshpass，请先安装 sshpass。"
-            echo "安装方法："
-            echo "  - Ubuntu/Debian: apt install sshpass"
-            echo "  - CentOS/RHEL: yum install sshpass"
-            return
-        fi
-        sshpass -p "$password_or_key" rsync "$options" -e "ssh $ssh_options" "$source" "$destination"
-    else
-        # 检查密钥文件是否存在和权限是否正确
-        if [[ ! -f "$password_or_key" ]]; then
-            echo "错误：密钥文件不存在：$password_or_key"
-            return
-        fi
+	if [[ "$auth_method" == "password" ]]; then
+		if ! command -v sshpass &> /dev/null; then
+			echo -e "${gl_hong}错误：未安装 ${gl_haung}sshpass${gl_hong}，请先安装 ${gl_haung}sshpass${gl_hong}。${gl_bai}"
+			echo "安装方法："
+			echo -e "  - ${gl_haung}Ubuntu/Debian: ${gl_lv}apt install sshpass${gl_bai}"
+			echo -e "  - ${gl_haung}CentOS/RHEL: ${gl_lv}yum install sshpass${gl_bai}"
+			return
+		fi
+		sshpass -p "$password_or_key" rsync $options -e "ssh $ssh_options" "$source" "$destination"
+	else
+		# 检查密钥文件是否存在和权限是否正确
+		if [[ ! -f "$password_or_key" ]]; then
+			echo -e "${gl_hong}错误：密钥文件不存在：${gl_huang}$password_or_key${gl_bai}"
+			return
+		fi
 
-        if [[ "$(stat -c %a "$password_or_key")" != "600" ]]; then
-            echo -e "警告：密钥文件权限不正确，正在修复${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            chmod 600 "$password_or_key"
-        fi
+		if [[ "$(stat -c %a "$password_or_key")" != "600" ]]; then
+			echo -e "${gl_huang}警告：密钥文件权限不正确，正在修复${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+			chmod 600 "$password_or_key"
+		fi
 
-        rsync "$options" -e "ssh -i $password_or_key $ssh_options" "$source" "$destination"
-    fi
+		rsync $options -e "ssh -i $password_or_key $ssh_options" "$source" "$destination"
+	fi
 
-    if [[ $? -eq 0 ]]; then
-        echo "同步完成!"
-    else
-        echo "同步失败! 请检查以下内容："
-        echo -e "${gl_bufan}1. ${gl_bai}网络连接是否正常"
-        echo -e "${gl_bufan}2. ${gl_bai}远程主机是否可访问"
-        echo -e "${gl_bufan}3. ${gl_bai}认证信息是否正确"
-        echo -e "${gl_bufan}4. ${gl_bai}本地和远程目录是否有正确的访问权限"
-    fi
+	if [[ $? -eq 0 ]]; then
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+		echo -e "${gl_lv}同步完成!${gl_bai}"
+	else
+                echo -e ""
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+		echo -e "${gl_hong}同步失败! 请检查以下内容：${gl_bai}"
+		echo -e "${gl_bufan}1. ${gl_bai}网络连接是否正常"
+		echo -e "${gl_bufan}2. ${gl_bai}远程主机是否可访问"
+		echo -e "${gl_bufan}3. ${gl_bai}认证信息是否正确"
+		echo -e "${gl_bufan}4. ${gl_bai}本地和远程目录是否有正确的访问权限"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+	fi
 }
 
 # 创建定时任务
@@ -9193,11 +9257,14 @@ schedule_task() {
         return
     fi
 
-    echo "请选择定时执行间隔："
+    echo ""
+    echo -e "${gl_huang}>>> 请选择定时执行间隔${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bufan}1. ${gl_bai}每小时执行一次"
     echo -e "${gl_bufan}2. ${gl_bai}每天执行一次"
     echo -e "${gl_bufan}3. ${gl_bai}每周执行一次"
-    read -r -e -p "请输入选项 (1/2/3): " interval
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    read -r -e -p "请输入你的选项: " interval
 
     local random_minute
     random_minute=$(shuf -i 0-59 -n 1) # 生成 0-59 之间的随机分钟数
@@ -9212,8 +9279,8 @@ schedule_task() {
         ;;
     esac
 
-    local cron_job="$cron_time k rsync_run $num"
-    local cron_job="$cron_time k rsync_run $num"
+    local cron_job="$cron_time m rsync_run $num"
+    local cron_job="$cron_time m rsync_run $num"
 
     # 检查是否已存在相同任务
     if crontab -l | grep -q "k rsync_run $num"; then
@@ -9227,199 +9294,68 @@ schedule_task() {
         echo "$cron_job"
     ) | crontab -
     echo "定时任务已创建: $cron_job"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
 # 查看定时任务
 view_tasks() {
     echo "当前的定时任务:"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    crontab -l | grep "k rsync_run"
+    
+    # 检查是否有定时任务
+    if ! crontab -l >/dev/null 2>&1; then
+        echo -e "${gl_huang}当前用户暂无定时任务${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        return 0
+    fi
+    
+    # 获取定时任务并过滤出包含"m rsync_run"的任务
+    local cron_tasks
+    cron_tasks=$(crontab -l 2>/dev/null | grep "m rsync_run")
+    
+    if [[ -n "$cron_tasks" ]]; then
+        echo "$cron_tasks"
+    else
+        echo -e "${gl_huang}暂无定时同步任务${gl_bai}"
+    fi
+    
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
 # 删除定时任务
 delete_task_schedule() {
+
+    echo ""
+    echo -e "${gl_huang}>>> 删除定时任务${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "请输入要删除的任务编号: " num
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo "错误: 请输入有效的任务编号！"
         return
     fi
 
-    crontab -l | grep -v "k rsync_run $num" | crontab -
-    echo "已删除任务编号 $num 的定时任务"
+    crontab -l | grep -v "m rsync_run $num" | crontab -
+    echo -e "${gl_lv}已删除任务编号 ${gl_huang}$num ${gl_lv}的定时任务${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
-# 本地快速同步模式
-interactive_rsync() {
-    clear
-    echo -e ""
-    echo -e "${gl_zi}>>> 本地快速同步模式${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}用法:${gl_lv} rsync -avh --progress --delete-delay <${gl_hong}源目录${gl_lv}> <${gl_huang}目标目录${gl_lv}>${gl_bai}"
-    echo -e "${gl_bai}示例:${gl_lv} rsync -avh --progress --delete-delay ${gl_hong}/path/to/source/ ${gl_huang}/path/to/dest/${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    
-    # 获取源目录
-    while true; do
-        read -r -e -p "$(echo -e "${gl_bai}请输入源目录路径 (${gl_huang}0${gl_bai} 返回): ")" src_path
-        
-        case "$src_path" in
-            0)
-                log_info "操作已取消"
-                return 0
-                ;;
-            "")
-                log_error "源目录不能为空，请重新输入"
-                continue
-                ;;
-        esac
-        
-        # 移除可能存在的末尾斜杠，以便统一处理
-        src_path="${src_path%/}"
-        
-        if [ ! -d "$src_path" ]; then
-            log_error "源目录 '$src_path' 不存在，请重新输入"
-        else
-            break
-        fi
-    done
-    
-    # 添加斜杠表示同步目录内容而非目录本身
-    src_path="$src_path/"
-    
-    # 获取目标目录
-    while true; do
-        read -r -e -p "$(echo -e "${gl_bai}请输入目标目录路径 (${gl_huang}0${gl_bai} 返回): ")" dst_path
-        
-        case "$dst_path" in
-            0)
-                log_info "操作已取消"
-                return 0
-                ;;
-            "")
-                log_error "目标目录不能为空，请重新输入"
-                continue
-                ;;
-        esac
-        
-        # 移除可能存在的末尾斜杠
-        dst_path="${dst_path%/}"
-        
-        # 检查目标目录的父目录是否存在
-        parent_dir=$(dirname "$dst_path")
-        if [ ! -d "$parent_dir" ]; then
-            log_warn "目标目录的父目录 '$parent_dir' 不存在"
-            read -r -e -p "$(echo -e "${gl_bai}是否创建此目录? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" create_parent
-            
-            case "${create_parent:-n}" in
-                y|Y)
-                    if mkdir -p "$dst_path"; then
-                        log_ok "目录创建成功"
-                        break
-                    else
-                        log_error "目录创建失败，请重新输入目标路径"
-                        continue
-                    fi
-                    ;;
-                *)
-                    log_info "请重新输入目标路径"
-                    continue
-                    ;;
-            esac
-        else
-            break
-        fi
-    done
-    
-    echo ""
-    echo -e "${gl_zi}>>> 同步参数确认${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}源目录: ${gl_hong}$src_path${gl_bai}"
-    echo -e "${gl_bai}目标目录: ${gl_huang}$dst_path ${gl_bai}自动创建"
-    echo -e "${gl_bai}Rsync选项: ${gl_lv}-avh --progress --delete-delay${gl_bai}"
-    echo ""
-    
-    # 显示将会受影响的项目预览
-    echo -e "${gl_bai}即将同步的项目预览 (前${gl_huang}10${gl_bai}个):"
-    find "$src_path" -type f | head -n 10 | while read -r file; do
-        echo -e "  ${gl_hui}- $file${gl_bai}"
-    done
-    
-    file_count=$(find "$src_path" -type f | wc -l)
-    dir_count=$(find "$src_path" -type d | wc -l)
-    echo -e "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} (总共: ${gl_lv}$file_count ${gl_hui}${gl_hui}个文件, ${gl_lan}$dir_count ${gl_hui}个目录)${gl_bai}"
-    echo ""
-    
-    # 最终确认
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -r -e -p "$(echo -e "${gl_bai}是否立即开始同步? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}, ${gl_huang}0${gl_bai} 返回): ")" final_confirm
-    
-    case "${final_confirm:-n}" in
-        0)
-            log_info "操作已取消"
-            return 0
-            ;;
-        y|Y)
-            echo -e ""
-            echo -e "${gl_huang}>>> 开始同步${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            
-            # 执行rsync命令
-            rsync -avh --progress --delete-delay "$src_path" "$dst_path"
-            
-            # 检查执行结果
-            sync_result=$?
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            
-            if [ $sync_result -eq 0 ]; then
-                
-                # 显示同步结果统计
-                echo ""
-                echo -e "${gl_zi}>>> 同步结果${gl_bai}"
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                if [ -d "$dst_path" ]; then
-                    synced_files=$(find "$dst_path" -type f | wc -l)
-                    synced_dirs=$(find "$dst_path" -type d | wc -l)
-                    echo -e "目标目录现在包含:"
-                    echo -e "  ${gl_hui}- ${gl_lv}$synced_files ${gl_bai}个文件"
-                    echo -e "  ${gl_hui}- ${gl_lan}$synced_dirs ${gl_bai}个目录"
-                    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                    echo -e "${gl_lv}同步已完成${gl_bai}"
-                    echo -e "${gl_bai}按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-                    read -r -n 1 -s -r -p ""
-                fi
-            else
-                log_error "同步过程中出现错误 (代码: $sync_result)"
-                return $sync_result
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                echo -e "${gl_bai}按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-                read -r -n 1 -s -r -p ""
-            fi
-            ;;
-        *)
-            log_info "操作已取消"
-            return 0
-            ;;
-    esac
-}
 
 # 任务管理主菜单
 rsync_manager() {
     CONFIG_FILE="$HOME/.rsync_tasks"
     CRON_FILE="$HOME/.rsync_cron"
-
     while true; do
         clear
-        echo -e "${gl_zi}>>> Rsync 远程同步工具${gl_bai}"
-        echo "远程目录之间同步，支持增量同步，高效稳定。"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         list_tasks
         echo
         view_tasks
+        echo -e ""
+        echo -e "${gl_zi}>>> Rsync 远程同步工具${gl_bai}"
+        echo "远程目录之间同步，支持增量同步，高效稳定。"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}创建新任务            ${gl_bufan}2.  ${gl_bai}删除任务"
         echo -e "${gl_bufan}3.  ${gl_bai}执行本地同步到远端    ${gl_bufan}4.  ${gl_bai}执行远端同步到本地"
         echo -e "${gl_bufan}5.  ${gl_bai}创建定时任务          ${gl_bufan}6.  ${gl_bai}删除定时任务"
-        echo -e "${gl_bufan}7.  ${gl_bai}本地快速同步模式"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}00. ${gl_bai}退出脚本              ${gl_huang}0.  ${gl_bai}返回上一级选单"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -9431,11 +9367,11 @@ rsync_manager() {
         4) run_task pull ;;
         5) schedule_task ;;
         6) delete_task_schedule ;;
-        7)  interactive_rsync ;;
         0) break ;;                     # 立即终止整个循环，跳出循环体
         00 | 000 | 0000) exit_script ;; # 感谢使用，再见！ N 秒后自动退出
         *) handle_invalid_input ;;      # 无效的输入,请重新输入! 2 秒后返回，继续执行循环的下一次迭代。
         esac
+        read -r -e -p "$(echo -e "${gl_bai}按回车键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} ")"
     done
 }
 
@@ -11026,7 +10962,7 @@ linux_docker() {
         echo -e "${gl_bufan}7.  ${gl_bai}更换Docker源         ${gl_bufan}8.  ${gl_bai}编辑daemon.json文件"
         echo -e "${gl_bufan}9.  ${gl_bai}开启Docker-ipv6访问  ${gl_bufan}10. ${gl_bai}关闭Docker-ipv6访问"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}11. ${gl_bai}备份Docker环境       ${gl_bufan}12. ${gl_bai}清理无用的镜像容器网络"
+        echo -e "${gl_bufan}11. ${gl_bai}备份Docker环境       ${gl_bufan}12. ${gl_bai}清理镜像容器网络"
         echo -e "${gl_bufan}66. ${gl_bai}安装Docker环境       ${gl_bufan}99. ${gl_bai}卸载Docker环境"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}00. ${gl_bai}退出脚本             ${gl_huang}0.  ${gl_bai}返回主菜单"
@@ -11270,7 +11206,7 @@ linux_docker() {
         11) docker_ssh_migration ;;
         12)
             echo -e ""
-            echo -e "${gl_zi}>>> 清理无用的镜像容器网络${gl_bai}"
+            echo -e "${gl_zi}>>> 清理镜像容器网络${gl_bai}"
             echo -e "${gl_bufan}————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
             case "$choice" in
@@ -19222,6 +19158,7 @@ ssh_root_login_menu() {
 
     while true; do
         clear
+        echo -e "${gl_zi}>>> ROOT 远程登录模式选择${gl_bai}"
         case "$(get_root_login_status)" in
         pubkey_only) IS_KEY_ENABLED="${gl_lv}已启用（纯私钥）${gl_bai}" ;;
         both) IS_KEY_ENABLED="${gl_huang}密码/密钥均可登录${gl_bai}" ;;
@@ -19229,8 +19166,6 @@ ssh_root_login_menu() {
         *) IS_KEY_ENABLED="${gl_hui}未知状态${gl_bai}" ;;
         esac
         echo -e "ROOT私钥登录模式 ${IS_KEY_ENABLED}"
-        echo -e ""
-        echo -e "${gl_zi}>>> ROOT 远程登录模式选择${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}ROOT 仅${gl_huang}密码${gl_bai}登录（关闭密钥）"
         echo -e "${gl_bufan}2.  ${gl_bai}ROOT 仅${gl_lv}密钥${gl_bai}登录（ROOT 禁密码，普通账号可密码）"
@@ -19564,13 +19499,10 @@ net_menu() {
         echo
         echo -e "${gl_zi}>>> 网卡管理菜单${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}1.  ${gl_bai}启用网卡"
-        echo -e "${gl_bufan}2.  ${gl_bai}禁用网卡"
-        echo -e "${gl_bufan}3.  ${gl_bai}查看网卡详细信息"
-        echo -e "${gl_bufan}4.  ${gl_bai}刷新网卡信息"
+        echo -e "${gl_bufan}1.  ${gl_bai}启用网卡            ${gl_bufan}2.  ${gl_bai}禁用网卡"
+        echo -e "${gl_bufan}3.  ${gl_bai}查看网卡详细信息    ${gl_bufan}4.  ${gl_bai}刷新网卡信息"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_hong}00. ${gl_bai}退出脚本"
-        echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
+        echo -e "${gl_hong}00. ${gl_bai}退出脚本            ${gl_huang}0.  ${gl_bai}返回上一级选单"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -rp "请输入你的选择: " choice
 
@@ -20006,6 +19938,592 @@ interactive_ping() {
     done
 }
 
+###### 函数_rsync本地同步工具
+# 初始化目录结构和全局变量
+local_init_globals() {
+    # 本地同步配置文件路径
+    LOCAL_SYNC_CONFIG="$HOME/.local_rsync_tasks"
+    
+    # 创建配置目录
+    mkdir -p "$(dirname "$LOCAL_SYNC_CONFIG")" 2>/dev/null || {
+        echo -e "${gl_hong}错误: 无法创建配置目录${gl_bai}"
+        return 1
+    }
+    return 0
+}
+
+# 显示本地同步任务列表
+local_list_tasks() {
+    local_init_globals || return 1
+    
+    echo "已保存的本地同步任务:"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    if [[ -f "$LOCAL_SYNC_CONFIG" ]] && [[ -s "$LOCAL_SYNC_CONFIG" ]]; then
+        awk -F'|' '{printf "%-3d - %-10s ( %s -> %s )\n", NR, $1, $2, $3}' "$LOCAL_SYNC_CONFIG"
+    else
+        echo -e "${gl_huang}暂无同步任务${gl_bai}"
+    fi
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+}
+
+# 添加本地同步任务
+local_add_task() {
+    local_init_globals || return 1
+    
+    echo "创建新本地同步任务示例："
+    echo "  - 任务名称: backup_www"
+    echo "  - 源目录: /var/www"
+    echo "  - 目标目录: /backup/www"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    local name source_path target_path options
+    
+    while true; do
+        read -r -e -p "请输入任务名称: " name
+        if [[ -z "$name" ]]; then
+            echo -e "${gl_hong}错误: 任务名称不能为空${gl_bai}"
+            continue
+        fi
+        # 检查任务名称是否已存在
+        if [[ -f "$LOCAL_SYNC_CONFIG" ]] && grep -q "^$name|" "$LOCAL_SYNC_CONFIG"; then
+            echo -e "${gl_hong}错误: 任务名称已存在，请重新输入${gl_bai}"
+            continue
+        fi
+        break
+    done
+
+    while true; do
+        read -r -e -p "请输入源目录: " source_path
+        if [[ -z "$source_path" ]]; then
+            echo -e "${gl_hong}错误: 源目录不能为空${gl_bai}"
+            continue
+        fi
+        # 检查源目录是否存在（只是警告，不阻止创建）
+        if [[ ! -d "$source_path" ]]; then
+            echo -e "${gl_huang}警告: 源目录不存在，请确认路径是否正确${gl_bai}"
+            read -r -e -p "是否继续创建任务? (y/n): " confirm
+            if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+                continue
+            fi
+        fi
+        break
+    done
+
+    while true; do
+        read -r -e -p "请输入目标目录: " target_path
+        if [[ -z "$target_path" ]]; then
+            echo -e "${gl_hong}错误: 目标目录不能为空${gl_bai}"
+            continue
+        fi
+        break
+    done
+
+    # 规范化目录路径
+    source_path="${source_path%/}/"
+    target_path="${target_path%/}/"
+
+    echo ""
+    echo -e "${gl_huang}>>> 请选择同步模式"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bufan}1. ${gl_bai}标准模式 (-avz) - 增量同步，保留文件属性"
+    echo -e "${gl_bufan}2. ${gl_bai}安全模式 (-avz --delete) - 删除目标中多余文件"
+    echo -e "${gl_bufan}3. ${gl_bai}严格模式 (-avz --delete --checksum) - 校验文件内容"
+    echo -e "${gl_bufan}4. ${gl_bai}快速模式 (-av) - 基本同步，不压缩"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    read -r -e -p "请输入你的选择: " mode
+    
+    case $mode in
+        1) options="-avz" ;;
+        2) options="-avz --delete" ;;
+        3) options="-avz --delete --checksum" ;;
+        4) options="-av" ;;
+        *)
+            echo "无效选择，使用标准模式 -avz"
+            options="-avz"
+            ;;
+    esac
+
+    # 高级选项
+    echo ""
+    echo -e "${gl_huang}>>> 高级选项"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bufan}1. ${gl_bai}限速同步 (避免影响系统性能)"
+    echo -e "${gl_bufan}2. ${gl_bai}排除特定文件类型"
+    echo -e "${gl_bufan}3. ${gl_bai}跳过高级选项"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    read -r -e -p "请输入你的选择: " advanced_opt
+    
+    case $advanced_opt in
+        1)
+            read -r -e -p "请输入限速值 (单位: KB/s): " speed_limit
+            if [[ "$speed_limit" =~ ^[0-9]+$ ]]; then
+                options="$options --bwlimit=$speed_limit"
+                echo -e "${gl_lv}已设置限速: ${speed_limit}KB/s${gl_bai}"
+            else
+                echo -e "${gl_hong}无效的限速值，跳过限速设置${gl_bai}"
+            fi
+            ;;
+        2)
+            read -r -e -p "请输入要排除的文件模式 (如: *.tmp,*.log): " exclude_patterns
+            if [[ -n "$exclude_patterns" ]]; then
+                options="$options --exclude='$exclude_patterns'"
+                echo -e "${gl_lv}已设置排除模式: $exclude_patterns${gl_bai}"
+            fi
+            ;;
+        3|"")
+            echo "跳过高级选项"
+            ;;
+        *)
+            echo -e "${gl_hong}无效选择，跳过高级选项${gl_bai}"
+            ;;
+    esac
+
+    # 保存任务配置
+    echo "$name|$source_path|$target_path|$options" >> "$LOCAL_SYNC_CONFIG"
+    echo -e "${gl_lv}✓ 本地同步任务 '${name}' 已保存!${gl_bai}"
+    
+    # 显示任务信息
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bai}任务详情:${gl_bai}"
+    echo -e "  ${gl_bai}名称: ${gl_huang}${name}${gl_bai}"
+    echo -e "  ${gl_bai}源目录: ${gl_huang}${source_path}${gl_bai}"
+    echo -e "  ${gl_bai}目标目录: ${gl_lv}${target_path}${gl_bai}"
+    echo -e "  ${gl_bai}同步选项: ${gl_zi}${options}${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+}
+
+# 删除本地同步任务
+local_delete_task() {
+    local_init_globals || return 1
+    
+    if [[ ! -f "$LOCAL_SYNC_CONFIG" ]] || [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
+        echo -e "${gl_hong}错误: 暂无同步任务可删除${gl_bai}"
+        return 1
+    fi
+    
+    local_list_tasks
+    local num
+    read -r -e -p "请输入要删除的任务编号: " num
+
+    if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+        echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
+        return 1
+    fi
+
+    local total_tasks=$(wc -l < "$LOCAL_SYNC_CONFIG" 2>/dev/null)
+    if [[ "$num" -lt 1 || "$num" -gt "$total_tasks" ]]; then
+        echo -e "${gl_hong}错误: 任务编号不存在${gl_bai}"
+        return 1
+    fi
+
+    # 获取任务名称用于确认
+    local task_line=$(sed -n "${num}p" "$LOCAL_SYNC_CONFIG")
+    IFS='|' read -r task_name source_path target_path options <<< "$task_line"
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bai}即将删除的任务:${gl_bai}"
+    echo -e "  名称: ${gl_huang}${task_name}${gl_bai}"
+    echo -e "  源目录: ${gl_huang}${source_path}${gl_bai}"
+    echo -e "  目标目录: ${gl_lv}${target_path}${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    read -r -e -p "$(echo -e "${gl_bai}确定要删除这个任务吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+    if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+        # 使用临时文件安全删除
+        local temp_file=$(mktemp)
+        sed "${num}d" "$LOCAL_SYNC_CONFIG" > "$temp_file"
+        if mv "$temp_file" "$LOCAL_SYNC_CONFIG" 2>/dev/null; then
+            echo -e "${gl_lv}✓ 任务已删除!${gl_bai}"
+        else
+            echo -e "${gl_hong}错误: 删除任务失败${gl_bai}"
+            rm -f "$temp_file"
+            return 1
+        fi
+    else
+        echo "取消删除"
+    fi
+}
+
+# 执行本地同步任务（免确认模式）
+local_run_task() {
+    local_init_globals || return 1
+    
+    if [[ ! -f "$LOCAL_SYNC_CONFIG" ]] || [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
+        echo -e "${gl_hong}错误: 暂无同步任务可执行${gl_bai}"
+        return 1
+    fi
+
+    local num="$1"
+    
+    # 如果没有传入任务编号，显示列表让用户选择
+    if [[ -z "$num" ]]; then
+        local_list_tasks
+        read -r -e -p "请输入要执行的任务编号: " num
+    fi
+
+    if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+        echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
+        return 1
+    fi
+
+    local total_tasks=$(wc -l < "$LOCAL_SYNC_CONFIG" 2>/dev/null)
+    if [[ "$num" -lt 1 || "$num" -gt "$total_tasks" ]]; then
+        echo -e "${gl_hong}错误: 任务编号不存在${gl_bai}"
+        return 1
+    fi
+
+    local task=$(sed -n "${num}p" "$LOCAL_SYNC_CONFIG")
+    IFS='|' read -r name source_path target_path options <<< "$task"
+
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bai}开始执行本地同步任务: ${gl_huang}${name}${gl_bai}"
+    echo -e "${gl_bai}同步方向: ${gl_huang}${source_path} ${gl_bai}-> ${gl_lv}${target_path}${gl_bai}"
+    echo -e "${gl_bai}同步选项: ${gl_zi}${options}${gl_bai}"
+    echo -e "${gl_bai}模式: ${gl_lv}免确认直接执行${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+    # 检查源目录是否存在
+    if [[ ! -d "$source_path" ]]; then
+        echo -e "${gl_hong}错误: 源目录不存在!${gl_bai}"
+        echo -e "${gl_hong}请检查路径: ${source_path}${gl_bai}"
+        return 1
+    fi
+
+    # 自动创建目标目录（如果不存在）
+    if [[ ! -d "$target_path" ]]; then
+        echo -e "${gl_huang}目标目录不存在，正在自动创建: ${target_path}${gl_bai}"
+        if mkdir -p "$target_path" 2>/dev/null; then
+            echo -e "${gl_lv}✓ 目标目录已创建${gl_bai}"
+        else
+            echo -e "${gl_hong}错误: 无法创建目标目录${gl_bai}"
+            return 1
+        fi
+    fi
+
+    # 快速预检查（不显示详细输出）
+    echo -e "${gl_bai}执行快速预检查${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    rsync -n $options "$source_path" "$target_path" >/dev/null 2>&1
+    local dry_run_result=$?
+    
+    if [[ $dry_run_result -eq 0 ]]; then
+        echo -e "${gl_lv}✓ 预检查通过${gl_bai}"
+    else
+        echo -e "${gl_huang}警告: 预检查发现潜在问题，继续执行...${gl_bai}"
+    fi
+
+    # 记录开始时间
+    local start_time=$(date +%s)
+    echo -e "${gl_bai}开始时间: ${gl_lv}$(date)${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+    # 执行rsync同步（免确认）
+    echo -e "${gl_bai}正在执行同步${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    rsync $options "$source_path" "$target_path"
+
+    local sync_result=$?
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    if [[ $sync_result -eq 0 ]]; then
+        echo -e "${gl_lv}✓ 本地同步完成!${gl_bai}"
+        echo -e "${gl_bai}同步统计:${gl_bai}"
+        echo -e "  - 任务名称: ${gl_huang}${name}${gl_bai}"
+        echo -e "  - 源目录: ${gl_huang}${source_path}${gl_bai}"
+        echo -e "  - 目标目录: ${gl_lv}${target_path}${gl_bai}"
+        echo -e "  - 耗时: ${gl_zi}${duration}秒${gl_bai}"
+        echo -e "  - 完成时间: ${gl_lv}$(date)${gl_bai}"
+        echo -e "  - 同步结果: ${gl_lv}成功${gl_bai}"
+    else
+        echo -e "${gl_hong}✗ 同步失败! 错误代码: ${sync_result}${gl_bai}"
+        echo -e "${gl_hong}可能的原因:${gl_bai}"
+        echo -e "  ${gl_bufan}1. ${gl_bai}目标目录权限不足"
+        echo -e "  ${gl_bufan}2. ${gl_bai}磁盘空间不足"
+        echo -e "  ${gl_bufan}3. ${gl_bai}文件被占用或权限问题"
+        echo -e "  ${gl_bufan}4. ${gl_bai}网络存储连接问题（如果是网络路径）"
+        echo -e "  ${gl_bufan}5. ${gl_bai}rsync选项配置错误"
+    fi
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    return $sync_result
+}
+
+# 批量执行所有本地同步任务
+local_run_all_tasks() {
+    local_init_globals || return 1
+    
+    if [[ ! -f "$LOCAL_SYNC_CONFIG" ]] || [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
+        echo -e "${gl_hong}错误: 暂无同步任务可执行${gl_bai}"
+        return 1
+    fi
+
+    local total_tasks=$(wc -l < "$LOCAL_SYNC_CONFIG")
+    echo -e ""
+    echo -e "${gl_bai}开始批量执行 ${gl_huang}${total_tasks} ${gl_bai}个本地同步任务${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+    local success_count=0
+    local fail_count=0
+    local current_task=0
+
+    # 逐行读取任务配置并执行
+    while IFS= read -r task; do
+        ((current_task++))
+        IFS='|' read -r name source_path target_path options <<< "$task"
+        
+        echo -e "${gl_bai}[${gl_lv}${current_task}${gl_bai}/${gl_huang}${total_tasks}${gl_bai}] 执行任务: ${gl_huang}${name}${gl_bai}"
+        echo -e "${gl_bai}路径: ${gl_huang}${source_path} ${gl_bai}-> ${gl_lv}${target_path}${gl_bai}"
+        
+        # 检查源目录是否存在
+        if [[ ! -d "$source_path" ]]; then
+            echo -e "${gl_hong}✗ 失败: 源目录不存在${gl_bai}"
+            ((fail_count++))
+            echo ""
+            continue
+        fi
+        
+        # 执行同步
+        rsync $options "$source_path" "$target_path"
+        
+        if [[ $? -eq 0 ]]; then
+            echo -e "${gl_lv}✓ 成功${gl_bai}"
+            ((success_count++))
+        else
+            echo -e "${gl_hong}✗ 失败${gl_bai}"
+            ((fail_count++))
+        fi
+        echo ""
+    done < "$LOCAL_SYNC_CONFIG"
+
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bai}批量执行完成: ${gl_lv}成功 ${success_count} ${gl_bai}| ${gl_hong}失败 ${fail_count}${gl_bai}"
+    
+    if [[ $fail_count -eq 0 ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# 创建本地同步定时任务
+local_schedule_task() {
+    clear
+    echo ""
+    echo -e "${gl_huang}>>> 创建定时任务"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    local_init_globals || return 1
+    
+    if [[ ! -f "$LOCAL_SYNC_CONFIG" ]] || [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
+        echo -e "${gl_hong}错误: 暂无同步任务可设置定时${gl_bai}"
+        return 1
+    fi
+
+    local_list_tasks
+    local num
+    read -r -e -p "请输入要定时同步的任务编号: " num
+
+    if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+        echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
+        return 1
+    fi
+
+    local total_tasks=$(wc -l < "$LOCAL_SYNC_CONFIG")
+    if [[ "$num" -lt 1 || "$num" -gt "$total_tasks" ]]; then
+        echo -e "${gl_hong}错误: 任务编号不存在${gl_bai}"
+        return 1
+    fi
+
+    local task=$(sed -n "${num}p" "$LOCAL_SYNC_CONFIG")
+    IFS='|' read -r name source_path target_path options <<< "$task"
+
+    echo ""
+    echo -e "${gl_huang}>>> 请选择定时执行间隔"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bufan}1. ${gl_bai}每小时执行一次"
+    echo -e "${gl_bufan}2. ${gl_bai}每天执行一次"
+    echo -e "${gl_bufan}3. ${gl_bai}每周执行一次"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    read -r -e -p "请输入你的选择: " interval
+
+    local random_minute
+    random_minute=$(shuf -i 0-59 -n 1) # 生成 0-59 之间的随机分钟数[1](@ref)
+    local cron_time=""
+    case "$interval" in
+        1) 
+            cron_time="$random_minute * * * *"  # 每小时，随机分钟执行[1](@ref)
+            interval_desc="每小时（随机分钟 $random_minute）"
+            ;;
+        2) 
+            cron_time="$random_minute 0 * * *"  # 每天，随机分钟执行[1](@ref)
+            interval_desc="每天凌晨（随机分钟 $random_minute）"
+            ;;
+        3) 
+            cron_time="$random_minute 0 * * 1"  # 每周，随机分钟执行[1](@ref)
+            interval_desc="每周一凌晨（随机分钟 $random_minute）"
+            ;;
+        *)
+            echo -e "${gl_hong}错误: 请输入有效的选项！${gl_bai}"
+            return 1
+            ;;
+    esac
+
+    # 使用简洁的任务格式，类似远程同步的 "m rsync_run 1"[1](@ref)
+    local cron_job="$cron_time m local_rsync_run $num"
+
+    # 检查是否已存在相同任务[1](@ref)
+    if crontab -l 2>/dev/null | grep -q "m local_rsync_run $num"; then
+        echo -e "${gl_hong}错误: 该任务的定时同步已存在！${gl_bai}"
+        return 1
+    fi
+
+    # 创建到用户的 crontab[1](@ref)
+    (
+        crontab -l 2>/dev/null
+        echo "$cron_job"
+    ) | crontab -
+
+    echo ""
+    echo -e "${gl_bai}定时任务已创建: ${gl_lv}$cron_job${gl_bai}"
+    
+    # 显示任务详情
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bai}任务详情:${gl_bai}"
+    echo -e "  - 任务名称: ${gl_huang}${name}${gl_bai}"
+    echo -e "  - 执行间隔: ${gl_huang}${interval_desc}${gl_bai}"
+    echo -e "  - 源目录: ${gl_huang}${source_path}${gl_bai}"
+    echo -e "  - 目标目录: ${gl_lv}${target_path}${gl_bai}"
+    echo -e "  - 同步选项: ${gl_zi}${options}${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+}
+
+# 查看本地同步定时任务
+local_view_schedules() {
+    echo "当前的本地同步定时任务:"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 检查crontab服务状态
+    if ! systemctl is-active cron >/dev/null 2>&1 && ! systemctl is-active crond >/dev/null 2>&1; then
+        echo -e "${gl_hong}警告: crond服务未运行，定时任务可能无法执行${gl_bai}"
+    fi
+    
+    # 获取当前用户的crontab内容
+    local crontab_content
+    crontab_content=$(crontab -l 2>/dev/null)
+    
+    if [[ $? -ne 0 ]]; then
+        echo -e "${gl_huang}当前用户暂无定时任务${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        return 0
+    fi
+    
+    if [[ -z "$crontab_content" ]]; then
+        echo -e "${gl_huang}暂无定时任务${gl_bai}"
+        return 0
+    fi
+    
+    # 修复1: 使用临时文件避免子shell变量传递问题
+    local temp_file=$(mktemp)
+    local found_tasks=0
+    
+    # 方法1: 匹配包含脚本路径和--local-run的任务
+    echo "$crontab_content" | grep -E "(local_rsync_run|--local-run)" | grep -v '^#' > "$temp_file"
+    
+    if [[ -s "$temp_file" ]]; then
+        # 计算实际找到的任务数量
+        found_tasks=$(wc -l < "$temp_file" 2>/dev/null)
+        echo "$crontab_content" | grep -E "(local_rsync_run|--local-run)" | grep -v '^#'
+    else
+        # 方法2: 如果没有找到特定任务，显示所有非注释行
+        echo "$crontab_content" | grep -v '^#' > "$temp_file"
+        if [[ -s "$temp_file" ]]; then
+            found_tasks=$(wc -l < "$temp_file" 2>/dev/null)
+            cat "$temp_file"
+        else
+            echo "暂无有效的定时任务（都是注释行）"
+        fi
+    fi
+    
+    # 清理临时文件
+    rm -f "$temp_file"
+}
+
+# 删除本地同步定时任务
+local_delete_schedule() {
+    clear
+    echo ""
+    echo -e "${gl_huang}>>> 删除定时任务${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    local_view_schedules
+    local num
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    read -r -e -p "请输入要删除的定时任务编号: " num
+
+    if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+        echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
+        return 1
+    fi
+
+    # 从crontab中删除指定任务的定时
+    if crontab -l 2>/dev/null | grep -q "local_rsync_run $num"; then
+        crontab -l 2>/dev/null | grep -v "local_rsync_run $num" | crontab -
+        echo -e "${gl_lv}✓ 定时任务已删除!${gl_bai}"
+    else
+        echo -e "${gl_hong}错误: 未找到该编号的定时任务${gl_bai}"
+        return 1
+    fi
+}
+
+# 本地同步任务管理主菜单
+local_rsync_manager() {
+    local_init_globals || return 1
+    
+    while true; do
+        clear
+        local_list_tasks
+        echo
+        local_view_schedules
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e ""
+        echo -e "${gl_zi}>>> Rsync 本地同步工具${gl_bai}"
+        echo "本地目录之间同步，支持增量同步，高效稳定。"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}1.  ${gl_bai}创建新任务           ${gl_bufan}2.  ${gl_bai}删除任务"
+        echo -e "${gl_bufan}3.  ${gl_bai}执行单个任务         ${gl_bufan}4.  ${gl_bai}批量执行所有任务"
+        echo -e "${gl_bufan}5.  ${gl_bai}创建定时任务         ${gl_bufan}6.  ${gl_bai}删除定时任务"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_hong}00. ${gl_bai}退出脚本             ${gl_huang}0.  ${gl_bai}返回上一级选单"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        read -r -e -p "请输入你的选择: " choice
+        case $choice in
+            1) local_add_task ;;
+            2) local_delete_task ;;
+            3) 
+                clear
+                echo ""
+                echo -e "${gl_huang}>>> 执行单个任务${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+                local_list_tasks
+                read -r -e -p "请输入要执行的任务编号: " task_num
+                local_run_task "$task_num" 
+                ;;
+            4) local_run_all_tasks ;;
+            5) local_schedule_task ;;
+            6) local_delete_schedule ;;
+            0) break ;;  # 返回上一级
+            00) exit 0 ;; # 退出脚本
+            *) 
+                echo -e "${gl_hong}无效的输入,请重新输入!${gl_bai}"
+                sleep 2
+                ;;
+        esac
+        if [[ "$choice" != "0" && "$choice" != "00" ]]; then
+            read -r -e -p "$(echo -e "${gl_bai}按回车键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+        fi
+    done
+}
+
 ###### 系统工具菜单
 linux_Settings() {
     while true; do
@@ -20034,7 +20552,7 @@ linux_Settings() {
         echo -e "${gl_bufan}33. ${gl_bai}设置系统回收站      ${gl_bufan}34. ${gl_bai}系统备份与恢复"
         echo -e "${gl_bufan}35. ${gl_bai}ssh远程连接工具     ${gl_bufan}36. ${gl_bai}硬盘分区管理工具"
         echo -e "${gl_bufan}37. ${gl_bai}命令行历史记录      ${gl_bufan}38. ${gl_bai}rsync远程同步工具"
-        echo -e "${gl_bufan}39. ${gl_bai}命令收藏夹          ${gl_bufan}40. ${gl_bai}留言板 "
+        echo -e "${gl_bufan}39. ${gl_bai}命令收藏夹          ${gl_bufan}40. ${gl_bai}rsync本地同步工具"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}41. ${gl_bai}Ubuntu静态IP配置    ${gl_bufan}42. ${gl_bai}修改系统为中文语言"
         echo -e "${gl_bufan}43. ${gl_bai}配置SSH服务         ${gl_bufan}44. ${gl_bai}Samba挂载管理器"
@@ -20042,7 +20560,7 @@ linux_Settings() {
         echo -e "${gl_bufan}47. ${gl_bai}网卡管理工具        ${gl_bufan}48. ${gl_bai}网络连通性测试工具"
         echo -e "${gl_bufan}49. ${gl_bai}系统日志管理工具    ${gl_bufan}50. ${gl_bai}系统变量管理工具"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}66. ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
+        echo -e "${gl_bufan}61. ${gl_bai}留言板              ${gl_bufan}66. ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}    "
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}91. ${gl_bai}重启服务器          ${gl_bufan}92. ${gl_bai}隐私与安全"
         echo -e "${gl_bufan}93. ${gl_bai}m命令高级用法 ${gl_huang}★${gl_bai}     ${gl_bufan}94. ${gl_bai}卸载mobufan脚本"
@@ -20903,6 +21421,7 @@ EOF
             break_end
 	    ;;
         38)
+            # rsync远程同步工具
             rsync_manager
             ;;
         39)
@@ -20910,14 +21429,8 @@ EOF
             linux_fav
             ;;
         40)
-            echo -e ""
-            echo -e "${gl_zi}>>> 科技lion官方留言板${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo "访问科技lion官方留言板，您对脚本有任何想法欢迎留言交流！"
-            echo "https://board.kejilion.pro"
-            echo "公共密码: kejilion.sh"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            break_end
+            # rsync本地同步工具
+            local_rsync_manager
             ;;
        41)
             # Samba共享配置
@@ -20985,6 +21498,16 @@ EOF
             # 系统变量管理工具
             clear
             env_menu
+            ;;
+        61)
+            echo -e ""
+            echo -e "${gl_zi}>>> 科技lion官方留言板${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo "访问科技lion官方留言板，您对脚本有任何想法欢迎留言交流！"
+            echo "https://board.kejilion.pro"
+            echo "公共密码: kejilion.sh"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
             ;;
         66)
             root_use
@@ -21365,7 +21888,13 @@ linux_file() {
     root_use
     while true; do
         clear
-        list_dir_colorful 1 # 当前目录列表
+        if [ -z "$(ls -A)" ]; then
+            echo -e "${gl_huang}>>> 当前目录 ${gl_lv}$(pwd) ${gl_huang}文件列表：${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_huang}当前目录为空${gl_bai}"
+        else
+            list_dir_colorful 1 # 当前目录列表
+        fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_zi}>>> 文件管理器${gl_bai}"
@@ -23050,7 +23579,7 @@ pve_install_istoreos() {
     fi
 
     # 10. 检查并设置磁盘
-    echo -e "${gl_bufan}——————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     log_info "配置磁盘和启动顺序${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
     # 查找导入的磁盘文件
@@ -23177,7 +23706,7 @@ pve_install_istoreos() {
     # log_ok "临时文件清理完成"
 
     # 13. 显示虚拟机信息
-    echo -e "${gl_bufan}——————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     log_ok "iStoreOS虚拟机 ${vm_id} 安装完成"
     echo ""
     echo -e "${gl_lv}虚拟机配置信息:${gl_bai}"
@@ -23266,7 +23795,7 @@ pve_install_istoreos() {
     esac
 
     # 15. 常见问题解决提示
-    echo -e "${gl_bufan}——————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_huang}如果启动后卡在串口界面:${gl_bai}"
     echo -e "  1. 在Web控制台中按 ${gl_bufan}Enter${gl_bai} 键激活控制台"
     echo -e "  2. 或者尝试修改配置: qm set ${vm_id} --serial0 socket --vga std"
@@ -25125,7 +25654,11 @@ git_clone_docker_projects() {
         echo -e ""
         echo -e "${gl_huang}>>> 当前 ${gl_lv}$(pwd) ${gl_huang}目录内容:"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        ls --color=auto -x
+        if [ -z "$(ls -A)" ]; then
+            echo -e "${gl_huang}当前目录为空${gl_bai}"
+        else
+            ls --color=auto -xa
+        fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_zi}>>> Git克隆Docker仓库${gl_bai}"
@@ -25722,7 +26255,7 @@ docker_mirror_menu() {
             fi
 
             echo -e ""
-            echo -e "${gl_zi}>>> 清理无用的镜像容器网络${gl_bai}"
+            echo -e "${gl_zi}>>> 清理镜像容器网络${gl_bai}"
             echo -e "${gl_bufan}————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
             case "$choice" in
@@ -26186,20 +26719,20 @@ linux_fnos_menu() {
         # echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
         # echo -e "${gl_bai}内网 IP 地址: ${gl_huang}$(get_internal_ip)${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}1.  ${gl_bai}Compose容器管理  ${gl_bufan}2.  ${gl_bai}Docker全局状态"
-        echo -e "${gl_bufan}3.  ${gl_bai}Docker容器管理   ${gl_bufan}4.  ${gl_bai}Docker镜像管理"
-        echo -e "${gl_bufan}5.  ${gl_bai}Docker网络管理   ${gl_bufan}6.  ${gl_bai}Docker卷管理"
-        echo -e "${gl_bufan}7.  ${gl_bai}Docker镜像加速   ${gl_bufan}8.  ${gl_bai}清理容器和镜像网络数据卷"
+        echo -e "${gl_bufan}1.  ${gl_bai}Compose容器管理     ${gl_bufan}2.  ${gl_bai}Docker全局状态"
+        echo -e "${gl_bufan}3.  ${gl_bai}Docker容器管理      ${gl_bufan}4.  ${gl_bai}Docker镜像管理"
+        echo -e "${gl_bufan}5.  ${gl_bai}Docker网络管理      ${gl_bufan}6.  ${gl_bai}Docker卷管理"
+        echo -e "${gl_bufan}7.  ${gl_bai}Docker镜像加速      ${gl_bufan}8.  ${gl_bai}清理镜像容器网络"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}11. ${gl_bai}克隆Docker仓库   ${gl_bufan}12. ${gl_bai}配置文件管理器"
-        echo -e "${gl_bufan}13. ${gl_bai}临时目录管理器   ${gl_bufan}14. ${gl_bai}硬盘分区管理"
-        echo -e "${gl_bufan}15. ${gl_bai}电脑壁纸整理     ${gl_bufan}16. ${gl_bai}手机壁纸整理"
-        echo -e "${gl_bufan}17. ${gl_bai}安装Compose      ${gl_bufan}18. ${gl_bai}备份/迁移/还原Compose项目"
+        echo -e "${gl_bufan}11. ${gl_bai}克隆Docker仓库      ${gl_bufan}12. ${gl_bai}配置文件管理器"
+        echo -e "${gl_bufan}13. ${gl_bai}临时目录管理器      ${gl_bufan}14. ${gl_bai}硬盘分区管理"
+        echo -e "${gl_bufan}15. ${gl_bai}电脑壁纸整理        ${gl_bufan}16. ${gl_bai}手机壁纸整理"
+        echo -e "${gl_bufan}17. ${gl_bai}安装Compose         ${gl_bufan}18. ${gl_bai}备份Compose项目"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}55. ${gl_bai}FnOS系统安全工具"
-        echo -e "${gl_bufan}66. ${gl_bai}安装Docker环境   ${gl_bufan}99. ${gl_bai}卸载Docker环境"
+        echo -e "${gl_bufan}66. ${gl_bai}安装Docker环境      ${gl_bufan}99. ${gl_bai}卸载Docker环境"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_hong}00. ${gl_bai}退出脚本         ${gl_huang}0.  ${gl_bai}返回主菜单"
+        echo -e "${gl_hong}00. ${gl_bai}退出脚本            ${gl_huang}0.  ${gl_bai}返回主菜单"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "请输入你的选择: " sub_choice
 
@@ -26683,7 +27216,7 @@ linux_fnos_menu() {
             fi
 
             clear
-            echo -e "${gl_zi}>>> 清理无用的镜像容器网络${gl_bai}"
+            echo -e "${gl_zi}>>> 清理镜像容器网络${gl_bai}"
             echo -e "${gl_bufan}————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
             case "$choice" in
@@ -26704,7 +27237,11 @@ linux_fnos_menu() {
             echo -e "${gl_zi}>>> Git克隆Docker仓库${gl_bai}"
             echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            ls --color=auto -x
+            if [ -z "$(ls -A)" ]; then
+                echo -e "${gl_huang}当前目录为空${gl_bai}"
+            else
+                ls --color=auto -xa
+            fi
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
             # 获取工作目录
@@ -26771,7 +27308,7 @@ linux_fnos_menu() {
                         ;;
                     n | no | "")
                         echo -e "${gl_hong}已取消安装Docker，退出${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                        return 1 # 或者 exit 1，取决于您的脚本结构
+                        break
                         ;;
                     *)
                         echo -e "${gl_hong}输入错误，请重新输入！${gl_bai}"
@@ -26782,7 +27319,8 @@ linux_fnos_menu() {
 
             # 检查 Docker 服务是否运行
             if ! docker info &>/dev/null; then
-                echo -e "${gl_hong}Docker${gl_bai} 服务未运行，请先启动 ${gl_hong}Docker${gl_bai} 服务${gl_bai}"
+                echo -e "${gl_hong}Docker${gl_bai} 服务未运行，请先启动 ${gl_huang}Docker${gl_bai} 服务${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -n 1 -s -r -p "$(echo -e "按任意键返回主菜单${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
                 echo
                 continue
@@ -28179,7 +28717,11 @@ linux_git_menu() {
             echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            ls --color=auto -xa
+            if [ -z "$(ls -A)" ]; then
+                echo -e "${gl_huang}当前目录为空${gl_bai}"
+            else
+                ls --color=auto -xa
+            fi
             # echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
             # echo -e "${gl_bai}内网 IP 地址: ${gl_huang}$(get_internal_ip)${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -31194,7 +31736,13 @@ download_file() {
     # 交互模式
     while true; do
         clear
-        list_dir_colorful
+        if [ -z "$(ls -A)" ]; then
+            echo -e "${gl_huang}>>> 当前目录 ${gl_lv}$(pwd) ${gl_huang}文件列表：${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_huang}当前目录为空${gl_bai}"
+        else
+            list_dir_colorful
+        fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_zi}>>> 文件下载${gl_bai}"
@@ -31513,6 +32061,10 @@ else
     rsync | 远程同步)
         rsync_manager
         ;;
+    local_rsync_run)
+	shift
+	local_run_task "$@"
+	;;
     rsync_run)
         shift
         run_task "$@"
