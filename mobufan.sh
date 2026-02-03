@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.2.4"
+sh_v="1.2.5"
 
 gl_hui='\e[37m'     # 定义灰色（或浅白）字体的ANSI转义序列
 gl_hong='\033[31m'  # 定义红色字体的ANSI转义序列
@@ -870,7 +870,7 @@ temp_dir_menu() {
             cd "$target_dir" && git_clone_docker_projects
             ;;
         6)
-            cd "$target_dir" && show_compose_project_menu
+            cd "$target_dir" && enter_compose_dir
             ;;
         7)
             cd "$target_dir" && clone_custom_repo
@@ -1636,18 +1636,28 @@ docker_image() {
                 docker images | grep -Fw -f <(echo "$img_list" | tr ' ' '\n') || echo -e "${gl_lv}✓ 已无任何匹配镜像${gl_bai}"
             break_end
             ;;
-        4)
-            read -r -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有镜像吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-            case "$choice" in
-            [Yy])
-                docker rmi -f "$(docker images -q)"
-                ;;
-            [Nn]) ;;
-            *)
-                echo -e "${gl_bai}无效的选择，请输入 ${gl_hong}Y ${gl_bai}或 ${gl_hong}N${gl_bai}。"
-                ;;
-            esac
-            ;;
+    4)
+        # 删除所有镜像（强制删除）
+        read -r -e -p "$(echo -e "${gl_hong}警告: ${gl_bai}这将删除所有镜像，包括被容器使用的镜像。确定吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            # 先停止并删除所有容器
+            echo -e "${gl_bai}正在停止并删除所有容器...${gl_bai}"
+            docker stop $(docker ps -aq) 2>/dev/null || true
+            docker rm -f $(docker ps -aq) 2>/dev/null || true
+            
+            # 删除所有镜像
+            echo -e "${gl_bai}正在删除所有镜像...${gl_bai}"
+            images=$(docker images -q)
+            if [[ -n "$images" ]]; then
+                docker rmi -f $images
+                echo -e "${gl_lv}✓ 已删除所有镜像${gl_bai}"
+            else
+                echo -e "${gl_huang}没有镜像可删除${gl_bai}"
+            fi
+        else
+            echo -e "${gl_huang}已取消${gl_bai}"
+        fi
+        ;;
         5)
             clear
             docker_image_pack
@@ -8230,7 +8240,7 @@ mount_fnos_partition() {
     fi
 
     # 创建挂载点
-    MOUNT_POINT="/vol1/1000/mydisk/Video"
+    MOUNT_POINT="/vol2/1000/mydisk/Video"
     mkdir -p "$MOUNT_POINT"
 
     # 挂载分区
@@ -8897,12 +8907,15 @@ add_to_fstab() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     # 选择挂载选项
-    echo -e "${gl_bai}请选择挂载选项："
+    echo -e ""
+    echo -e "${gl_huang}>>> 挂载选项：${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bufan}1. ${gl_bai}默认选项 (defaults)"
     echo -e "${gl_bufan}2. ${gl_bai}读写选项 (rw,defaults)"
     echo -e "${gl_bufan}3. ${gl_bai}用户可读写 (users,rw,defaults)"
     echo -e "${gl_bufan}4. ${gl_bai}自定义选项"
-    read -r -e -p "请选择 [1-4]: " OPT_CHOICE
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    read -r -e -p "请输入你的选择: " OPT_CHOICE
 
     case $OPT_CHOICE in
     1) MOUNT_OPTS="defaults" ;;
@@ -8992,7 +9005,7 @@ disk_manager() {
             break_end
             ;;
         4)
-            unmount_by_path "/vol1/1000/mydisk/Video"
+            unmount_by_path "/vol2/1000/mydisk/Video"
             break_end
             ;;
         5)
@@ -10954,6 +10967,7 @@ linux_docker() {
         echo -e "${gl_zi}>>> Docker管理${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         docker_status
+        check_docker_compose
         docker_tato
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}查看Docker全局状态   ${gl_bufan}2.  ${gl_bai}Docker镜像加速"
@@ -20208,7 +20222,7 @@ local_run_task() {
     if [[ $dry_run_result -eq 0 ]]; then
         echo -e "${gl_lv}✓ 预检查通过${gl_bai}"
     else
-        echo -e "${gl_huang}警告: 预检查发现潜在问题，继续执行...${gl_bai}"
+        echo -e "${gl_huang}警告: 预检查发现潜在问题，继续执行${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     fi
 
     # 记录开始时间
@@ -20560,8 +20574,10 @@ linux_Settings() {
         echo -e "${gl_bufan}47. ${gl_bai}网卡管理工具        ${gl_bufan}48. ${gl_bai}网络连通性测试工具"
         echo -e "${gl_bufan}49. ${gl_bai}系统日志管理工具    ${gl_bufan}50. ${gl_bai}系统变量管理工具"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}61. ${gl_bai}留言板              ${gl_bufan}66. ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}    "
+        echo -e "${gl_bufan}51. ${gl_bai}科技Lion脚本        ${gl_bufan}52. ${gl_bai}mobufan脚本${gl_bai}"
+        echo -e "${gl_bufan}53. ${gl_bai}科技Lion官方留言板  ${gl_bufan}54. ${gl_bai}Linux开机信息显示脚本${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}66. ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
         echo -e "${gl_bufan}91. ${gl_bai}重启服务器          ${gl_bufan}92. ${gl_bai}隐私与安全"
         echo -e "${gl_bufan}93. ${gl_bai}m命令高级用法 ${gl_huang}★${gl_bai}     ${gl_bufan}94. ${gl_bai}卸载mobufan脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -21499,14 +21515,30 @@ EOF
             clear
             env_menu
             ;;
-        61)
+        51)
+            # 科技Lion脚本
+            clear
+            bash <(curl -sL kejilion.sh)
+            ;;
+        52)
+            # mobufan脚本
+            clear
+            bash <(curl -sL gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
+            ;;
+        53)
             echo -e ""
-            echo -e "${gl_zi}>>> 科技lion官方留言板${gl_bai}"
+            echo -e "${gl_zi}>>> 科技Lion官方留言板${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo "访问科技lion官方留言板，您对脚本有任何想法欢迎留言交流！"
             echo "https://board.kejilion.pro"
             echo "公共密码: kejilion.sh"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
+            ;;
+        54)
+            # Linux开机信息显示脚本
+            clear
+            bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/install/check.sh)
             break_end
             ;;
         66)
@@ -21954,7 +21986,7 @@ linux_file() {
             done
             ;;
         6)
-            # 返回上一级选单目录
+            # 返回上一级目录
             cd ..
             ;;
         7)
@@ -25225,28 +25257,28 @@ show_compose_commands_menu() {
             # 启动服务
             echo -e ""
             echo -e "正在启动 ${gl_huang}$current_dir_name${gl_bai} 服务${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             docker-compose up -d --remove-orphans
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         2)
             echo -e ""
             echo -e "${gl_bai}正在停止并删除 ${gl_huang}$current_dir_name${gl_bai} 服务${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             docker-compose down
             echo -e "\n"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         3)
             # 重启服务
             echo -e ""
             echo -e "${gl_bai}正在重启 ${gl_huang}$current_dir_name${gl_bai} 服务${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             docker-compose down && docker-compose up -d --remove-orphans
             echo -e "\n"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         4)
@@ -25355,7 +25387,7 @@ show_compose_commands_menu() {
         23)
             echo -e ""
             echo -e "${gl_zi}>>> 开放$current_dir_name访问端口${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
             # 1. 取 docker-compose.yml 里第一个宿主机端口
             default_port=$(
@@ -25383,14 +25415,14 @@ show_compose_commands_menu() {
             if [[ $port =~ ^[0-9]+$ && $port -ge 1 && $port -le 65535 ]]; then
                 iptables -A INPUT -p tcp --dport "$port" -j ACCEPT
                 echo -e ""
-                echo -e "${gl_bufan}————————————————————————${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 log_ok "已放行 TCP 端口 $port"
             else
                 echo -e ""
-                echo -e "${gl_bufan}————————————————————————${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 log_error "端口号非法，已跳过"
             fi
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         24)
@@ -25710,21 +25742,21 @@ git_clone_docker_projects() {
         1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 43)
             clear
             echo -e "${gl_huang}正在克隆项目 $sub_choice${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             if git clone "${repositories[$sub_choice]}"; then
                 echo -e "${gl_lv}项目 $sub_choice 克隆成功！${gl_bai}"
-                echo -e "${gl_bufan}————————————————————————${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             else
                 echo -e "${gl_hong}项目 $sub_choice 克隆失败！${gl_bai}"
-                echo -e "${gl_bufan}————————————————————————${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             fi
             read -r -e -p "$(echo -e "${gl_bai}按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
             ;;
         88)
             clear
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}自定义仓库克隆${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -rp "$(echo -e "${gl_bai}请输入Git仓库的${gl_bufan}URL${gl_bai}或${gl_bufan}git clone${gl_bai}命令: ")" repoUrl
             if [ -z "$repoUrl" ]; then
                 echo -e "${gl_hong}错误：未输入有效的URL${gl_bai}"
@@ -25735,10 +25767,10 @@ git_clone_docker_projects() {
             cleanUrl=${cleanUrl//[\"\'\']/}
             local repoName=$(basename "$cleanUrl" .git)
 
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}即将克隆仓库: $repoName${gl_bai}"
             echo -e "${gl_bufan}仓库地址: $cleanUrl${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
             if [ -d "$repoName" ]; then
                 echo -e "${gl_huang}警告：仓库目录 '$repoName' 已存在${gl_bai}"
@@ -25752,19 +25784,19 @@ git_clone_docker_projects() {
             fi
 
             git clone "$cleanUrl"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             if [ $? -ne 0 ]; then
                 echo -e "${gl_hong}仓库 '$repoName' 克隆失败，请检查URL是否正确或网络连接。${gl_bai}"
             else
                 echo -e "${gl_lv}仓库 '$repoName' 克隆成功！${gl_bai}"
             fi
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
             ;;
         99)
             echo -e "${gl_huang}正在克隆全部仓库${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_huang}这可能需要一些时间，请耐心等待${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
             success_count=0
             fail_count=0
@@ -25781,7 +25813,7 @@ git_clone_docker_projects() {
                 fi
             done
 
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "克隆完成: ${gl_lv}成功 $success_count${gl_bai}, ${gl_hong}失败 $fail_count${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bufan}按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
             ;;
@@ -26300,6 +26332,112 @@ docker_mirror_menu() {
     done
 }
 
+# 函数_进入Docker Compose工作目录
+enter_compose_dir() {
+    echo -e ""
+    echo -e "${gl_zi}>>> 进入 Compose 工作目录${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 预设目录选项
+    local preset_dirs=(
+        "/compose"
+        "/mnt/compose" 
+        "/vol1/1000/compose"
+        "/vol2/1000/compose"
+    )
+    
+    # 根据IP自动确定默认目录
+    local default_dir=""
+    case $(get_internal_ip | tr -d '[:space:]') in
+        10.10.10.251) default_dir="/vol1/1000/compose" ;;
+        10.10.10.16) default_dir="/vol1/1000/compose" ;;
+        10.10.10.246) default_dir="/mnt/compose" ;;
+        10.10.10.239) default_dir="/mnt/compose" ;;
+        10.10.10.238) default_dir="/mnt/compose" ;;
+        *) default_dir="/mnt/compose" ;;
+    esac
+    
+    echo -e "${gl_bai}根据当前IP自动选择的默认目录: ${gl_huang}$default_dir${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 显示预设目录菜单
+    echo -e "${gl_bai}请选择工作目录:${gl_bai}"
+    for i in "${!preset_dirs[@]}"; do
+        local marker=""
+        [[ "${preset_dirs[i]}" == "$default_dir" ]] && marker=" ${gl_hong}(推荐)${gl_bai}"
+        echo -e "${gl_bufan}$((i+1)).${gl_bai} ${preset_dirs[i]}$marker"
+    done
+    echo -e "${gl_bufan}$(( ${#preset_dirs[@]} + 1 )).${gl_bai} 自定义路径"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_huang}0.${gl_bai} 返回上一级选单"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 读取用户选择
+    read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}-${gl_hong}$(( ${#preset_dirs[@]} + 1 ))${gl_bai})，直接回车使用推荐目录: ")" choice
+    
+    # 处理选择
+    local COMPOSE_WORK_DIR=""
+    
+    if [[ -z "$choice" ]]; then
+        # 直接回车，使用推荐目录
+        COMPOSE_WORK_DIR="$default_dir"
+        echo -e "${gl_bai}使用推荐目录: ${gl_huang}$default_dir${gl_bai}"
+    elif [[ "$choice" =~ ^[0-9]+$ ]]; then
+        if [[ $choice -eq 0 ]]; then
+            # 返回
+            return
+        elif [[ $choice -le ${#preset_dirs[@]} ]]; then
+            # 选择预设目录
+            COMPOSE_WORK_DIR="${preset_dirs[$((choice-1))]}"
+        elif [[ $choice -eq $(( ${#preset_dirs[@]} + 1 )) ]]; then
+            # 自定义路径
+            read -r -e -p "$(echo -e "${gl_bai}请输入自定义路径: ")" COMPOSE_WORK_DIR
+        else
+            echo -e "${gl_hong}无效选择${gl_bai}"
+            return
+        fi
+    else
+        # 非数字输入，视为自定义路径
+        COMPOSE_WORK_DIR="$choice"
+    fi
+    
+    # 检查是否为空
+    if [[ -z "$COMPOSE_WORK_DIR" ]]; then
+        echo -e "${gl_huang}路径不能为空${gl_bai}"
+        return
+    fi
+    
+    # 检查目录是否存在
+    if [[ ! -d "$COMPOSE_WORK_DIR" ]]; then
+        echo -e "${gl_huang}目录不存在: ${gl_hong}$COMPOSE_WORK_DIR${gl_bai}"
+        read -r -e -p "$(echo -e "是否创建? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            mkdir -p "$COMPOSE_WORK_DIR"
+            if [[ $? -eq 0 ]]; then
+                echo -e "${gl_lv}✓ 已创建目录: $COMPOSE_WORK_DIR${gl_bai}"
+            else
+                echo -e "${gl_hong}✗ 创建目录失败${gl_bai}"
+                return
+            fi
+        else
+            echo -e "${gl_huang}已取消${gl_bai}"
+            return
+        fi
+    fi
+    
+    # 进入目录并显示菜单
+    echo -e "${gl_bai}进入目录: ${gl_huang}$COMPOSE_WORK_DIR${gl_bai}"
+    if cd "$COMPOSE_WORK_DIR" 2>/dev/null; then
+        echo -e "${gl_lv}✓ 进入目录成功${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        # 延迟一下，让用户看到进入成功的消息
+        sleep 0.5
+        show_compose_project_menu
+    else
+        echo -e "${gl_hong}✗ 进入目录失败: $COMPOSE_WORK_DIR${gl_bai}"
+    fi
+}
+
 ###### 备份/迁移/还原 docker-compose 项目
 docker_compose_env_tools() {
 
@@ -26308,84 +26446,311 @@ docker_compose_env_tools() {
         local BACKUP_ROOT="/mnt/backup_compose"
         mkdir -p "$BACKUP_ROOT"
         chmod 755 "$BACKUP_ROOT"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        log_info "当前备份列表："
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "当前备份列表："
         shopt -s nullglob
         local list
         list=("${BACKUP_ROOT}"/compose_backup_*)
         shopt -u nullglob
         ((${#list[@]})) && ls -1d "${list[@]}" || log_warn "无备份"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     }
 
     # --------------- 备份 Compose 环境 ---------------
     backup_compose_env() {
         echo -e ""
         echo -e "${gl_zi}安装依赖中${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         install tar jq gzip sshpass
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
+        clear
+        echo -e "${gl_zi}>>> 备份 ${gl_huang}Compose${gl_zi} 环境${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        # 扫描所有运行中的 docker-compose 项目
+        log_info "正在扫描所有 docker-compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        mapfile -t PROJECT_DIRS < <(
+            docker ps --format '{{.Names}}' 2>/dev/null |
+                xargs -I{} docker inspect {} 2>/dev/null |
+                jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"]' 2>/dev/null |
+                sort -u
+        )
+
+        # 预设目录选项
+        local preset_dirs=(
+            "/compose"
+            "/mnt/compose" 
+            "/vol1/1000/compose"
+            "/vol2/1000/compose"
+        )
+        
+        # 显示扫描到的项目
+        if [[ ${#PROJECT_DIRS[@]} -gt 0 ]]; then
+            log_info "${gl_bai}扫描到以下运行中的 docker-compose 项目:${gl_bai}"
+            for dir in "${PROJECT_DIRS[@]}"; do
+                [[ -z "$dir" ]] && continue
+                echo -e "${gl_lv}  •${gl_bai} ${dir}"
+            done
+            
+            # 标记推荐的目录
+            local recommended_dirs=()
+            for preset_dir in "${preset_dirs[@]}"; do
+                for project_dir in "${PROJECT_DIRS[@]}"; do
+                    [[ -z "$project_dir" ]] && continue
+                    if [[ "$project_dir" == "$preset_dir" ]] || [[ "$project_dir" == "$preset_dir"/* ]]; then
+                        recommended_dirs+=("$preset_dir")
+                        break
+                    fi
+                done
+            done
+            
+            # 去重
+            recommended_dirs=($(printf "%s\n" "${recommended_dirs[@]}" | sort -u))
+        fi
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        # 显示目录选择菜单
+        echo -e ""
+        echo -e "${gl_huang}>>> 请选择要备份的 Compose 工作目录:${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        for i in "${!preset_dirs[@]}"; do
+            local marker=""
+            local dir_status=""
+            
+            # 检查是否为推荐目录
+            if [[ -v recommended_dirs ]]; then
+                for rd in "${recommended_dirs[@]}"; do
+                    if [[ "${preset_dirs[i]}" == "$rd" ]]; then
+                        marker=" ${gl_hong}(推荐)${gl_bai}"
+                        break
+                    fi
+                done
+            fi
+            
+            # 检查目录是否存在
+            if [[ -d "${preset_dirs[i]}" ]]; then
+                # 检查目录下是否有 docker-compose 文件
+                local compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
+                if [[ $compose_count -gt 0 ]]; then
+                    dir_status="${gl_lv}[有 ${compose_count} 个项目]${gl_bai}"
+                else
+                    dir_status="${gl_huang}[无 compose 项目]${gl_bai}"
+                fi
+            else
+                dir_status="${gl_huang}[目录不存在]${gl_bai}"
+            fi
+            
+            echo -e "${gl_bufan}$((i+1)).${gl_bai} ${preset_dirs[i]} $dir_status$marker"
+        done
+        echo -e "${gl_bufan}$(( ${#preset_dirs[@]} + 1 )).${gl_bai} 手动指定路径"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_huang}0.${gl_bai} 返回上一级选单"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        # 读取用户选择
+        read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}-${gl_hong}$(( ${#preset_dirs[@]} + 1 ))${gl_bai}): ")" dir_choice
+        
+        # 处理选择
+        local COMPOSE_WORK_DIR=""
+        
+        if [[ -z "$dir_choice" ]] && [[ -v recommended_dirs ]] && [[ ${#recommended_dirs[@]} -gt 0 ]]; then
+            # 直接回车，使用第一个推荐目录
+            COMPOSE_WORK_DIR="${recommended_dirs[0]}"
+            echo -e "${gl_bai}使用推荐目录: ${gl_huang}$COMPOSE_WORK_DIR${gl_bai}"
+        elif [[ "$dir_choice" =~ ^[0-9]+$ ]]; then
+            if [[ $dir_choice -eq 0 ]]; then
+                # 返回
+                return
+            elif [[ $dir_choice -le ${#preset_dirs[@]} ]]; then
+                # 选择预设目录
+                COMPOSE_WORK_DIR="${preset_dirs[$((dir_choice-1))]}"
+            elif [[ $dir_choice -eq $(( ${#preset_dirs[@]} + 1 )) ]]; then
+                # 手动指定路径
+                read -r -e -p "$(echo -e "${gl_bai}请输入自定义路径: ")" COMPOSE_WORK_DIR
+            else
+                log_error "无效选择"
+                return
+            fi
+        else
+            # 非数字输入，视为手动指定路径
+            COMPOSE_WORK_DIR="$dir_choice"
+        fi
+        
+        # 检查是否为空
+        if [[ -z "$COMPOSE_WORK_DIR" ]]; then
+            log_warn "路径不能为空"
+            return
+        fi
+        
+        # 检查目录是否存在
+        if [[ ! -d "$COMPOSE_WORK_DIR" ]]; then
+            log_warn "目录不存在: $COMPOSE_WORK_DIR"
+            read -r -e -p "$(echo -e "是否创建? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                mkdir -p "$COMPOSE_WORK_DIR"
+                if [[ $? -eq 0 ]]; then
+                    log_ok "已创建目录: $COMPOSE_WORK_DIR"
+                else
+                    log_error "创建目录失败"
+                    return
+                fi
+            else
+                log_warn "已取消"
+                return
+            fi
+        fi
+        
+        # 进入工作目录
+        echo -e "${gl_bai}工作目录: ${gl_huang}$COMPOSE_WORK_DIR${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        # 扫描指定目录下的 docker-compose 项目
+        log_info "正在扫描 ${gl_huang}$COMPOSE_WORK_DIR${gl_bai} 下的 docker-compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        
+        # 收集项目目录
+        local found_projects=()
+        
+        # 先检查根目录是否有 docker-compose 文件
+        if [[ -f "$COMPOSE_WORK_DIR/docker-compose.yml" ]] || [[ -f "$COMPOSE_WORK_DIR/docker-compose.yaml" ]]; then
+            found_projects+=("$(basename "$COMPOSE_WORK_DIR")")
+            log_info "${gl_bai}发现 Compose 项目:${gl_huang} $(basename "$COMPOSE_WORK_DIR")${gl_bai} (根目录)"
+        fi
+        
+        # 扫描子目录
+        while IFS= read -r dir; do
+            if [[ -f "$dir/docker-compose.yml" ]] || [[ -f "$dir/docker-compose.yaml" ]]; then
+                local rel_path=$(realpath --relative-to="$COMPOSE_WORK_DIR" "$dir")
+                found_projects+=("$rel_path")
+                log_info "${gl_bai}发现 Compose 项目:${gl_huang} $(basename "$dir")${gl_bai}"
+            fi
+        done < <(find "$COMPOSE_WORK_DIR" -maxdepth 2 -type d 2>/dev/null)
+        
+        local project_count=${#found_projects[@]}
+        
+        if [[ $project_count -eq 0 ]]; then
+            log_warn "在 ${COMPOSE_WORK_DIR} 中未找到任何 docker-compose 项目"
+            return
+        fi
+        
+        log_info "${gl_bai}在 ${gl_huang}${COMPOSE_WORK_DIR}${gl_bai} 中找到 ${gl_huang}${project_count}${gl_bai} 个 Compose 项目"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        # 创建备份目录
         local BACKUP_ROOT="/mnt/backup_compose"
         local DATE_STR=$(date +%Y%m%d_%H%M%S)
         local BACKUP_DIR="${BACKUP_ROOT}/compose_backup_${DATE_STR}"
         mkdir -p "$BACKUP_DIR"
-
-        echo -e ""
-        echo -e "${gl_zi}>>> 备份 ${gl_huang}Compose${gl_bai} 环境${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        log_info "正在扫描所有 docker-compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        mapfile -t PROJECT_DIRS < <(
-            docker ps --format '{{.Names}}' |
-                xargs -I{} docker inspect {} |
-                jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"]' |
-                sort -u
-        )
-
-        if [[ ${#PROJECT_DIRS[@]} -eq 0 ]]; then
-            log_warn "未找到任何 docker-compose 项目"
-            return
-        fi
-
+        
+        # 创建还原脚本
         local RESTORE_SCRIPT="${BACKUP_DIR}/restore_compose.sh"
         cat >"$RESTORE_SCRIPT" <<'EOF'
 #!/bin/bash
 set -e
+
+# 默认工作目录
+WORKDIR="/compose"
+
+gl_bai='\033[0m'    # 定义重置终端颜色的ANSI转义序列（恢复默认样式）
+gl_bufan='\033[96m' # 定义亮青色（或浅蓝）字体的ANSI转义序列
+gl_lv='\033[32m'    # 定义绿色字体的ANSI转义序列
+gl_huang='\033[33m' # 定义黄色字体的ANSI转义序列
+
+# 检查是否传入参数
+if [ $# -ge 1 ]; then
+    WORKDIR="$1"
+    echo -e "${gl_bai}使用自定义工作目录: ${gl_lv}$WORKDIR${gl_bai}"
+else
+    echo -e "${gl_bai}使用默认工作目录: ${gl_lv}$WORKDIR${gl_bai}"
+fi
+
 BACKUP_DIR="$(cd "$(dirname "$0")"; pwd)"
-WORKDIR="/compose"               # 可改
 mkdir -p "$WORKDIR"
+echo -e "${gl_bai}备份目录: ${gl_lv}$BACKUP_DIR${gl_bai}"
+echo -e "${gl_bai}工作目录: ${gl_huang}$WORKDIR${gl_bai}"
 EOF
 
-        for dir in "${PROJECT_DIRS[@]}"; do
-            [[ -z "$dir" ]] && continue
-            [[ "$(basename "$dir")" == .* ]] && continue
-            [[ -f "$dir/docker-compose.yml" ]] || continue
-            local project_name=$(basename "$dir")
-            log_info "备份 Compose 项目: $project_name"
-            tar -czf "${BACKUP_DIR}/${project_name}.tar.gz" -C "$dir" .
+        # 备份每个项目
+        for project_rel_path in "${found_projects[@]}"; do
+            local project_name=$(basename "$project_rel_path")
+            if [[ "$project_name" == "." ]]; then
+                project_name=$(basename "$COMPOSE_WORK_DIR")
+            fi
+            
+            log_info "${gl_bai}备份 Compose 项目:${gl_huang} $project_name${gl_bai}"
+            
+            # 计算完整路径
+            local project_full_path="$COMPOSE_WORK_DIR/$project_rel_path"
+            if [[ "$project_rel_path" == "$(basename "$COMPOSE_WORK_DIR")" ]]; then
+                project_full_path="$COMPOSE_WORK_DIR"
+            fi
+            
+            # 备份项目
+            (cd "$COMPOSE_WORK_DIR" && tar -czf "${BACKUP_DIR}/${project_name}.tar.gz" "$project_rel_path" 2>/dev/null)
+            
+            # 添加到还原脚本
             cat >>"$RESTORE_SCRIPT" <<EOF
-mkdir -p "\$WORKDIR/${project_name}"
-tar -xzf "\$BACKUP_DIR/${project_name}.tar.gz" -C "\$WORKDIR/${project_name}" --strip-components=1
-(cd "\$WORKDIR/${project_name}" && docker compose down && docker compose up -d)
+
+echo -e "${gl_bai}正在还原项目: ${gl_huang}$project_name${gl_bai}"
+tar -xzf "\$BACKUP_DIR/${project_name}.tar.gz" -C "\$WORKDIR"
+if [[ -f "\$WORKDIR/$project_rel_path/docker-compose.yml" ]] || [[ -f "\$WORKDIR/$project_rel_path/docker-compose.yaml" ]]; then
+    (cd "\$WORKDIR/$project_rel_path" && docker compose down 2>/dev/null || true && docker compose up -d)
+    echo -e "${gl_bai}项目 ${gl_huang}$project_name ${gl_lv}还原并启动完成${gl_bai}"
+else
+    echo -e "${gl_huang}警告: \$WORKDIR/$project_rel_path/docker-compose.yml 不存在，跳过启动${gl_bai}"
+fi
 EOF
         done
 
+        cat >>"$RESTORE_SCRIPT" <<'EOF'
+
+echo ""
+echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+echo -e "${gl_bai}所有 Compose 项目已成功还原到: ${gl_huang}$WORKDIR${gl_bai}"
+echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+EOF
+
         chmod +x "$RESTORE_SCRIPT"
-        log_ok "备份完成: $BACKUP_DIR"
-        log_ok "可用还原脚本: $RESTORE_SCRIPT"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        
+        # 创建备份信息文件
+        cat >"${BACKUP_DIR}/backup_info.txt" <<EOF
+备份时间: $(date '+%Y-%m-%d %H:%M:%S')
+工作目录: ${COMPOSE_WORK_DIR}
+备份目录: ${BACKUP_DIR}
+项目数量: ${project_count}
+项目列表:
+EOF
+        
+        for i in "${!found_projects[@]}"; do
+            local proj_name=$(basename "${found_projects[i]}")
+            if [[ "$proj_name" == "." ]]; then
+                proj_name=$(basename "$COMPOSE_WORK_DIR")
+            fi
+            echo "$((i+1)). ${proj_name}: ${found_projects[i]}" >> "${BACKUP_DIR}/backup_info.txt"
+        done
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_ok "${gl_bai}备份完成: ${gl_lv}$BACKUP_DIR${gl_bai}"
+        log_ok "${gl_bai}备份信息: ${gl_huang}$BACKUP_DIR/backup_info.txt${gl_bai}"
+        log_ok "${gl_bai}还原脚本: ${gl_lan}$RESTORE_SCRIPT${gl_bai}"
+        log_info "${gl_bai}使用说明: ${gl_huang}$RESTORE_SCRIPT [工作目录]${gl_bai}"
+        log_info "${gl_bai}示例: ${gl_huang}$RESTORE_SCRIPT $COMPOSE_WORK_DIR${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
     }
 
     # --------------- 还原 Compose 环境 ---------------
     restore_compose_env() {
         echo -e ""
         echo -e "${gl_zi}安装依赖中${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         install tar jq gzip sshpass
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        echo -e ""
+        clear
         echo -e "${gl_zi}>>> 还原 ${gl_huang}Compose${gl_zi} 环境${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         # 获取备份根目录
         local BACKUP_ROOT="/mnt/backup_compose"
@@ -26405,15 +26770,7 @@ EOF
             latest_backup_name=$(basename "$latest_backup")
         fi
 
-        # 显示最新备份（使用绝对路径）
-        if [[ -n "$latest_backup" ]]; then
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
-            log_info "最新备份: $latest_backup"
-        fi
-
-        # 显示可用的备份（使用绝对路径）
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        log_info "可用备份列表："
+        log_info "${gl_bai}可用备份列表："
         if ((${#backups[@]} > 0)); then
             for i in "${!backups[@]}"; do
                 echo -e "${gl_huang}$((i + 1)).${gl_bai} ${backups[i]}"
@@ -26421,15 +26778,23 @@ EOF
         else
             log_warn "无备份"
         fi
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+
+        # 显示可用的备份（使用绝对路径）
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        # 显示最新备份（使用绝对路径）
+        if [[ -n "$latest_backup" ]]; then
+            log_info "${gl_bai}最新备份: ${gl_lv}$latest_backup${gl_bai}"
+        fi
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         # 提示用户输入，支持回车默认最新备份
         if [[ -n "$latest_backup_name" ]]; then
-            read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: $latest_backup_name): ")" BACKUP_DIR
+            read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: ${gl_lv}$latest_backup_name${gl_bai}): ")" BACKUP_DIR
+
 
             if [[ -z "$BACKUP_DIR" ]]; then
                 BACKUP_DIR="$latest_backup"
-                log_info "使用默认最新备份: $latest_backup"
+                log_info "${gl_bai}使用默认最新备份: ${gl_lv}$latest_backup${gl_bai}"
             fi
         else
             read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径: ")" BACKUP_DIR
@@ -26438,7 +26803,7 @@ EOF
         # 处理用户输入的数字选择
         if [[ "$BACKUP_DIR" =~ ^[0-9]+$ ]] && [[ $BACKUP_DIR -ge 1 ]] && [[ $BACKUP_DIR -le ${#backups[@]} ]]; then
             BACKUP_DIR="${backups[$((BACKUP_DIR - 1))]}"
-            log_info "选择备份: $BACKUP_DIR"
+            log_info "${gl_bai}选择备份: ${gl_huang}$BACKUP_DIR${gl_bai}"
         fi
 
         # 如果用户只输入了目录名，没有路径，则加上备份根目录路径
@@ -26452,16 +26817,23 @@ EOF
 
         # 验证备份目录
         [[ ! -d "$BACKUP_DIR" ]] && {
-            log_error "备份目录不存在: $BACKUP_DIR"
+            log_error "${gl_hong}备份目录不存在: ${gl_huang}$BACKUP_DIR${gl_bai}"
             return
         }
 
         local RESTORE_SCRIPT="$BACKUP_DIR/restore_compose.sh"
         if [[ -f "$RESTORE_SCRIPT" ]]; then
-            log_info "找到自动还原脚本，直接执行${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            bash "$RESTORE_SCRIPT"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            log_info "找到自动还原脚本"
+            log_info "${gl_bai}默认工作目录: ${gl_huang}/compose${gl_bai}"
+            read -r -e -p "$(echo -e "${gl_bai}请输入还原工作目录 (回车使用默认: ${gl_huang}/compose${gl_bai}): ")" workdir_input
+            workdir_input=${workdir_input:-/compose}
+            
+            log_info "${gl_bai}正在执行还原脚本，工作目录: ${gl_huang}$workdir_input${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            bash "$RESTORE_SCRIPT" "$workdir_input"
             log_ok "所有 Compose 项目已还原并启动"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             return
         fi
 
@@ -26472,7 +26844,8 @@ EOF
             local project_name=$(basename "$tar" .tar.gz)
             [[ -z "$project_name" ]] && continue
             local target_dir="/compose/$project_name"
-            read -r -e -p "$(echo -e "${gl_bai}还原 $project_name 到目录 [$target_dir] (回车确认，或输入新路径): ")" new_dir
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            read -r -e -p "$(echo -e "${gl_bai}还原 ${gl_huang}$project_name ${gl_bai}到目录 [${gl_lv}$target_dir${gl_bai}] (回车确认，或输入新路径): ")" new_dir
             [[ -n "$new_dir" ]] && target_dir="$new_dir"
             mkdir -p "$target_dir"
             tar -xzf "$tar" -C "$target_dir" --strip-components=1
@@ -26480,118 +26853,166 @@ EOF
             docker compose down 2>/dev/null || true
             docker compose up -d
             log_ok "项目 $project_name 已还原并启动"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
         done
     }
 
-    # --------------- 迁移 Compose 环境 ---------------
-    migrate_compose_env() {
-        echo -e ""
-        echo -e "${gl_zi}安装依赖中${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        install tar jq gzip sshpass
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+	# --------------- 迁移 Compose 环境 ---------------
+	migrate_compose_env() {
+		echo -e ""
+		echo -e "${gl_zi}安装依赖中${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+		echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+		install tar jq gzip sshpass
+		echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        echo -e ""
-        echo -e "${gl_zi}>>> 迁移 ${gl_huang}Compose${gl_zi} 环境${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+		clear
+		echo -e "${gl_zi}>>> 迁移 ${gl_huang}Compose${gl_zi} 环境${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+		echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        # 获取备份根目录
-        local BACKUP_ROOT="/mnt/backup_compose"
-        mkdir -pm 755 "$BACKUP_ROOT"
+		# 获取备份根目录
+		local BACKUP_ROOT="/mnt/backup_compose"
+		mkdir -pm 755 "$BACKUP_ROOT"
 
-        # 查找最新的备份目录
-        local latest_backup=""
-        shopt -s nullglob
-        local backups=(${BACKUP_ROOT}/compose_backup_*)
-        shopt -u nullglob
+		# 查找最新的备份目录
+		local latest_backup=""
+		shopt -s nullglob
+		local backups=("${BACKUP_ROOT}"/compose_backup_*)
+		shopt -u nullglob
 
-        # 获取最新的备份目录（完整路径和名称）
-        local latest_backup_name=""
-        if ((${#backups[@]} > 0)); then
-            # 按时间倒序排序，获取最新的备份
-            latest_backup=$(printf '%s\n' "${backups[@]}" | sort -r | head -n1)
-            latest_backup_name=$(basename "$latest_backup")
-        fi
+		# 获取最新的备份目录
+		local latest_backup_name=""
+		if ((${#backups[@]} > 0)); then
+			latest_backup=$(printf '%s\n' "${backups[@]}" | sort -r | head -n1)
+			latest_backup_name=$(basename "$latest_backup")
+		fi
 
-        # 显示最新备份（使用绝对路径）
-        if [[ -n "$latest_backup" ]]; then
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
-            log_info "最新备份: $latest_backup"
-        fi
+		log_info "可用备份列表："
+		if ((${#backups[@]} > 0)); then
+			for i in "${!backups[@]}"; do
+				echo -e "${gl_huang}$((i + 1)).${gl_bai} ${backups[i]}"
+			done
+		else
+			log_warn "无备份"
+			return 1
+		fi
 
-        # 显示可用的备份（使用绝对路径）
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        log_info "可用备份列表："
-        if ((${#backups[@]} > 0)); then
-            for i in "${!backups[@]}"; do
-                echo -e "${gl_huang}$((i + 1)).${gl_bai} ${backups[i]}"
-            done
-        else
-            log_warn "无备份"
-        fi
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+		echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+		# 显示备份信息
+		if [[ -n "$latest_backup" ]]; then
+			log_info "${gl_bai}最新备份: ${gl_huang}$latest_backup${gl_bai}"
+		fi
+		echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        # 提示用户输入，支持回车默认最新备份
-        if [[ -n "$latest_backup_name" ]]; then
-            read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: $latest_backup_name): ")" BACKUP_DIR
+		# 备份目录选择逻辑
+		local BACKUP_DIR=""
+		if [[ -n "$latest_backup_name" ]]; then
+			read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: ${gl_huang}$latest_backup_name${gl_bai})(${gl_huang}0${gl_bai}返回): ")" BACKUP_DIR
 
-            if [[ -z "$BACKUP_DIR" ]]; then
-                BACKUP_DIR="$latest_backup"
-                log_info "使用默认最新备份: $latest_backup"
-            fi
-        else
-            read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径: ")" BACKUP_DIR
-        fi
+			# 修复：直接回车应该使用最新备份，而不是返回
+			if [[ -z "$BACKUP_DIR" ]]; then
+				BACKUP_DIR="$latest_backup"
+				log_info "${gl_bai}使用最新备份: ${gl_lv}$latest_backup${gl_bai}"
+			elif [[ "$BACKUP_DIR" == "0" ]]; then
+				return
+			fi
+		else
+			read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径: ")" BACKUP_DIR
+		fi
 
-        # 处理用户输入的数字选择
-        if [[ "$BACKUP_DIR" =~ ^[0-9]+$ ]] && [[ $BACKUP_DIR -ge 1 ]] && [[ $BACKUP_DIR -le ${#backups[@]} ]]; then
-            BACKUP_DIR="${backups[$((BACKUP_DIR - 1))]}"
-            log_info "选择备份: $BACKUP_DIR"
-        fi
+		# 处理数字选择
+		if [[ "$BACKUP_DIR" =~ ^[0-9]+$ ]] && [[ $BACKUP_DIR -ge 1 ]] && [[ $BACKUP_DIR -le ${#backups[@]} ]]; then
+			BACKUP_DIR="${backups[$((BACKUP_DIR - 1))]}"
+			log_info "${gl_bai}选择备份: ${gl_lv}$BACKUP_DIR${gl_bai}"
+		fi
 
-        # 如果用户只输入了目录名，没有路径，则加上备份根目录路径
-        if [[ -n "$BACKUP_DIR" ]] && [[ ! "$BACKUP_DIR" =~ ^/ ]] && [[ ! "$BACKUP_DIR" =~ ^[0-9]+$ ]]; then
-            # 尝试在备份根目录下查找
-            local full_path="$BACKUP_ROOT/$BACKUP_DIR"
-            if [[ -d "$full_path" ]]; then
-                BACKUP_DIR="$full_path"
-            fi
-        fi
+		# 处理相对路径
+		if [[ -n "$BACKUP_DIR" ]] && [[ ! "$BACKUP_DIR" =~ ^/ ]] && [[ ! "$BACKUP_DIR" =~ ^[0-9]+$ ]]; then
+			local full_path="$BACKUP_ROOT/$BACKUP_DIR"
+			if [[ -d "$full_path" ]]; then
+				BACKUP_DIR="$full_path"
+			fi
+		fi
 
-        # 验证备份目录
-        [[ ! -d "$BACKUP_DIR" ]] && {
-            log_error "备份目录不存在: $BACKUP_DIR"
-            return
-        }
+		# 验证备份目录
+		[[ ! -d "$BACKUP_DIR" ]] && {
+			log_error "${gl_bai}备份目录不存在: ${gl_hong}$BACKUP_DIR${gl_bai}"
+			return 1
+		}
 
-        read -r -e -p "$(echo -e "${gl_bai}目标服务器 IP: ")" TARGET_IP
-        read -r -e -p "$(echo -e "${gl_bai}目标服务器 SSH 用户名 [默认 root]: ")" TARGET_USER
-        TARGET_USER=${TARGET_USER:-root}
-        read -r -e -p "$(echo -e "${gl_bai}目标服务器 SSH 端口 [默认 22]: ")" TARGET_PORT
-        TARGET_PORT=${TARGET_PORT:-22}
+		# 目标服务器信息收集
+		read -r -e -p "$(echo -e "${gl_bai}目标服务器 IP: ")" TARGET_IP
+		[[ -z "$TARGET_IP" ]] && { log_error "目标服务器 IP 不能为空"; return 1; }
 
-        # 读取密码并导出给 sshpass 使用
-        read -s -p "$(echo -e "${gl_bai}目标服务器 ${TARGET_USER} 密码: ")" SSHPASS
-        echo
-        export SSHPASS
+		read -r -e -p "$(echo -e "${gl_bai}目标服务器 SSH 用户名 [默认 ${gl_huang}root${gl_bai}]: ")" TARGET_USER
+		TARGET_USER=${TARGET_USER:-root}
 
-        log_info "开始传输备份到目标服务器${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        # 先把目录建完，再把备份包整个 tar 流过去，一次连接搞定
-        sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no "${TARGET_USER}@${TARGET_IP}" \
-            "mkdir -p /mnt/backup_compose && \
-       tar -xzf - -C /mnt/backup_compose" \
-            < <(tar -czf - -C "$(dirname "$BACKUP_DIR")" "$(basename "$BACKUP_DIR")")
+		read -r -e -p "$(echo -e "${gl_bai}目标服务器 SSH 端口 [默认 ${gl_huang}22${gl_bai}]: ")" TARGET_PORT
+		TARGET_PORT=${TARGET_PORT:-22}
 
-        # 传输成功校验
-        if sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no "${TARGET_USER}@${TARGET_IP}" \
-            "test -f /mnt/backup_compose/$(basename "$BACKUP_DIR")/restore_compose.sh"; then
-            log_ok "传输完成，请在目标服务器执行还原脚本：${gl_huang}/mnt/backup_compose/$(basename "$BACKUP_DIR")/restore_compose.sh${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        else
-            log_error "传输失败，目标服务器未找到还原脚本"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        fi
-    }
+		# 密码读取
+		read -s -p "$(echo -e "${gl_bai}目标服务器 ${gl_huang}${TARGET_USER} ${gl_bai}密码: ")" SSHPASS
+		echo
+		export SSHPASS
+
+		# 目标服务器验证
+		log_info "验证目标服务器连接性${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+
+		# 测试连接
+		if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+			"${TARGET_USER}@${TARGET_IP}" "whoami" &>/dev/null; then
+			log_error "无法连接到目标服务器或认证失败"
+			return 1
+		fi
+
+		# 固定目标备份目录为 /mnt/backup_compose
+		local target_backup_dir="/mnt/backup_compose"
+
+		# 传输备份
+		log_info "开始传输备份到目标服务器${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+
+		# 创建目标目录
+		if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+			"${TARGET_USER}@${TARGET_IP}" "mkdir -p '$target_backup_dir'" 2>/dev/null; then
+			log_error "无法在目标服务器创建目录: $target_backup_dir"
+			return 1
+		fi
+
+		# 传输文件
+		local backup_base_name=$(basename "$BACKUP_DIR")
+		if sshpass -e scp -o StrictHostKeyChecking=no -P "$TARGET_PORT" -r \
+			"$BACKUP_DIR" "${TARGET_USER}@${TARGET_IP}:${target_backup_dir}/" 2>/dev/null; then
+			log_ok "备份传输完成"
+		else
+			# 如果 SCP 失败，尝试 tar 流传输
+			log_info "SCP 传输失败，尝试备用传输方式${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+			if sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+				"${TARGET_USER}@${TARGET_IP}" "mkdir -p '${target_backup_dir}/${backup_base_name}'" && \
+				tar -czf - -C "$(dirname "$BACKUP_DIR")" "$backup_base_name" | \
+				sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+				"${TARGET_USER}@${TARGET_IP}" "tar -xzf - -C '${target_backup_dir}'"; then
+				log_ok "备用传输方式完成"
+			else
+				log_error "所有传输方式均失败"
+				return 1
+			fi
+		fi
+
+		# 验证传输结果
+		if sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+			"${TARGET_USER}@${TARGET_IP}" "test -d '${target_backup_dir}/${backup_base_name}'" 2>/dev/null; then
+			echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+			log_ok "迁移完成！"
+			log_info "备份已保存到目标服务器: ${target_backup_dir}/${backup_base_name}"
+			log_info "在目标服务器上执行以下命令进行还原:"
+			echo -e "${gl_huang}cd '${target_backup_dir}/${backup_base_name}' && ./restore_compose.sh${gl_bai}"
+			log_info "可选指定工作目录:"
+			echo -e "${gl_huang}cd '${target_backup_dir}/${backup_base_name}' && ./restore_compose.sh /your/workdir${gl_bai}"
+			echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+                        break_end
+		else
+			log_error "传输验证失败，备份可能不完整"
+			return 1
+		fi
+	}
 
     # --------------- 删除备份 ---------------
     delete_compose_backup() {
@@ -26599,8 +27020,9 @@ EOF
 
         echo -e ""
         echo -e "${gl_zi}>>> 删除备份${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        read -r -e -p "$(echo -e "${gl_bai}请输入要删除的备份目录路径 [回车删除全部]: ")" BACKUP_DIR
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        read -r -e -p "$(echo -e "${gl_bai}请输入要删除的备份目录路径 (${gl_hong}回车${gl_bai}删除全部): ")" BACKUP_DIR
+
 
         # 回车 = 删除全部
         if [[ -z "$BACKUP_DIR" ]]; then
@@ -26612,7 +27034,7 @@ EOF
             }
             rm -rf "${BACKUP_ROOT}"/compose_backup_*
             log_ok "已清空所有备份"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             return
         fi
 
@@ -26628,8 +27050,8 @@ EOF
             return
         }
         rm -rf "$BACKUP_DIR"
-        log_ok "已删除备份: $BACKUP_DIR"
-        echo -e "${gl_bufan}————————————————————————${gl_bai}"
+        log_ok "${gl_bai}已删除备份: ${gl_huang}$BACKUP_DIR${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     }
 
     # --------------- 主菜单 ---------------
@@ -26643,22 +27065,24 @@ EOF
             echo -e "${gl_bufan}3.  ${gl_bai}还原 Compose 环境"
             echo -e "${gl_bufan}4.  ${gl_bai}管理 Compose 容器"
             echo -e "${gl_bufan}5.  ${gl_bai}删除 Compose 备份"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_hong}00. ${gl_bai}退出脚本"
             echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
-            echo -e "${gl_bufan}————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入你的选择: " choice
             case $choice in
             1) backup_compose_env ;;
             2) migrate_compose_env ;;
-            3) restore_compose_env ;;
+            3) restore_compose_env 
+                break_end
+                ;;
             4)
                 # 管理 Compose 容器
                 if ! command -v docker &>/dev/null; then
                     echo -e ""
-                    echo -e "${gl_bufan}————————————————————————${gl_bai}"
+                    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                     echo -e "${gl_bai}Docker状态：${gl_hong}未安装${gl_bai}"
-                    echo -e "${gl_bufan}————————————————————————${gl_bai}"
+                    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
                     while true; do
                         read -r -e -p "$(echo -e "${gl_bai}确定安装 ${gl_huang}Docker${gl_bai} 吗？ (${gl_lv}Y${gl_bai}/${gl_hong}n${gl_bai}): ")" docker_choice
@@ -26693,18 +27117,1552 @@ EOF
                     continue
                 fi
 
-                cd /compose && show_compose_project_menu
+                enter_compose_dir
                 ;;
             5) delete_compose_backup ;;
             0) break ;;                     # 立即终止整个循环，跳出循环体
             00 | 000 | 0000) exit_script ;; # 感谢使用，再见！ N 秒后自动退出
             *) handle_invalid_input ;;      # 无效的输入,请重新输入! 2 秒后返回，继续执行循环的下一次迭代。
             esac
-            break_end
         done
     }
     # --------------- 启动入口 ---------------
     main_menu
+}
+
+# 函数_备份Docker镜像
+docker_image_backup_tools() {
+
+    # --------------- 列出镜像备份 ---------------
+    list_image_backups() {
+        local BACKUP_ROOT="/mnt/backup_images"
+        mkdir -p "$BACKUP_ROOT"
+        chmod 755 "$BACKUP_ROOT"
+        echo -e "${gl_huang}>>> 当前镜像备份列表${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        shopt -s nullglob
+        local list
+        list=("${BACKUP_ROOT}"/images_backup_*)
+        shopt -u nullglob
+        ((${#list[@]})) && ls -1d "${list[@]}" || log_warn "无镜像备份"
+
+        echo -e ""
+        
+        # 列出镜像数量和大小
+        for backup_dir in "${list[@]}"; do
+            if [[ -f "${backup_dir}/manifest.json" ]]; then
+                local img_count=$(jq '.images | length' "${backup_dir}/manifest.json" 2>/dev/null || echo "?")
+                local backup_size=$(du -sh "${backup_dir}" 2>/dev/null | cut -f1 || echo "未知")
+                echo -e "${gl_bai}备份 ${gl_huang}$(basename "${backup_dir}")${gl_bai}: ${gl_zi}${img_count}${gl_bai} 个镜像, ${gl_lv}${backup_size}${gl_bai}"
+            fi
+        done
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    }
+
+    # --------------- 备份 Docker 镜像 ---------------
+    backup_docker_images() {
+        echo -e ""
+        echo -e "${gl_zi}安装依赖中${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        install tar jq gzip sshpass pigz
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 检查 Docker
+        if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
+            echo -e "${gl_hong}错误: Docker 未安装或未运行${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            return 1
+        fi
+
+        local BACKUP_ROOT="/mnt/backup_images"
+        local DATE_STR=$(date +%Y%m%d_%H%M%S)
+        local BACKUP_DIR="${BACKUP_ROOT}/images_backup_${DATE_STR}"
+        mkdir -p "$BACKUP_DIR"
+
+        clear
+        echo -e "${gl_zi}>>> 备份 ${gl_huang}Docker${gl_zi} 镜像${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        # 获取所有镜像
+        log_info "正在获取 Docker 镜像列表${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        mapfile -t IMAGES < <(docker images --format "{{.Repository}}:{{.Tag}}" | grep -v "<none>" | grep -v "REPOSITORY:TAG")
+        
+        if [[ ${#IMAGES[@]} -eq 0 ]]; then
+            log_warn "未找到任何 Docker 镜像"
+            return
+        fi
+
+        # 显示镜像列表
+        echo -e "${gl_zi}找到以下 ${gl_huang}${#IMAGES[@]}${gl_zi} 个镜像:${gl_bai}"
+        for i in "${!IMAGES[@]}"; do
+            echo -e "  ${gl_huang}$((i+1)).${gl_bai} ${IMAGES[i]}"
+        done
+
+        # 选择备份方式
+        echo -e ""
+        echo -e "${gl_huang}>>> 请选择备份方式:${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}1. ${gl_bai} 备份所有镜像 (${gl_huang}${#IMAGES[@]}${gl_bai} 个)"
+        echo -e "${gl_bufan}2. ${gl_bai} 手动选择镜像"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_huang}0. ${gl_bai} 返回主菜单"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        read -r -e -p "请输入你的选择 : " backup_choice
+        
+        case "$backup_choice" in
+            1)
+                # 备份所有镜像
+                images_to_backup=("${IMAGES[@]}")
+                ;;
+            2)
+                # 手动选择镜像
+                images_to_backup=()
+                echo -e "${gl_bai}请输入要备份的镜像编号 (用空格分隔，例如: 1 3 5):${gl_bai}"
+                read -r -e -p "选择: " selected_nums
+                
+                for num in $selected_nums; do
+                    if [[ "$num" =~ ^[0-9]+$ ]] && [[ $num -ge 1 ]] && [[ $num -le ${#IMAGES[@]} ]]; then
+                        images_to_backup+=("${IMAGES[$((num-1))]}")
+                    fi
+                done
+                
+                if [[ ${#images_to_backup[@]} -eq 0 ]]; then
+                    log_warn "未选择任何镜像"
+                    return
+                fi
+                echo -e "${gl_zi}已选择 ${gl_huang}${#images_to_backup[@]}${gl_zi} 个镜像${gl_bai}"
+                ;;
+            0)
+                return
+                ;;
+            *)
+                log_warn "无效选择"
+                return
+                ;;
+        esac
+        
+        # 创建恢复脚本
+        local RESTORE_SCRIPT="${BACKUP_DIR}/restore_images.sh"
+        cat >"$RESTORE_SCRIPT" <<'EOF'
+#!/bin/bash
+set -e
+
+# 颜色定义
+gl_bai='\033[0m'
+gl_bufan='\033[96m'
+gl_lv='\033[32m'
+gl_huang='\033[33m'
+gl_hong='\033[31m'
+gl_zi='\033[35m'
+
+# 备份目录
+BACKUP_DIR="$(cd "$(dirname "$0")"; pwd)"
+MANIFEST="${BACKUP_DIR}/manifest.json"
+
+echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+echo -e "${gl_zi}>>> 恢复 Docker 镜像${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+
+# 检查 manifest
+if [[ ! -f "$MANIFEST" ]]; then
+    echo -e "${gl_hong}错误: 未找到 manifest.json 文件${gl_bai}"
+    exit 1
+fi
+
+# 解析 manifest
+IMAGE_COUNT=$(jq '.images | length' "$MANIFEST")
+echo -e "${gl_bai}发现 ${gl_huang}${IMAGE_COUNT}${gl_bai} 个镜像需要加载${gl_bai}"
+
+# 确认操作
+read -r -e -p "$(echo -e "${gl_bai}是否要加载所有镜像? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo -e "${gl_huang}已取消${gl_bai}"
+    exit 0
+fi
+
+# 开始加载
+for i in $(seq 0 $((IMAGE_COUNT-1))); do
+    IMAGE_NAME=$(jq -r ".images[$i].name" "$MANIFEST")
+    IMAGE_FILE=$(jq -r ".images[$i].file" "$MANIFEST")
+    IMAGE_PATH="${BACKUP_DIR}/${IMAGE_FILE}"
+    
+    echo -e "${gl_bai}[$((i+1))/${IMAGE_COUNT}] 加载镜像: ${gl_huang}${IMAGE_NAME}${gl_bai}"
+    
+    if [[ -f "$IMAGE_PATH" ]]; then
+        docker load -i "$IMAGE_PATH"
+        echo -e "${gl_lv}✓ 完成${gl_bai}"
+    else
+        echo -e "${gl_hong}✗ 文件不存在: ${IMAGE_FILE}${gl_bai}"
+    fi
+done
+
+echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+echo -e "${gl_lv}所有镜像加载完成！${gl_bai}"
+echo -e "${gl_bai}使用 ${gl_huang}docker images${gl_bai} 查看已加载的镜像${gl_bai}"
+echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+EOF
+        chmod +x "$RESTORE_SCRIPT"
+        
+        # 创建 manifest
+        local MANIFEST="${BACKUP_DIR}/manifest.json"
+        cat >"$MANIFEST" <<EOF
+{
+    "backup_date": "$(date -Iseconds)",
+    "images": []
+}
+EOF
+        
+        # 开始备份
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_zi}开始备份 ${gl_huang}${#images_to_backup[@]}${gl_zi} 个镜像${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        
+        success_count=0
+        fail_count=0
+        
+        for i in "${!images_to_backup[@]}"; do
+            local image="${images_to_backup[i]}"
+            # 清理镜像名中的非法字符
+            local safe_name=$(echo "$image" | sed 's/[\/:]/-/g' | sed 's/^-*//')
+            local backup_file="${safe_name}.tar"
+            
+            echo -e "${gl_bai}[$((i+1))/${#images_to_backup[@]}] 备份: ${gl_huang}${image}${gl_bai}"
+            
+            # 保存镜像
+            if docker save -o "${BACKUP_DIR}/${backup_file}" "$image" 2>/dev/null; then
+                # 压缩镜像
+                if command -v pigz &>/dev/null; then
+                    pigz "${BACKUP_DIR}/${backup_file}"
+                    backup_file="${backup_file}.gz"
+                else
+                    gzip "${BACKUP_DIR}/${backup_file}"
+                    backup_file="${backup_file}.gz"
+                fi
+                
+                # 更新 manifest
+                jq --arg name "$image" --arg file "$backup_file" \
+                   '.images += [{"name": $name, "file": $file}]' \
+                   "$MANIFEST" > "${MANIFEST}.tmp" && mv "${MANIFEST}.tmp" "$MANIFEST"
+                
+                echo -e "${gl_lv}✓ 成功${gl_bai}"
+                ((success_count++))
+            else
+                echo -e "${gl_hong}✗ 失败${gl_bai}"
+                ((fail_count++))
+            fi
+        done
+        
+        # 生成摘要
+        local total_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_lv}备份完成！${gl_bai}"
+        echo -e "  ${gl_bai}备份目录: ${gl_huang}${BACKUP_DIR}${gl_bai}"
+        echo -e "  ${gl_bai}镜像数量: ${gl_huang}${success_count}/${#images_to_backup[@]}${gl_bai} 成功"
+        echo -e "  ${gl_bai}备份大小: ${gl_huang}${total_size}${gl_bai}"
+        echo -e "  ${gl_bai}恢复脚本: ${gl_huang}${RESTORE_SCRIPT}${gl_bai}"
+        echo -e "  ${gl_bai}使用说明: bash ${RESTORE_SCRIPT}${gl_bai}"
+        
+        if [[ $fail_count -gt 0 ]]; then
+            echo -e "${gl_hong}警告: ${fail_count} 个镜像备份失败${gl_bai}"
+        fi
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    }
+
+    # --------------- 迁移 Docker 镜像 ---------------
+    migrate_docker_images() {
+        echo -e ""
+        echo -e "${gl_zi}安装依赖中${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        install tar jq gzip sshpass pigz
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        # 检查 Docker
+        if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
+            echo -e "${gl_hong}错误: Docker 未安装或未运行${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            return 1
+        fi
+
+        clear
+        echo -e "${gl_zi}>>> 迁移 ${gl_huang}Docker${gl_zi} 镜像${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 获取备份根目录
+        local BACKUP_ROOT="/mnt/backup_images"
+        mkdir -pm 755 "$BACKUP_ROOT"
+
+        # 查找最新的备份目录
+        local latest_backup=""
+        shopt -s nullglob
+        local backups=("${BACKUP_ROOT}"/images_backup_*)
+        shopt -u nullglob
+
+        # 获取最新的备份目录
+        local latest_backup_name=""
+        if ((${#backups[@]} > 0)); then
+            latest_backup=$(printf '%s\n' "${backups[@]}" | sort -r | head -n1)
+            latest_backup_name=$(basename "$latest_backup")
+        fi
+
+        # 显示备份信息
+        if [[ -n "$latest_backup" ]]; then
+            log_info "${gl_bai}最新备份: ${gl_lv}$latest_backup${gl_bai}"
+        fi
+
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_info "可用备份列表："
+        if ((${#backups[@]} > 0)); then
+            for i in "${!backups[@]}"; do
+                local backup_dir="${backups[i]}"
+                local img_count="?"
+                local backup_size="未知"
+                
+                if [[ -f "${backup_dir}/manifest.json" ]]; then
+                    img_count=$(jq '.images | length' "${backup_dir}/manifest.json" 2>/dev/null || echo "?")
+                fi
+                backup_size=$(du -sh "${backup_dir}" 2>/dev/null | cut -f1 || echo "未知")
+                
+                echo -e "${gl_huang}$((i + 1)).${gl_bai} $(basename "${backup_dir}") (${gl_huang}${img_count}${gl_bai} 个镜像, ${gl_huang}${backup_size}${gl_bai})"
+            done
+        else
+            log_warn "无备份"
+            return 1
+        fi
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 备份目录选择逻辑
+        local BACKUP_DIR=""
+        if [[ -n "$latest_backup_name" ]]; then
+            read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: ${gl_lv}$latest_backup_name${gl_bai})(${gl_huang}0${gl_bai}返回): ")" BACKUP_DIR
+
+            if [[ -z $BACKUP_DIR || $BACKUP_DIR == "0" ]]; then
+                continue
+            fi
+
+            if [[ -z "$BACKUP_DIR" ]]; then
+                BACKUP_DIR="$latest_backup"
+                log_info "${gl_bai}使用默认最新备份: ${gl_lv}$latest_backup${gl_bai}"
+            fi
+        else
+            read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径: ")" BACKUP_DIR
+        fi
+
+        # 处理数字选择
+        if [[ "$BACKUP_DIR" =~ ^[0-9]+$ ]] && [[ $BACKUP_DIR -ge 1 ]] && [[ $BACKUP_DIR -le ${#backups[@]} ]]; then
+            BACKUP_DIR="${backups[$((BACKUP_DIR - 1))]}"
+            log_info "选择备份: $BACKUP_DIR"
+        fi
+
+        # 处理相对路径
+        if [[ -n "$BACKUP_DIR" ]] && [[ ! "$BACKUP_DIR" =~ ^/ ]] && [[ ! "$BACKUP_DIR" =~ ^[0-9]+$ ]]; then
+            local full_path="$BACKUP_ROOT/$BACKUP_DIR"
+            if [[ -d "$full_path" ]]; then
+                BACKUP_DIR="$full_path"
+            fi
+        fi
+
+        # 验证备份目录
+        [[ ! -d "$BACKUP_DIR" ]] && {
+            log_error "备份目录不存在: $BACKUP_DIR"
+            return 1
+        }
+        
+        # 验证 manifest
+        if [[ ! -d "$BACKUP_DIR" ]]; then
+            log_error "${gl_bai}备份目录不存在: ${gl_hong}$BACKUP_DIR${gl_bai}"
+            return 1
+        fi
+        
+        # 显示备份信息
+        local img_count=$(jq '.images | length' "$BACKUP_DIR/manifest.json" 2>/dev/null || echo "0")
+        local backup_date=$(jq -r '.backup_date' "$BACKUP_DIR/manifest.json" 2>/dev/null || echo "未知")
+        local backup_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_bai}备份信息:${gl_bai}"
+        echo -e "${gl_bai}  目录: ${gl_huang}$BACKUP_DIR${gl_bai}"
+        echo -e "${gl_bai}  时间: ${gl_huang}${backup_date}${gl_bai}"
+        echo -e "${gl_bai}  镜像: ${gl_huang}${img_count}${gl_bai} 个"
+        echo -e "${gl_bai}  大小: ${gl_huang}${backup_size}${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 目标服务器信息收集
+        read -r -e -p "$(echo -e "${gl_bai}目标服务器 IP: ")" TARGET_IP
+        [[ -z "$TARGET_IP" ]] && { log_error "目标服务器 IP 不能为空"; return 1; }
+
+        read -r -e -p "$(echo -e "${gl_bai}目标服务器 SSH 用户名 [默认 ${gl_huang}root${gl_bai}]: ")" TARGET_USER
+        TARGET_USER=${TARGET_USER:-root}
+
+        read -r -e -p "$(echo -e "${gl_bai}目标服务器 SSH 端口 [默认 ${gl_huang}22${gl_bai}]: ")" TARGET_PORT
+        TARGET_PORT=${TARGET_PORT:-22}
+
+        # 密码读取
+        read -s -p "$(echo -e "${gl_bai}目标服务器 ${TARGET_USER} 密码: ")" SSHPASS
+        echo
+        export SSHPASS
+
+        # 目标服务器验证
+        log_info "验证目标服务器连接性${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 测试连接
+        if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+            "${TARGET_USER}@${TARGET_IP}" "whoami" &>/dev/null; then
+            log_error "无法连接到目标服务器或认证失败"
+            return 1
+        fi
+        
+        # 检查目标服务器 Docker
+        if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+            "${TARGET_USER}@${TARGET_IP}" "docker info &>/dev/null" &>/dev/null; then
+            echo -e "${gl_hong}警告: 目标服务器 Docker 可能未安装或未运行${gl_bai}"
+            read -r -e -p "$(echo -e "${gl_bai}是否继续? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" continue_choice
+            if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
+                return 1
+            fi
+        fi
+
+        # 固定目标备份目录
+        local target_backup_dir="/mnt/backup_images"
+        local backup_base_name=$(basename "$BACKUP_DIR")
+
+        # 传输备份
+        log_info "开始传输镜像备份到目标服务器${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 创建目标目录
+        if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+            "${TARGET_USER}@${TARGET_IP}" "mkdir -p '$target_backup_dir'" 2>/dev/null; then
+            log_error "${gl_bai}无法在目标服务器创建目录: ${gl_huang}$target_backup_dir${gl_bai}"
+            return 1
+        fi
+
+        # 计算传输大小
+        local total_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
+        echo -e "${gl_bai}传输大小: ${gl_huang}${total_size}${gl_bai}"
+        echo -e "${gl_bai}目标路径: ${gl_huang}${TARGET_USER}@${TARGET_IP}:${target_backup_dir}/${backup_base_name}${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 传输文件
+        if sshpass -e scp -o StrictHostKeyChecking=no -P "$TARGET_PORT" -r \
+            "$BACKUP_DIR" "${TARGET_USER}@${TARGET_IP}:${target_backup_dir}/" 2>/dev/null; then
+            log_ok "备份传输完成"
+        else
+            # 如果 SCP 失败，尝试 tar 流传输
+            log_info "SCP 传输失败，尝试备用传输方式${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            if sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+                "${TARGET_USER}@${TARGET_IP}" "mkdir -p '${target_backup_dir}/${backup_base_name}'" && \
+                tar -czf - -C "$(dirname "$BACKUP_DIR")" "$backup_base_name" | \
+                sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+                "${TARGET_USER}@${TARGET_IP}" "tar -xzf - -C '${target_backup_dir}'"; then
+                log_ok "备用传输方式完成"
+            else
+                log_error "所有传输方式均失败"
+                return 1
+            fi
+        fi
+
+        # 验证传输结果
+        if sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+            "${TARGET_USER}@${TARGET_IP}" "test -f '${target_backup_dir}/${backup_base_name}/manifest.json'" 2>/dev/null; then
+            
+            # 获取传输后的信息
+            local remote_img_count=$(sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+                "${TARGET_USER}@${TARGET_IP}" "jq '.images | length' '${target_backup_dir}/${backup_base_name}/manifest.json'" 2>/dev/null || echo "?")
+            
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            log_ok "迁移完成！"
+            echo -e "${gl_bai}镜像备份已传输到目标服务器${gl_bai}"
+            echo -e "${gl_bai}目标路径: ${gl_huang}${target_backup_dir}/${backup_base_name}${gl_bai}"
+            echo -e "${gl_bai}镜像数量: ${gl_huang}${remote_img_count}${gl_bai} 个"
+            echo -e ""
+            echo -e "${gl_bai}在目标服务器上执行以下命令加载镜像:${gl_bai}"
+            echo -e "${gl_huang}cd '${target_backup_dir}/${backup_base_name}' && ./restore_images.sh${gl_bai}"
+            echo -e ""
+            echo -e "${gl_bai}或者手动加载:${gl_bai}"
+            echo -e "${gl_huang}cd '${target_backup_dir}/${backup_base_name}'${gl_bai}"
+            echo -e "${gl_huang}for tar_file in *.tar.gz; do docker load -i \"\$tar_file\"; done${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
+        else
+            log_error "传输验证失败，备份可能不完整"
+            return 1
+        fi
+    }
+
+    # --------------- 加载 Docker 镜像 ---------------
+    load_docker_images() {
+        echo -e ""
+        echo -e "${gl_zi}安装依赖中${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        install tar jq gzip pigz
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        
+        # 检查 Docker
+        if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
+            echo -e "${gl_hong}错误: Docker 未安装或未运行${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            return 1
+        fi
+
+        clear
+        echo -e "${gl_zi}>>> 加载 ${gl_huang}Docker${gl_zi} 镜像${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 获取备份根目录
+        local BACKUP_ROOT="/mnt/backup_images"
+        mkdir -pm 755 "$BACKUP_ROOT"
+
+        # 查找最新的备份目录
+        local latest_backup=""
+        shopt -s nullglob
+        local backups=("${BACKUP_ROOT}"/images_backup_*)
+        shopt -u nullglob
+
+        # 获取最新的备份目录
+        local latest_backup_name=""
+        if ((${#backups[@]} > 0)); then
+            latest_backup=$(printf '%s\n' "${backups[@]}" | sort -r | head -n1)
+            latest_backup_name=$(basename "$latest_backup")
+        fi
+
+        # 显示备份信息
+        if [[ -n "$latest_backup" ]]; then
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            log_info "${gl_bai}最新备份: ${gl_lv}$latest_backup${gl_bai}"
+        fi
+
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_info "可用备份列表："
+        if ((${#backups[@]} > 0)); then
+            for i in "${!backups[@]}"; do
+                local backup_dir="${backups[i]}"
+                local img_count="?"
+                local backup_size="未知"
+                
+                if [[ -f "${backup_dir}/manifest.json" ]]; then
+                    img_count=$(jq '.images | length' "${backup_dir}/manifest.json" 2>/dev/null || echo "?")
+                fi
+                backup_size=$(du -sh "${backup_dir}" 2>/dev/null | cut -f1 || echo "未知")
+                
+                echo -e "${gl_huang}$((i + 1)).${gl_bai} $(basename "${backup_dir}") (${gl_huang}${img_count}${gl_bai} 个镜像, ${gl_huang}${backup_size}${gl_bai})"
+            done
+        else
+            log_warn "无备份"
+            return
+        fi
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        # 备份目录选择逻辑
+        local BACKUP_DIR=""
+        if [[ -n "$latest_backup_name" ]]; then
+            read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: ${gl_lv}$latest_backup_name${gl_bai})(${gl_huang}0${gl_bai}返回): ")" BACKUP_DIR
+
+            if [[ -z $BACKUP_DIR || $BACKUP_DIR == "0" ]]; then
+                continue
+            fi
+
+            if [[ -z "$BACKUP_DIR" ]]; then
+                BACKUP_DIR="$latest_backup"
+                log_info "使用默认最新备份: $latest_backup"
+            fi
+        else
+            read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径: ")" BACKUP_DIR
+        fi
+
+        # 处理数字选择
+        if [[ "$BACKUP_DIR" =~ ^[0-9]+$ ]] && [[ $BACKUP_DIR -ge 1 ]] && [[ $BACKUP_DIR -le ${#backups[@]} ]]; then
+            BACKUP_DIR="${backups[$((BACKUP_DIR - 1))]}"
+            log_info "${gl_bai}选择备份:${gl_huang} $BACKUP_DIR${gl_bai}"
+        fi
+
+        # 处理相对路径
+        if [[ -n "$BACKUP_DIR" ]] && [[ ! "$BACKUP_DIR" =~ ^/ ]] && [[ ! "$BACKUP_DIR" =~ ^[0-9]+$ ]]; then
+            local full_path="$BACKUP_ROOT/$BACKUP_DIR"
+            if [[ -d "$full_path" ]]; then
+                BACKUP_DIR="$full_path"
+            fi
+        fi
+
+        # 验证备份目录
+        [[ ! -d "$BACKUP_DIR" ]] && {
+            log_error "${gl_bai}备份目录不存在: ${gl_hong}$BACKUP_DIR${gl_bai}"
+            return
+        }
+        
+        # 检查是否有自动恢复脚本
+        local RESTORE_SCRIPT="$BACKUP_DIR/restore_images.sh"
+        if [[ -f "$RESTORE_SCRIPT" ]]; then
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            log_info "找到自动恢复脚本"
+            echo -e "${gl_bai}是否使用自动恢复脚本? ${gl_lv}(推荐)${gl_bai}"
+            read -r -e -p "$(echo -e "${gl_bai}使用自动脚本? (${gl_lv}Y${gl_bai}/${gl_hong}n${gl_bai}): ")" use_auto
+            
+            if [[ -z "$use_auto" || "$use_auto" =~ ^[Yy]$ ]]; then
+                log_info "正在执行自动恢复脚本${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+                bash "$RESTORE_SCRIPT"
+                return
+            fi
+        fi
+        
+        # 手动加载模式
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_zi}手动加载模式${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        
+        # 查找所有镜像文件
+        shopt -s nullglob
+        local image_files=("$BACKUP_DIR"/*.tar.gz "$BACKUP_DIR"/*.tar)
+        shopt -u nullglob
+        
+        if [[ ${#image_files[@]} -eq 0 ]]; then
+            log_warn "未找到镜像文件 (.tar 或 .tar.gz)"
+            return
+        fi
+        
+        echo -e "${gl_bai}找到 ${gl_huang}${#image_files[@]}${gl_bai} 个镜像文件:${gl_bai}"
+        for i in "${!image_files[@]}"; do
+            local file_size=$(du -h "${image_files[i]}" 2>/dev/null | cut -f1 || echo "未知")
+            echo -e "${gl_huang}$((i+1)).${gl_bai} $(basename "${image_files[i]}") (${gl_huang}${file_size}${gl_bai})"
+        done
+        
+        echo -e ""
+        echo -e "${gl_huang}>>> 请选择加载方式:${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_bufan}1.${gl_bai} 加载所有镜像"
+        echo -e "${gl_bufan}2.${gl_bai} 选择特定镜像"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_huang}0.${gl_bai} 取消"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        read -r -e -p "请输入你的选择: " load_choice
+        
+        case "$load_choice" in
+            1)
+                # 加载所有镜像
+                files_to_load=("${image_files[@]}")
+                ;;
+            2)
+                # 选择特定镜像
+                files_to_load=()
+                echo -e "${gl_bai}请输入要加载的镜像文件编号 (用空格分隔):${gl_bai}"
+                read -r -e -p "选择: " selected_nums
+                
+                for num in $selected_nums; do
+                    if [[ "$num" =~ ^[0-9]+$ ]] && [[ $num -ge 1 ]] && [[ $num -le ${#image_files[@]} ]]; then
+                        files_to_load+=("${image_files[$((num-1))]}")
+                    fi
+                done
+                
+                if [[ ${#files_to_load[@]} -eq 0 ]]; then
+                    log_warn "未选择任何镜像文件"
+                    return
+                fi
+                ;;
+            0)
+                return
+                ;;
+            *)
+                log_warn "无效选择"
+                return
+                ;;
+        esac
+        
+        # 开始加载
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_zi}开始加载 ${gl_huang}${#files_to_load[@]}${gl_zi} 个镜像${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        
+        success_count=0
+        fail_count=0
+        
+        for i in "${!files_to_load[@]}"; do
+            local image_file="${files_to_load[i]}"
+            local filename=$(basename "$image_file")
+            
+            echo -e "${gl_bai}[$((i+1))/${#files_to_load[@]}] 加载: ${gl_huang}${filename}${gl_bai}"
+            
+            if docker load -i "$image_file" 2>/dev/null; then
+                echo -e "${gl_lv}✓ 成功${gl_bai}"
+                ((success_count++))
+            else
+                echo -e "${gl_hong}✗ 失败${gl_bai}"
+                ((fail_count++))
+            fi
+        done
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_lv}加载完成！${gl_bai}"
+        echo -e "  ${gl_bai}成功: ${gl_huang}${success_count}${gl_bai} 个"
+        echo -e "  ${gl_bai}失败: ${gl_huang}${fail_count}${gl_bai} 个"
+        echo -e ""
+        echo -e "${gl_bai}使用 ${gl_huang}docker images${gl_bai} 查看已加载的镜像${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    }
+
+    # --------------- 管理 Docker 镜像 ---------------
+    manage_docker_images() {
+        # 检查 Docker
+        if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
+            echo -e "${gl_hong}错误: Docker 未安装或未运行${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            return 1
+        fi
+        
+        # 管理菜单
+        while true; do
+            clear
+            # 获取镜像信息
+            echo -e "${gl_huang}>>> 当前 Docker 镜像列表${gl_bai}"
+            
+            # 获取镜像列表
+            mapfile -t ALL_IMAGES < <(docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}" | tail -n +2)
+            
+            if [[ ${#ALL_IMAGES[@]} -eq 0 ]]; then
+                echo -e "${gl_huang}没有找到 Docker 镜像${gl_bai}"
+            else
+                # echo -e "${gl_lv}编号\t镜像:标签\t\t\t\tID\t\t大小${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+                
+                for i in "${!ALL_IMAGES[@]}"; do
+                    IFS=$'\t' read -r repo tag id size <<< "${ALL_IMAGES[i]}"
+                    local full_name="${repo}:${tag}"
+                    if [[ "$tag" == "<none>" ]]; then
+                        full_name="${repo}"
+                    fi
+                    
+                    # 计算编号宽度
+                    local num_width=$(( ${#ALL_IMAGES[@]} > 99 ? 3 : ${#ALL_IMAGES[@]} > 9 ? 2 : 1 ))
+                    printf "${gl_huang}%-${num_width}d${gl_bai}\t%-40s\t%-12s\t%s\n" \
+                        $((i+1)) \
+                        "${full_name:0:40}" \
+                        "${id:0:12}" \
+                        "$size"
+                done
+            fi
+            
+            local total_images=$(docker images -q | wc -l)
+            local total_size=$(docker system df --format "{{.TotalSize}}" 2>/dev/null || echo "未知")
+            
+            # echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            # echo -e "${gl_bai}镜像总数: ${gl_huang}${total_images}${gl_bai} 个"
+            # echo -e "${gl_bai}总大小: ${gl_huang}${total_size}${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+            echo -e ""
+            echo -e "${gl_zi}>>> 管理 ${gl_huang}Docker${gl_zi} 镜像${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}1.  ${gl_bai} 删除指定镜像"
+            echo -e "${gl_bufan}2.  ${gl_bai} 清理悬空镜像"
+            echo -e "${gl_bufan}3.  ${gl_bai} 清理未使用镜像"
+            echo -e "${gl_bufan}4.  ${gl_bai} 导出单个镜像"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_hong}00.  ${gl_bai}退出脚本"
+            echo -e "${gl_huang}0.  ${gl_bai} 返回上一级选单"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            read -r -e -p "请输入你的选择: " manage_choice
+            
+            case "$manage_choice" in
+                1)
+                    # 删除指定镜像
+                    if [[ ${#ALL_IMAGES[@]} -eq 0 ]]; then
+                        echo -e "${gl_huang}没有可删除的镜像${gl_bai}"
+                        read -n 1 -s -r -p "$(echo -e "按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+                        echo
+                        continue
+                    fi
+                    
+                    echo -e "${gl_bai}请输入要删除的镜像编号 (用空格分隔多个):${gl_bai}"
+                    read -r -e -p "选择: " delete_nums
+                    
+                    for num in $delete_nums; do
+                        if [[ "$num" =~ ^[0-9]+$ ]] && [[ $num -ge 1 ]] && [[ $num -le ${#ALL_IMAGES[@]} ]]; then
+                            IFS=$'\t' read -r repo tag id size <<< "${ALL_IMAGES[$((num-1))]}"
+                            local image_id="$id"
+                            
+                            echo -e "${gl_bai}删除镜像: ${gl_huang}${repo}:${tag}${gl_bai} (${image_id})"
+                            
+                            # 检查是否有容器使用
+                            local containers=$(docker ps -a -q --filter ancestor="$image_id")
+                            if [[ -n "$containers" ]]; then
+                                echo -e "${gl_hong}警告: 有容器使用此镜像，请先删除容器${gl_bai}"
+                                continue
+                            fi
+                            
+                            read -r -e -p "$(echo -e "确认删除? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+                            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                                if docker rmi "$image_id" 2>/dev/null; then
+                                    echo -e "${gl_lv}✓ 删除成功${gl_bai}"
+                                else
+                                    echo -e "${gl_hong}✗ 删除失败${gl_bai}"
+                                fi
+                            fi
+                        fi
+                    done
+                    ;;
+                    
+                2)
+                    # 清理悬空镜像
+                    echo -e "${gl_bai}正在查找悬空镜像${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+                    local dangling_images=$(docker images -f "dangling=true" -q)
+                    
+                    if [[ -z "$dangling_images" ]]; then
+                        echo -e "${gl_huang}没有悬空镜像${gl_bai}"
+                    else
+                        echo -e "${gl_bai}找到悬空镜像:${gl_bai}"
+                        docker images -f "dangling=true" --format "  {{.ID}} {{.Repository}}"
+                        
+                        read -r -e -p "$(echo -e "是否清理所有悬空镜像? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+                        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                            if docker image prune -f; then
+                                echo -e "${gl_lv}✓ 悬空镜像清理完成${gl_bai}"
+                            else
+                                echo -e "${gl_hong}✗ 清理失败${gl_bai}"
+                            fi
+                        fi
+                    fi
+                    ;;
+                    
+                3)
+                    # 清理未使用镜像
+                    echo -e "${gl_bai}当前镜像空间使用情况:${gl_bai}"
+                    docker system df
+                    echo -e ""
+                    
+                    read -r -e -p "$(echo -e "是否清理所有未使用的镜像? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+                    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                        docker image prune -a -f
+                        echo -e "${gl_lv}✓ 未使用镜像清理完成${gl_bai}"
+                    fi
+                    ;;
+                    
+                4)
+                    # 导出单个镜像
+                    if [[ ${#ALL_IMAGES[@]} -eq 0 ]]; then
+                        echo -e "${gl_huang}没有可导出的镜像${gl_bai}"
+                        read -n 1 -s -r -p "$(echo -e "按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+                        echo
+                        continue
+                    fi
+                    
+                    echo -e "${gl_bai}请输入要导出的镜像编号:${gl_bai}"
+                    read -r -e -p "选择: " export_num
+                    
+                    if [[ "$export_num" =~ ^[0-9]+$ ]] && [[ $export_num -ge 1 ]] && [[ $export_num -le ${#ALL_IMAGES[@]} ]]; then
+                        IFS=$'\t' read -r repo tag id size <<< "${ALL_IMAGES[$((export_num-1))]}"
+                        local export_name="${repo}:${tag}"
+                        
+                        # 处理特殊字符
+                        local safe_name=$(echo "$export_name" | sed 's/[\/:]/-/g' | sed 's/^-*//')
+                        local export_file="/mnt/backup_images/${safe_name}_$(date +%Y%m%d_%H%M%S).tar"
+                        
+                        echo -e "${gl_bai}正在导出镜像: ${gl_huang}${export_name}${gl_bai}"
+                        echo -e "${gl_bai}保存到: ${gl_huang}${export_file}${gl_bai}"
+                        
+                        mkdir -p "/mnt/backup_images"
+                        if docker save -o "$export_file" "$export_name" 2>/dev/null; then
+                            echo -e "${gl_lv}✓ 导出成功${gl_bai}"
+                            
+                            # 压缩
+                            read -r -e -p "$(echo -e "是否压缩? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" compress
+                            if [[ "$compress" =~ ^[Yy]$ ]]; then
+                                if gzip "$export_file"; then
+                                    echo -e "${gl_lv}✓ 压缩完成: ${export_file}.gz${gl_bai}"
+                                fi
+                            fi
+                        else
+                            echo -e "${gl_hong}✗ 导出失败${gl_bai}"
+                        fi
+                    fi
+                    ;;
+                    
+                0) break ;;                     # 立即终止整个循环，跳出循环体
+                00 | 000 | 0000) exit_script ;; # 感谢使用，再见！ N 秒后自动退出
+                *) handle_invalid_input ;;      # 无效的输入,请重新输入! 2 秒后返回，继续执行循环的下一次迭代。
+            esac
+            
+            read -n 1 -s -r -p "$(echo -e "按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+            echo
+        done
+    }
+
+    # --------------- 删除 Docker 镜像备份 ---------------
+	delete_image_backup() {
+		local BACKUP_ROOT="/mnt/backup_images"
+
+		echo -e ""
+		echo -e "${gl_zi}>>> 删除镜像备份${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+		echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+		# 列出备份
+		shopt -s nullglob
+		local backups=("${BACKUP_ROOT}"/images_backup_*)
+		shopt -u nullglob
+
+		if [[ ${#backups[@]} -eq 0 ]]; then
+			echo -e "${gl_huang}没有找到镜像备份${gl_bai}"
+			echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+			return
+		fi
+
+		echo -e "${gl_bai}可用备份列表:${gl_bai}"
+		for i in "${!backups[@]}"; do
+			local backup_dir="${backups[i]}"
+			local img_count="?"
+			local backup_size="未知"
+
+			if [[ -f "${backup_dir}/manifest.json" ]]; then
+				img_count=$(jq '.images | length' "${backup_dir}/manifest.json" 2>/dev/null || echo "?")
+			fi
+			backup_size=$(du -sh "${backup_dir}" 2>/dev/null | cut -f1 || echo "未知")
+
+			echo -e "${gl_huang}$((i + 1)).${gl_bai} $(basename "${backup_dir}") (${gl_huang}${img_count}${gl_bai} 个镜像, ${gl_huang}${backup_size}${gl_bai})"
+		done
+		echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+		read -r -e -p "$(echo -e "${gl_bai}请输入要删除的备份编号 (用空格分隔多个)，${gl_hong}回车${gl_bai}删除全部: ")" delete_input
+
+		if [[ -z "$delete_input" ]]; then
+			# 直接回车删除全部
+			read -r -e -p "$(echo -e "确认删除 ${gl_huang}${#backups[@]}${gl_bai} 个备份? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+
+			if [[ "$confirm" =~ ^[Yy]$ ]]; then
+				for backup in "${backups[@]}"; do
+					rm -rf "$backup"
+				done
+				echo -e "${gl_lv}✓ 已删除所有备份${gl_bai}"
+			else
+				echo -e "${gl_huang}已取消${gl_bai}"
+			fi
+		else
+			# 删除选定的备份
+			for num in $delete_input; do
+				if [[ "$num" =~ ^[0-9]+$ ]] && [[ $num -ge 1 ]] && [[ $num -le ${#backups[@]} ]]; then
+					local backup_dir="${backups[$((num-1))]}"
+					read -r -e -p "$(echo -e "确认删除 ${gl_huang}$(basename "${backup_dir}")${gl_bai}? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+
+					if [[ "$confirm" =~ ^[Yy]$ ]]; then
+						rm -rf "$backup_dir"
+						echo -e "${gl_lv}✓ 已删除: $(basename "${backup_dir}")${gl_bai}"
+					else
+						echo -e "${gl_huang}跳过: $(basename "${backup_dir}")${gl_bai}"
+					fi
+				fi
+			done
+		fi
+
+		echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+	}
+
+    # --------------- 主菜单 ---------------
+    main_menu() {
+        while true; do
+            clear
+            list_image_backups
+            echo -e ""
+            echo -e "${gl_zi}>>> Docker 镜像备份/迁移/还原工具${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_bufan}1.  ${gl_bai}备份 Docker 镜像"
+            echo -e "${gl_bufan}2.  ${gl_bai}迁移 Docker 镜像"
+            echo -e "${gl_bufan}3.  ${gl_bai}加载 Docker 镜像"
+            echo -e "${gl_bufan}4.  ${gl_bai}管理 Docker 镜像"
+            echo -e "${gl_bufan}5.  ${gl_bai}删除 Docker 镜像备份"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_hong}00. ${gl_bai}退出脚本"
+            echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            read -r -e -p "请输入你的选择: " choice
+            case $choice in
+            1) backup_docker_images ;;
+            2) migrate_docker_images ;;
+            3) load_docker_images ;;
+            4) manage_docker_images ;;
+            5) delete_image_backup ;;
+            0) break ;;                     # 立即终止整个循环，跳出循环体
+            00 | 000 | 0000) exit_script ;; # 感谢使用，再见！ N 秒后自动退出
+            *) handle_invalid_input ;;      # 无效的输入,请重新输入! 2 秒后返回，继续执行循环的下一次迭代。
+            esac
+        done
+    }
+    
+    # --------------- 启动入口 ---------------
+    main_menu
+}
+
+# 检查 docker-compose 版本
+check_docker_compose() {
+    if command -v docker-compose &> /dev/null; then
+        # 使用 docker-compose（旧版独立安装）
+        version=$(docker-compose --version | grep -oP 'version \K[^, ]+')
+        echo -e "${gl_bufan}compose${gl_bai}版本：${gl_lv}$version${gl_bai}"
+    elif docker compose version &> /dev/null; then
+        # 使用 docker compose（新版插件方式）
+        version=$(docker compose version | grep -oP 'v[0-9]+\.[0-9]+\.[0-9]+')
+        echo -e "${gl_bufan}compose${gl_bai}版本：${gl_lv}$version${gl_bai}"
+    else
+        echo -e "${gl_bufan}compose${gl_bai}版本：${gl_hong}未安装${gl_bai}"
+    fi
+}
+
+# 公共函数：停止所有docker-compose项目
+stop_all_compose_projects() {
+    clear
+    echo -e ""
+    echo -e "${gl_zi}>>> 停止所有 Compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 检查Docker是否运行
+    if ! docker info &>/dev/null; then
+        log_error "Docker 服务未运行"
+        return 1
+    fi
+    
+    # 预设目录选项
+    local preset_dirs=(
+        "/compose"
+        "/mnt/compose" 
+        "/vol1/1000/compose"
+        "/vol2/1000/compose"
+    )
+    
+    # 扫描所有运行中的 docker-compose 项目
+    log_info "正在扫描运行中的 docker-compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    
+    # 获取所有运行中的docker-compose项目的工作目录
+    local running_projects=()
+    if command -v docker &>/dev/null && docker info &>/dev/null; then
+        while IFS= read -r dir; do
+            [[ -z "$dir" ]] && continue
+            [[ ! -d "$dir" ]] && continue
+            running_projects+=("$(realpath "$dir")")
+        done < <(
+            docker ps --format '{{.Names}}' 2>/dev/null |
+            xargs -I{} sh -c 'docker inspect {} 2>/dev/null | jq -r ".[0].Config.Labels[\"com.docker.compose.project.working_dir\"]" 2>/dev/null || echo ""' |
+            sort -u
+        )
+    fi
+    
+    # 标记推荐的目录
+    local recommended_dirs=()
+    for preset_dir in "${preset_dirs[@]}"; do
+        for running_dir in "${running_projects[@]}"; do
+            if [[ "$running_dir" == "$preset_dir" ]] || [[ "$running_dir" == "$preset_dir"* ]]; then
+                recommended_dirs+=("$preset_dir")
+                break
+            fi
+        done
+    done
+    
+    # 去重推荐目录
+    recommended_dirs=($(printf "%s\n" "${recommended_dirs[@]}" | sort -u))
+    
+    # 显示扫描结果
+    if [[ ${#running_projects[@]} -gt 0 ]]; then
+        echo -e "${gl_bai}扫描到运行中的 docker-compose 项目目录:${gl_bai}"
+        for dir in "${running_projects[@]}"; do
+            echo -e "  ${gl_lv}•${gl_bai} ${dir}"
+        done
+        
+        if [[ ${#recommended_dirs[@]} -gt 0 ]]; then
+            echo -e "${gl_bai}推荐的工作目录:${gl_bai}"
+            for dir in "${recommended_dirs[@]}"; do
+                echo -e "  ${gl_hong}★${gl_bai} ${dir}"
+            done
+        fi
+    else
+        echo -e "${gl_huang}未找到运行中的 docker-compose 项目${gl_bai}"
+    fi
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 显示目录选择菜单
+    echo -e ""
+    echo -e "${gl_huang}>>> 请选择要停止的工作目录:${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    for i in "${!preset_dirs[@]}"; do
+        local marker=""
+        local dir_status=""
+        
+        # 检查是否为推荐目录
+        for rd in "${recommended_dirs[@]}"; do
+            if [[ "${preset_dirs[i]}" == "$rd" ]]; then
+                marker=" ${gl_hong}(推荐)${gl_bai}"
+                break
+            fi
+        done
+        
+        # 检查目录是否存在
+        if [[ -d "${preset_dirs[i]}" ]]; then
+            # 检查目录下是否有 docker-compose 文件
+            local compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
+            if [[ $compose_count -gt 0 ]]; then
+                dir_status="${gl_lv}[有 ${compose_count} 个项目]${gl_bai}"
+            else
+                dir_status="${gl_huang}[无 compose 项目]${gl_bai}"
+            fi
+        else
+            dir_status="${gl_huang}[目录不存在]${gl_bai}"
+        fi
+        
+        echo -e "${gl_bufan}$((i+1)).${gl_bai} ${preset_dirs[i]} $dir_status$marker"
+    done
+    echo -e "${gl_bufan}$(( ${#preset_dirs[@]} + 1 )).${gl_bai} 手动指定路径"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_huang}0.${gl_bai} 返回上一级选单"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 读取用户选择
+    read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}-${gl_hong}$(( ${#preset_dirs[@]} + 1 ))${gl_bai}): ")" dir_choice
+    
+    # 处理选择
+    local COMPOSE_WORK_DIR=""
+    
+    if [[ -z "$dir_choice" ]] && [[ ${#recommended_dirs[@]} -gt 0 ]]; then
+        # 直接回车，使用第一个推荐目录
+        COMPOSE_WORK_DIR="${recommended_dirs[0]}"
+        echo -e "${gl_bai}使用推荐目录: ${gl_huang}$COMPOSE_WORK_DIR${gl_bai}"
+    elif [[ "$dir_choice" =~ ^[0-9]+$ ]]; then
+        if [[ $dir_choice -eq 0 ]]; then
+            # 返回
+            return
+        elif [[ $dir_choice -le ${#preset_dirs[@]} ]]; then
+            # 选择预设目录
+            COMPOSE_WORK_DIR="${preset_dirs[$((dir_choice-1))]}"
+        elif [[ $dir_choice -eq $(( ${#preset_dirs[@]} + 1 )) ]]; then
+            # 手动指定路径
+            read -r -e -p "$(echo -e "${gl_bai}请输入自定义路径: ")" COMPOSE_WORK_DIR
+        else
+            log_error "无效选择"
+            return
+        fi
+    else
+        # 非数字输入，视为手动指定路径
+        COMPOSE_WORK_DIR="$dir_choice"
+    fi
+    
+    # 检查是否为空
+    if [[ -z "$COMPOSE_WORK_DIR" ]]; then
+        log_warn "路径不能为空"
+        return
+    fi
+    
+    # 检查目录是否存在
+    if [[ ! -d "$COMPOSE_WORK_DIR" ]]; then
+        log_warn "目录不存在: $COMPOSE_WORK_DIR"
+        return
+    fi
+    
+    echo -e "${gl_bai}工作目录: ${gl_huang}$COMPOSE_WORK_DIR${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 确认停止操作
+    read -r -e -p "$(echo -e "${gl_hong}警告: ${gl_bai}确定停止 ${gl_huang}$COMPOSE_WORK_DIR${gl_bai} 下的所有 Compose 项目吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo -e "${gl_huang}已取消${gl_bai}"
+        return
+    fi
+    
+    # 切换到工作目录
+    if ! cd "$COMPOSE_WORK_DIR" 2>/dev/null; then
+        log_error "无法进入目录: $COMPOSE_WORK_DIR"
+        return
+    fi
+    
+    # 统计停止的项目数量
+    local stopped_count=0
+    local total_count=0
+    
+    echo -e "${gl_bai}正在扫描 ${gl_huang}$COMPOSE_WORK_DIR${gl_bai} 下的 Compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 扫描当前目录是否有 docker-compose.yml
+    if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
+        local current_dir_name=$(basename "$(pwd)")
+        echo -e "${gl_bai}停止项目: ${gl_huang}$current_dir_name${gl_bai} (当前目录)"
+        
+        # 检查使用哪个docker compose命令
+        if command -v docker-compose &>/dev/null; then
+            docker-compose down
+        elif docker compose version &>/dev/null; then
+            docker compose down
+        else
+            log_error "未找到 docker-compose 命令"
+            return
+        fi
+        
+        if [[ $? -eq 0 ]]; then
+            echo -e "${gl_lv}✓ 已停止: $current_dir_name${gl_bai}"
+            stopped_count=$((stopped_count + 1))
+        fi
+        total_count=$((total_count + 1))
+    fi
+    
+    # 遍历子目录
+    for dir in */; do
+        if [[ -d "$dir" ]]; then
+            cd "$dir" 2>/dev/null || continue
+            
+            if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
+                local project_name=$(basename "$dir")
+                echo -e "${gl_bai}停止项目: ${gl_huang}$project_name${gl_bai}"
+                
+                # 检查使用哪个docker compose命令
+                if command -v docker-compose &>/dev/null; then
+                    docker-compose down
+                elif docker compose version &>/dev/null; then
+                    docker compose down
+                else
+                    log_error "未找到 docker-compose 命令"
+                    cd ..
+                    continue
+                fi
+                
+                if [[ $? -eq 0 ]]; then
+                    echo -e "${gl_lv}✓ 已停止: $project_name${gl_bai}"
+                    stopped_count=$((stopped_count + 1))
+                fi
+                total_count=$((total_count + 1))
+            fi
+            
+            cd .. 2>/dev/null
+        fi
+    done
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    if [[ $total_count -eq 0 ]]; then
+        echo -e "${gl_huang}在 ${gl_hong}$COMPOSE_WORK_DIR${gl_huang} 中没有找到 Compose 项目${gl_bai}"
+    else
+        echo -e "${gl_bai}停止完成${gl_bai}"
+        echo -e "${gl_bai}总计项目: ${gl_huang}$total_count${gl_bai}"
+        echo -e "${gl_bai}成功停止: ${gl_lv}$stopped_count${gl_bai}"
+    fi
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 返回主菜单
+    read -n 1 -s -r -p "$(echo -e "按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+    echo
+}
+
+# 公共函数：启动所有docker-compose项目
+start_all_compose_projects() {
+    clear
+    echo -e ""
+    echo -e "${gl_zi}>>> 启动所有 Compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 检查Docker是否运行
+    if ! docker info &>/dev/null; then
+        log_error "Docker 服务未运行"
+        return 1
+    fi
+    
+    # 预设目录选项
+    local preset_dirs=(
+        "/compose"
+        "/mnt/compose" 
+        "/vol1/1000/compose"
+        "/vol2/1000/compose"
+    )
+    
+    # 扫描所有docker-compose 项目（包括已停止的）
+    log_info "正在扫描所有 docker-compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    
+    # 获取所有存在的docker-compose项目的工作目录
+    local all_projects=()
+    for preset_dir in "${preset_dirs[@]}"; do
+        if [[ -d "$preset_dir" ]]; then
+            # 检查根目录是否有docker-compose文件
+            if [[ -f "$preset_dir/docker-compose.yml" ]] || [[ -f "$preset_dir/docker-compose.yaml" ]]; then
+                all_projects+=("$preset_dir")
+            fi
+            
+            # 检查子目录
+            for dir in "$preset_dir"/*/; do
+                if [[ -d "$dir" ]] && ([[ -f "$dir/docker-compose.yml" ]] || [[ -f "$dir/docker-compose.yaml" ]]); then
+                    all_projects+=("$(realpath "$dir")")
+                fi
+            done
+        fi
+    done
+    
+    # 去重
+    all_projects=($(printf "%s\n" "${all_projects[@]}" | sort -u))
+    
+    # 获取所有运行中的docker-compose项目的工作目录
+    local running_projects=()
+    if command -v docker &>/dev/null && docker info &>/dev/null; then
+        while IFS= read -r dir; do
+            [[ -z "$dir" ]] && continue
+            [[ ! -d "$dir" ]] && continue
+            running_projects+=("$(realpath "$dir")")
+        done < <(
+            docker ps --format '{{.Names}}' 2>/dev/null |
+            xargs -I{} sh -c 'docker inspect {} 2>/dev/null | jq -r ".[0].Config.Labels[\"com.docker.compose.project.working_dir\"]" 2>/dev/null || echo ""' |
+            sort -u
+        )
+    fi
+    
+    # 标记推荐的目录（有项目但未全部运行的目录）
+    local recommended_dirs=()
+    for preset_dir in "${preset_dirs[@]}"; do
+        # 检查该预设目录下是否有项目
+        local has_projects=false
+        for project in "${all_projects[@]}"; do
+            if [[ "$project" == "$preset_dir" ]] || [[ "$project" == "$preset_dir"* ]]; then
+                has_projects=true
+                break
+            fi
+        done
+        
+        if $has_projects; then
+            # 检查是否有未运行的项目
+            local all_running=true
+            for project in "${all_projects[@]}"; do
+                if [[ "$project" == "$preset_dir" ]] || [[ "$project" == "$preset_dir"* ]]; then
+                    # 检查这个项目是否在运行
+                    local is_running=false
+                    for running_dir in "${running_projects[@]}"; do
+                        if [[ "$running_dir" == "$project" ]]; then
+                            is_running=true
+                            break
+                        fi
+                    done
+                    
+                    if ! $is_running; then
+                        all_running=false
+                        break
+                    fi
+                fi
+            done
+            
+            if ! $all_running; then
+                recommended_dirs+=("$preset_dir")
+            fi
+        fi
+    done
+    
+    # 显示扫描结果
+    if [[ ${#all_projects[@]} -gt 0 ]]; then
+        echo -e "${gl_bai}扫描到的 docker-compose 项目目录:${gl_bai}"
+        for dir in "${all_projects[@]}"; do
+            # 检查是否正在运行
+            local is_running=""
+            for running_dir in "${running_projects[@]}"; do
+                if [[ "$running_dir" == "$dir" ]]; then
+                    is_running=" ${gl_lv}[运行中]${gl_bai}"
+                    break
+                fi
+            done
+            [[ -z "$is_running" ]] && is_running=" ${gl_huang}[已停止]${gl_bai}"
+            
+            echo -e "  ${gl_lv}•${gl_bai} ${dir}$is_running"
+        done
+        
+        if [[ ${#recommended_dirs[@]} -gt 0 ]]; then
+            echo -e "${gl_bai}推荐的工作目录（有未运行的项目）:${gl_bai}"
+            for dir in "${recommended_dirs[@]}"; do
+                echo -e "  ${gl_hong}★${gl_bai} ${dir}"
+            done
+        fi
+    else
+        echo -e "${gl_huang}未找到任何 docker-compose 项目${gl_bai}"
+    fi
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+    echo -e ""
+    # 显示目录选择菜单
+    echo -e "${gl_huang}>>> 请选择要启动的工作目录:${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    for i in "${!preset_dirs[@]}"; do
+        local marker=""
+        local dir_status=""
+        
+        # 检查是否为推荐目录
+        for rd in "${recommended_dirs[@]}"; do
+            if [[ "${preset_dirs[i]}" == "$rd" ]]; then
+                marker=" ${gl_hong}(推荐)${gl_bai}"
+                break
+            fi
+        done
+        
+        # 检查目录是否存在
+        if [[ -d "${preset_dirs[i]}" ]]; then
+            # 检查目录下是否有 docker-compose 文件
+            local compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
+            if [[ $compose_count -gt 0 ]]; then
+                # 统计运行中的项目
+                local running_count=0
+                for project in "${running_projects[@]}"; do
+                    if [[ "$project" == "${preset_dirs[i]}" ]] || [[ "$project" == "${preset_dirs[i]}"/* ]]; then
+                        running_count=$((running_count + 1))
+                    fi
+                done
+                
+                if [[ $running_count -eq 0 ]]; then
+                    dir_status="${gl_huang}[${compose_count}个项目，均未运行]${gl_bai}"
+                elif [[ $running_count -eq $compose_count ]]; then
+                    dir_status="${gl_lv}[${compose_count}个项目，全部运行中]${gl_bai}"
+                else
+                    dir_status="${gl_huang}[${compose_count}个项目，${running_count}个运行中]${gl_bai}"
+                fi
+            else
+                dir_status="${gl_huang}[无 compose 项目]${gl_bai}"
+            fi
+        else
+            dir_status="${gl_huang}[目录不存在]${gl_bai}"
+        fi
+        
+        echo -e "${gl_bufan}$((i+1)).${gl_bai} ${preset_dirs[i]} $dir_status$marker"
+    done
+    echo -e "${gl_bufan}$(( ${#preset_dirs[@]} + 1 )).${gl_bai} 手动指定路径"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_huang}0.${gl_bai} 返回上一级选单"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 读取用户选择
+    read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}-${gl_hong}$(( ${#preset_dirs[@]} + 1 ))${gl_bai}): ")" dir_choice
+    
+    # 处理选择
+    local COMPOSE_WORK_DIR=""
+    
+    if [[ -z "$dir_choice" ]] && [[ ${#recommended_dirs[@]} -gt 0 ]]; then
+        # 直接回车，使用第一个推荐目录
+        COMPOSE_WORK_DIR="${recommended_dirs[0]}"
+        echo -e "${gl_bai}使用推荐目录: ${gl_huang}$COMPOSE_WORK_DIR${gl_bai}"
+    elif [[ "$dir_choice" =~ ^[0-9]+$ ]]; then
+        if [[ $dir_choice -eq 0 ]]; then
+            # 返回
+            return
+        elif [[ $dir_choice -le ${#preset_dirs[@]} ]]; then
+            # 选择预设目录
+            COMPOSE_WORK_DIR="${preset_dirs[$((dir_choice-1))]}"
+        elif [[ $dir_choice -eq $(( ${#preset_dirs[@]} + 1 )) ]]; then
+            # 手动指定路径
+            read -r -e -p "$(echo -e "${gl_bai}请输入自定义路径: ")" COMPOSE_WORK_DIR
+        else
+            log_error "无效选择"
+            return
+        fi
+    else
+        # 非数字输入，视为手动指定路径
+        COMPOSE_WORK_DIR="$dir_choice"
+    fi
+    
+    # 检查是否为空
+    if [[ -z "$COMPOSE_WORK_DIR" ]]; then
+        log_warn "路径不能为空"
+        return
+    fi
+    
+    # 检查目录是否存在
+    if [[ ! -d "$COMPOSE_WORK_DIR" ]]; then
+        log_warn "目录不存在: $COMPOSE_WORK_DIR"
+        return
+    fi
+    
+    echo -e "${gl_bai}工作目录: ${gl_huang}$COMPOSE_WORK_DIR${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 确认启动操作
+    read -r -e -p "$(echo -e "${gl_bai}确定启动 ${gl_huang}$COMPOSE_WORK_DIR${gl_bai} 下的所有 Compose 项目吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo -e "${gl_huang}已取消${gl_bai}"
+        return
+    fi
+    
+    # 切换到工作目录
+    if ! cd "$COMPOSE_WORK_DIR" 2>/dev/null; then
+        log_error "无法进入目录: $COMPOSE_WORK_DIR"
+        return
+    fi
+    
+    # 统计启动的项目数量
+    local started_count=0
+    local total_count=0
+    
+    echo -e "${gl_bai}正在扫描 ${gl_huang}$COMPOSE_WORK_DIR${gl_bai} 下的 Compose 项目${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 扫描当前目录是否有 docker-compose.yml
+    if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
+        local current_dir_name=$(basename "$(pwd)")
+        echo -e "${gl_bai}启动项目: ${gl_huang}$current_dir_name${gl_bai} (当前目录)"
+        
+        # 检查使用哪个docker compose命令
+        if command -v docker-compose &>/dev/null; then
+            docker-compose up -d
+        elif docker compose version &>/dev/null; then
+            docker compose up -d
+        else
+            log_error "未找到 docker-compose 命令"
+            return
+        fi
+        
+        if [[ $? -eq 0 ]]; then
+            echo -e "${gl_lv}✓ 已启动: $current_dir_name${gl_bai}"
+            started_count=$((started_count + 1))
+        else
+            echo -e "${gl_hong}✗ 启动失败: $current_dir_name${gl_bai}"
+        fi
+        total_count=$((total_count + 1))
+    fi
+    
+    # 遍历子目录
+    for dir in */; do
+        if [[ -d "$dir" ]]; then
+            cd "$dir" 2>/dev/null || continue
+            
+            if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
+                local project_name=$(basename "$dir")
+                echo -e "${gl_bai}启动项目: ${gl_huang}$project_name${gl_bai}"
+                
+                # 检查使用哪个docker compose命令
+                if command -v docker-compose &>/dev/null; then
+                    docker-compose up -d
+                elif docker compose version &>/dev/null; then
+                    docker compose up -d
+                else
+                    log_error "未找到 docker-compose 命令"
+                    cd ..
+                    continue
+                fi
+                
+                if [[ $? -eq 0 ]]; then
+                    echo -e "${gl_lv}✓ 已启动: $project_name${gl_bai}"
+                    started_count=$((started_count + 1))
+                else
+                    echo -e "${gl_hong}✗ 启动失败: $project_name${gl_bai}"
+                fi
+                total_count=$((total_count + 1))
+            fi
+            
+            cd .. 2>/dev/null
+        fi
+    done
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    if [[ $total_count -eq 0 ]]; then
+        echo -e "${gl_huang}在 ${gl_hong}$COMPOSE_WORK_DIR${gl_huang} 中没有找到 Compose 项目${gl_bai}"
+    else
+        echo -e "${gl_bai}启动完成${gl_bai}"
+        echo -e "${gl_bai}总计项目: ${gl_huang}$total_count${gl_bai}"
+        echo -e "${gl_bai}成功启动: ${gl_lv}$started_count${gl_bai}"
+        if [[ $started_count -lt $total_count ]]; then
+            echo -e "${gl_hong}启动失败: $((total_count - started_count))${gl_bai}"
+        fi
+    fi
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 返回主菜单
+    read -n 1 -s -r -p "$(echo -e "按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+    echo
 }
 
 ###### 函数_FnOS命令
@@ -26715,6 +28673,7 @@ linux_fnos_menu() {
         echo -e "${gl_zi}>>> ${gl_bufan}FnOS ${gl_zi}管理${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         docker_status
+        check_docker_compose
         docker_tato
         # echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
         # echo -e "${gl_bai}内网 IP 地址: ${gl_huang}$(get_internal_ip)${gl_bai}"
@@ -26723,13 +28682,14 @@ linux_fnos_menu() {
         echo -e "${gl_bufan}3.  ${gl_bai}Docker容器管理      ${gl_bufan}4.  ${gl_bai}Docker镜像管理"
         echo -e "${gl_bufan}5.  ${gl_bai}Docker网络管理      ${gl_bufan}6.  ${gl_bai}Docker卷管理"
         echo -e "${gl_bufan}7.  ${gl_bai}Docker镜像加速      ${gl_bufan}8.  ${gl_bai}清理镜像容器网络"
+        echo -e "${gl_bufan}9.  ${gl_bai}停止所有Compose项目 ${gl_bufan}10. ${gl_bai}启动所有Compose项目"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}11. ${gl_bai}克隆Docker仓库      ${gl_bufan}12. ${gl_bai}配置文件管理器"
         echo -e "${gl_bufan}13. ${gl_bai}临时目录管理器      ${gl_bufan}14. ${gl_bai}硬盘分区管理"
         echo -e "${gl_bufan}15. ${gl_bai}电脑壁纸整理        ${gl_bufan}16. ${gl_bai}手机壁纸整理"
-        echo -e "${gl_bufan}17. ${gl_bai}安装Compose         ${gl_bufan}18. ${gl_bai}备份Compose项目"
+        echo -e "${gl_bufan}17. ${gl_bai}备份/迁移Docker镜像 ${gl_bufan}18. ${gl_bai}备份/迁移Compose项目"
+        echo -e "${gl_bufan}19. ${gl_bai}安装Compose         ${gl_bufan}20. ${gl_bai}FnOS系统安全工具"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}55. ${gl_bai}FnOS系统安全工具"
         echo -e "${gl_bufan}66. ${gl_bai}安装Docker环境      ${gl_bufan}99. ${gl_bai}卸载Docker环境"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}00. ${gl_bai}退出脚本            ${gl_huang}0.  ${gl_bai}返回主菜单"
@@ -26778,28 +28738,9 @@ linux_fnos_menu() {
                 continue
             fi
 
-            # 检查 目录是否存在
-            if [[ ! -d /vol1/1000/compose && ! -d /mnt/compose && ! -d /compose ]]; then
-                log_error "${gl_bai} 目录 ${gl_huang}/vol1/1000/compose${gl_bai} 与 ${gl_huang}/mnt/compose${gl_bai} 与 ${gl_huang}/compose${gl_bai} 均不存在。"
-                read -n 1 -s -r -p "$(echo -e "按任意键返回主菜单${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
-                echo
-                continue
-            fi
-
+            # 不再检查固定目录，通过enter_compose_dir函数让用户选择目录
             clear
-
-            case $(get_internal_ip | tr -d '[:space:]') in
-            10.10.10.251) cd /vol1/1000/compose ;;
-            10.10.10.246) cd /mnt/compose ;;
-            10.10.10.239) cd /compose ;;
-            *) : ;;
-            esac
-
-            if show_compose_project_menu; then
-                :
-            else
-                break_end
-            fi
+            enter_compose_dir
             ;;
         2)
             # Docker全局状态
@@ -27231,6 +29172,14 @@ linux_fnos_menu() {
             echo -e "${gl_bufan}————————————————————————${gl_bai}"
             break_end
             ;;
+        9)
+            # 停止所有Compose项目
+            stop_all_compose_projects
+            ;;
+        10)
+            # 启动所有Compose项目
+           start_all_compose_projects
+            ;;
         11)
             # 克隆Docker仓库
             echo -e ""
@@ -27339,7 +29288,7 @@ linux_fnos_menu() {
             case $(get_internal_ip | tr -d '[:space:]') in
             10.10.10.251) cd /vol1/1000/compose ;;
             10.10.10.246) cd /mnt/compose ;;
-            10.10.10.239) cd /compose ;;
+            10.10.10.239) cd /mnt/compose ;;
             *) : ;;
             esac
 
@@ -27351,7 +29300,7 @@ linux_fnos_menu() {
             ;;
         13)
             # 临时目录管理器
-            temp_dir_menu /vol1/1000/tmp
+            temp_dir_menu /vol2/1000/tmp
             ;;
         14)
             # 硬盘分区管理
@@ -27365,20 +29314,26 @@ linux_fnos_menu() {
             # 手机壁纸整理
             bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/linux/wallpaper_phone_all.sh)
             ;;
-        11)
-            # 安装docker-compose
-            install_docker_compose
-            break_end
+        17)
+            # 备份Docker镜像
+            clear
+            docker_image_backup_tools
             ;;
         18)
             # 备份/迁移/还原 docker-compose 项目
             docker_compose_env_tools
             ;;
-        55)
+        19)
+            # 安装docker-compose
+            install_docker_compose
+            break_end
+            ;;
+        20)
             # FnOS系统安全工具
             clear
             bash <(curl -sL gitee.com/meimolihan/script/raw/master/fnos/fnos_xxck1.sh)
             ;;
+
         66)
             # 安装更新Docker环境
             clear
@@ -28695,6 +30650,274 @@ configure_git_https() {
     break_end
 }
 
+# 函数_修复Git安全目录权限
+fix_git_safe_directories() {
+    echo -e ""
+    echo -e "${gl_zi}>>> 修复 Git 仓库安全目录${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 预设目录选项
+    local preset_dirs=(
+        "/compose"
+        "/mnt/compose" 
+        "/vol1/1000/compose"
+        "/vol2/1000/compose"
+    )
+    
+    # 扫描Git仓库的父目录
+    log_info "正在扫描所有 Git 仓库${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    
+    local git_parent_dirs=()
+    for preset_dir in "${preset_dirs[@]}"; do
+        if [[ -d "$preset_dir" ]]; then
+            # 在预设目录中扫描Git仓库
+            while IFS= read -r git_dir; do
+                [[ -z "$git_dir" ]] && continue
+                local parent_dir=$(dirname "$git_dir")
+                # 检查是否已经在列表中
+                local exists=false
+                for existing_dir in "${git_parent_dirs[@]}"; do
+                    if [[ "$existing_dir" == "$parent_dir" ]]; then
+                        exists=true
+                        break
+                    fi
+                done
+                if ! $exists; then
+                    git_parent_dirs+=("$parent_dir")
+                fi
+            done < <(find "$preset_dir" -name ".git" -type d 2>/dev/null | head -20)  # 限制数量避免太多
+        fi
+    done
+    
+    # 显示扫描结果
+    if [[ ${#git_parent_dirs[@]} -gt 0 ]]; then
+        echo -e "${gl_bai}扫描到以下包含 Git 仓库的目录:${gl_bai}"
+        for dir in "${git_parent_dirs[@]}"; do
+            # 统计该目录下的Git仓库数量
+            local git_count=$(find "$dir" -maxdepth 3 -name ".git" -type d 2>/dev/null | wc -l)
+            echo -e "  ${gl_lv}•${gl_bai} ${dir} ${gl_huang}[${git_count}个仓库]${gl_bai}"
+        done
+    else
+        echo -e "${gl_huang}未扫描到 Git 仓库${gl_bai}"
+    fi
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 显示目录选择菜单
+    echo -e ""
+    echo -e "${gl_huang}>>> 请选择要扫描的目录:${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 显示预设目录
+    for i in "${!preset_dirs[@]}"; do
+        local marker=""
+        local dir_status=""
+        
+        # 检查是否有Git仓库
+        for git_dir in "${git_parent_dirs[@]}"; do
+            if [[ "$git_dir" == "${preset_dirs[i]}"* ]]; then
+                marker=" ${gl_hong}(有Git仓库)${gl_bai}"
+                break
+            fi
+        done
+        
+        # 检查目录是否存在
+        if [[ -d "${preset_dirs[i]}" ]]; then
+            dir_status="${gl_lv}[存在]${gl_bai}"
+        else
+            dir_status="${gl_huang}[不存在]${gl_bai}"
+        fi
+        
+        echo -e "${gl_huang}$((i+1)).${gl_bai} ${preset_dirs[i]} $dir_status$marker"
+    done
+    
+    # 显示扫描到的Git父目录
+    local start_index=$((${#preset_dirs[@]} + 1))
+    for i in "${!git_parent_dirs[@]}"; do
+        local dir_index=$((start_index + i))
+        local git_count=$(find "${git_parent_dirs[i]}" -maxdepth 3 -name ".git" -type d 2>/dev/null | wc -l)
+        echo -e "${gl_bufan}$dir_index.${gl_bai} ${git_parent_dirs[i]} ${gl_hong}[${git_count}个Git仓库]${gl_bai}"
+    done
+    
+    # 计算手动输入的索引
+    local manual_index=$((start_index + ${#git_parent_dirs[@]}))
+    echo -e "${gl_bufan}$manual_index.${gl_bai} 手动指定路径"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_huang}0.${gl_bai} 返回上一级选单"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 计算最大可选值
+    local max_choice=$manual_index
+    
+    # 读取用户选择
+    read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 [${gl_huang}0-$max_choice${gl_bai}]: ")" dir_choice
+    
+    # 处理选择
+    local SCAN_DIR=""
+    
+    if [[ "$dir_choice" =~ ^[0-9]+$ ]]; then
+        if [[ $dir_choice -eq 0 ]]; then
+            # 返回
+            return
+        elif [[ $dir_choice -le ${#preset_dirs[@]} ]]; then
+            # 选择预设目录
+            SCAN_DIR="${preset_dirs[$((dir_choice-1))]}"
+        elif [[ $dir_choice -le $((start_index - 1 + ${#git_parent_dirs[@]})) ]]; then
+            # 选择扫描到的Git父目录
+            local git_index=$((dir_choice - start_index))
+            SCAN_DIR="${git_parent_dirs[$git_index]}"
+        elif [[ $dir_choice -eq $manual_index ]]; then
+            # 手动指定路径
+            read -r -e -p "$(echo -e "${gl_bai}请输入自定义路径: ")" SCAN_DIR
+        else
+            log_error "无效选择"
+            return
+        fi
+    else
+        # 非数字输入，视为手动指定路径
+        SCAN_DIR="$dir_choice"
+    fi
+    
+    # 检查是否为空
+    if [[ -z "$SCAN_DIR" ]]; then
+        log_warn "路径不能为空"
+        return
+    fi
+    
+    # 检查目录是否存在
+    if [[ ! -d "$SCAN_DIR" ]]; then
+        log_warn "目录不存在: $SCAN_DIR"
+        return
+    fi
+    
+    echo -e "${gl_bai}扫描目录: ${gl_huang}$SCAN_DIR${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 开始修复Git安全目录
+    echo -e "${gl_bai}开始修复Git仓库的安全目录权限...${gl_bai}"
+    echo ""
+    
+    local count=0
+    local processed_count=0
+    
+    # 如果是预设目录，递归查找子目录中的Git仓库
+    local search_pattern=""
+    if [[ -d "$SCAN_DIR" ]] && ([[ " ${preset_dirs[@]} " =~ " $SCAN_DIR " ]] || [[ "$SCAN_DIR" == */compose ]]); then
+        # 预设目录，查找所有子目录
+        search_pattern="$SCAN_DIR/*/"
+    else
+        # 可能是Git仓库本身，或者特定目录
+        if [[ -d "$SCAN_DIR/.git" ]]; then
+            # 这是Git仓库
+            search_pattern="$SCAN_DIR"
+        else
+            # 其他目录，也尝试查找子目录
+            search_pattern="$SCAN_DIR/*/"
+        fi
+    fi
+    
+    # 使用数组存储找到的Git仓库
+    local git_repos=()
+    
+    if [[ "$search_pattern" == "$SCAN_DIR" ]]; then
+        # 单个Git仓库
+        if [[ -d "$SCAN_DIR/.git" ]]; then
+            git_repos+=("$SCAN_DIR")
+        fi
+    else
+        # 查找子目录
+        for dir in "$search_pattern"; do
+            [ -d "$dir" ] || continue
+            
+            local repo_dir="${dir%/}"  # 去掉尾部斜杠
+            
+            # 如果目录是git仓库
+            if [ -d "$repo_dir/.git" ]; then
+                git_repos+=("$repo_dir")
+            fi
+        done
+    fi
+    
+    # 如果没有找到，尝试深度搜索
+    if [[ ${#git_repos[@]} -eq 0 ]]; then
+        echo -e "${gl_bai}使用深度搜索查找Git仓库...${gl_bai}"
+        while IFS= read -r git_dir; do
+            [[ -z "$git_dir" ]] && continue
+            git_repos+=("$(dirname "$git_dir")")
+        done < <(find "$SCAN_DIR" -name ".git" -type d 2>/dev/null)
+    fi
+    
+    if [[ ${#git_repos[@]} -eq 0 ]]; then
+        echo -e "${gl_huang}在 $SCAN_DIR 中没有找到 Git 仓库${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        return
+    fi
+    
+    # 去重
+    local unique_git_repos=()
+    for repo in "${git_repos[@]}"; do
+        local exists=false
+        for existing_repo in "${unique_git_repos[@]}"; do
+            if [[ "$existing_repo" == "$repo" ]]; then
+                exists=true
+                break
+            fi
+        done
+        if ! $exists; then
+            unique_git_repos+=("$repo")
+        fi
+    done
+    
+    git_repos=("${unique_git_repos[@]}")
+    
+    echo -e "${gl_bai}找到 ${#git_repos[@]} 个 Git 仓库:${gl_bai}"
+    echo ""
+    
+    # 处理每个Git仓库
+    for i in "${!git_repos[@]}"; do
+        local repo_dir="${git_repos[i]}"
+        count=$((count + 1))
+        
+        echo -e "正在处理 [${gl_huang}$((i+1))/${#git_repos[@]}${gl_bai}]: ${gl_huang}$(basename "$repo_dir")${gl_bai}"
+        echo -e "  路径: ${gl_bai}$repo_dir${gl_bai}"
+        
+        # 添加为安全目录
+        if git config --global --add safe.directory "$repo_dir" 2>/dev/null; then
+            echo -e "  ${gl_lv}✓${gl_bai} 已添加为安全目录"
+            processed_count=$((processed_count + 1))
+        else
+            echo -e "  ${gl_hong}✗${gl_bai} 添加失败"
+        fi
+        
+        # 检查是否已经是安全目录
+        if git config --global --get-all safe.directory 2>/dev/null | grep -Fxq "$repo_dir"; then
+            echo -e "  ${gl_lv}✓${gl_bai} 已验证: 已在安全目录列表中"
+        fi
+        
+        echo ""
+    done
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bai}处理完成！${gl_bai}"
+    echo -e "${gl_bai}找到 Git 仓库: ${gl_huang}${#git_repos[@]}${gl_bai}"
+    echo -e "${gl_bai}成功修复: ${gl_lv}$processed_count${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 显示当前所有安全目录
+    echo -e "${gl_bai}当前所有安全目录:${gl_bai}"
+    git config --global --get-all safe.directory 2>/dev/null | while read -r safe_dir; do
+        echo -e "  ${gl_lv}•${gl_bai} $safe_dir"
+    done
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 返回主菜单
+    read -n 1 -s -r -p "$(echo -e "按任意键继续${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+    echo
+    
+    return 0
+}
+
 ###### 函数：显示 Git脚本
 linux_git_menu() {
     local fast_jump="$1" # 接收第一个参数
@@ -28735,6 +30958,7 @@ linux_git_menu() {
             echo -e "${gl_bufan}13. ${gl_bai}更改当前仓库标签     ${gl_bufan}14. ${gl_bai}个人Docker项目管理"
             echo -e "${gl_bufan}15. ${gl_bai}推送所有compose仓库  ${gl_bufan}16. ${gl_bai}拉取所有compose仓库"
             echo -e "${gl_bufan}17. ${gl_bai}Git克隆仓库          ${gl_bufan}18. ${gl_bai}克隆compose仓库"
+            echo -e "${gl_bufan}19. ${gl_bai}进入目录             ${gl_bufan}20. ${gl_bai}修复Git安全目录权限"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}66. ${gl_bai}安装Git              ${gl_bufan}99. ${gl_bai}卸载Git"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -28914,9 +31138,9 @@ linux_git_menu() {
             clone_custom_repo
             ;;
         18)
-            # 克隆Docker仓库
+            # 克隆compose仓库
             echo -e ""
-            echo -e "${gl_zi}>>> Git克隆Docker仓库${gl_bai}"
+            echo -e "${gl_zi}>>> Git克隆compose仓库${gl_bai}"
             echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             ls --color=auto -x
@@ -28961,6 +31185,15 @@ linux_git_menu() {
             }
             # 执行克隆
             git_clone_docker_projects
+            ;;
+        19)
+            # 进入目录
+            read -r -e -p "请输入目录名: " dirname
+            cd "$dirname" 2>/dev/null || echo "无法进入目录"
+            ;;
+        20)
+            # 修复Git安全目录权限
+            fix_git_safe_directories
             ;;
         66)
             # 安装Git
