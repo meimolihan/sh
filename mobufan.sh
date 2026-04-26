@@ -1,14 +1,18 @@
 #!/bin/bash
-sh_v="1.5.7"
+sh_v="1.5.9"
 
-gl_hui='\033[38;5;59m'   # 灰色
-gl_hong='\033[38;5;9m'   # 红色
-gl_lv='\033[38;5;10m'    # 绿色
-gl_huang='\033[38;5;11m' # 黄色
-gl_lan='\033[38;5;32m'   # 蓝色
-gl_bai='\033[38;5;15m'   # 白色
-gl_zi='\033[38;5;13m'    # 紫色
-gl_bufan='\033[38;5;14m' # 亮青色
+list_color_init() {
+    export gl_hui=$'\033[38;5;59m'   # 灰色
+    export gl_hong=$'\033[38;5;9m'   # 红色
+    export gl_lv=$'\033[38;5;10m'    # 绿色
+    export gl_huang=$'\033[38;5;11m' # 黄色
+    export gl_lan=$'\033[38;5;32m'   # 蓝色
+    export gl_bai=$'\033[38;5;15m'   # 白色
+    export gl_zi=$'\033[38;5;13m'    # 紫色
+    export gl_bufan=$'\033[38;5;14m' # 亮青色
+    export reset=$'\033[0m'          # 重置
+}
+list_color_init
 
 ###### 日志函数（中文标签，彩色输出）
 log_info() { echo -e "${gl_lan}[信息]${gl_bai} $*"; }
@@ -124,15 +128,15 @@ cancel_return() {
 
 ###### 列表公用颜色变量
 list_color_init() {
-    export list_color_gl_hui=$'\033[38;5;59m'
-    export list_color_gl_hong=$'\033[38;5;9m'
-    export list_color_gl_lv=$'\033[38;5;10m'
-    export list_color_gl_huang=$'\033[38;5;11m'
-    export list_color_gl_lan=$'\033[38;5;32m'
-    export list_color_gl_bai=$'\033[38;5;15m'
-    export list_color_gl_zi=$'\033[38;5;13m'
-    export list_color_gl_bufan=$'\033[38;5;14m'
-    export list_color_reset=$'\033[0m'
+    export gl_hui=$'\033[38;5;59m'
+    export gl_hong=$'\033[38;5;9m'
+    export gl_lv=$'\033[38;5;10m'
+    export gl_huang=$'\033[38;5;11m'
+    export gl_lan=$'\033[38;5;32m'
+    export gl_bai=$'\033[38;5;15m'
+    export gl_zi=$'\033[38;5;13m'
+    export gl_bufan=$'\033[38;5;14m'
+    export reset=$'\033[0m'
 }
 list_color_init
 
@@ -153,9 +157,9 @@ list_beautify_lsof_listen() {
     {
         # 表头（中文）
         printf "%s%-20s\t%-8s\t%-12s\t%-6s\t%-6s\t%-12s\t%-8s\t%-6s\t%-30s%s\n" \
-            "$list_color_gl_hui" "程序名" "PID" "用户" "FD" "类型" "设备" "大小" "节点" "监听地址" "$list_color_reset"
+            "$gl_hui" "程序名" "PID" "用户" "FD" "类型" "设备" "大小" "节点" "监听地址" "$reset"
         printf "%s%-20s\t%-8s\t%-12s\t%-6s\t%-6s\t%-12s\t%-8s\t%-6s\t%-30s%s\n" \
-            "$list_color_gl_hui" "--------------------" "--------" "------------" "------" "------" "------------" "--------" "------" "------------------------------" "$list_color_reset"
+            "$gl_hui" "--------------------" "--------" "------------" "------" "------" "------------" "--------" "------" "------------------------------" "$reset"
 
         # 执行 lsof，过滤 LISTEN，去重（保留首次出现）
         lsof -i -P -n 2>/dev/null | awk '
@@ -170,19 +174,19 @@ list_beautify_lsof_listen() {
             node = $8
             name = substr($0, index($0, $9))
             print command, pid, user, fd, type, device, size, node, name
-        }' | awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" -v blue="$list_color_gl_lan" -v cyan="$list_color_gl_bufan" \
-            -v purple="$list_color_gl_zi" -v gray="$list_color_gl_hui" -v white="$list_color_gl_bai" -v list_color_reset="$list_color_reset" '
+        }' | awk -v green="$gl_lv" -v yellow="$gl_huang" -v blue="$gl_lan" -v cyan="$gl_bufan" \
+            -v purple="$gl_zi" -v gray="$gl_hui" -v white="$gl_bai" -v reset="$reset" '
         BEGIN {FS=" "; OFS="\t"}
         {
-            print green $1 list_color_reset,
-                  yellow $2 list_color_reset,
-                  blue $3 list_color_reset,
-                  cyan $4 list_color_reset,
-                  purple $5 list_color_reset,
-                  gray $6 list_color_reset,
-                  gray $7 list_color_reset,
-                  gray $8 list_color_reset,
-                  white $9 list_color_reset
+            print green $1 reset,
+                  yellow $2 reset,
+                  blue $3 reset,
+                  cyan $4 reset,
+                  purple $5 reset,
+                  gray $6 reset,
+                  gray $7 reset,
+                  gray $8 reset,
+                  white $9 reset
         }'
     } | column_if_available
 }
@@ -231,85 +235,85 @@ list_beautify_cpu_info() {
             local value_color="$3"
             
             if [ -n "$value" ]; then
-                printf "%s%s\t%s%s%s\n" "$list_color_gl_lan" "$label" "$list_color_reset" "$value_color" "$value"
+                printf "%s%s\t%s%s%s\n" "$gl_lan" "$label" "$reset" "$value_color" "$value"
             fi
         }
         
         # 表头
-        printf "%s%s\t%s%s\n" "$list_color_gl_hui" "CPU 信息" "值" "$list_color_reset"
-        printf "%s%s\t%s%s\n" "$list_color_gl_hui" "----------------" "-----------------------------------------" "$list_color_reset"
+        printf "%s%s\t%s%s\n" "$gl_hui" "CPU 信息" "值" "$reset"
+        printf "%s%s\t%s%s\n" "$gl_hui" "----------------" "-----------------------------------------" "$reset"
         printf "\n"
         
         # 显示所有信息
-        show_row "架构" "$architecture" "$list_color_gl_huang"
-        show_row "CPU 操作模式" "$cpu_op_modes" "$list_color_gl_bufan"
-        show_row "字节序" "$byte_order" "$list_color_gl_lv"
-        show_row "地址大小" "$address_sizes" "$list_color_gl_bufan"
+        show_row "架构" "$architecture" "$gl_huang"
+        show_row "CPU 操作模式" "$cpu_op_modes" "$gl_bufan"
+        show_row "字节序" "$byte_order" "$gl_lv"
+        show_row "地址大小" "$address_sizes" "$gl_bufan"
         
         printf "\n"
         
-        show_row "制造商" "$vendor_id" "$list_color_gl_lv"
-        show_row "型号名称" "$model_name" "$list_color_gl_huang"
-        show_row "CPU 系列" "$cpu_family" "$list_color_gl_bufan"
-        show_row "型号" "$model" "$list_color_gl_zi"
-        show_row "步进" "$stepping" "$list_color_gl_bufan"
+        show_row "制造商" "$vendor_id" "$gl_lv"
+        show_row "型号名称" "$model_name" "$gl_huang"
+        show_row "CPU 系列" "$cpu_family" "$gl_bufan"
+        show_row "型号" "$model" "$gl_zi"
+        show_row "步进" "$stepping" "$gl_bufan"
         
         printf "\n"
         
         if [ -n "$cpu_mhz" ]; then
-            show_row "CPU 频率" "${cpu_mhz} MHz" "$list_color_gl_hong"
+            show_row "CPU 频率" "${cpu_mhz} MHz" "$gl_hong"
         fi
         if [ -n "$cpu_max_mhz" ]; then
-            show_row "最大频率" "${cpu_max_mhz} MHz" "$list_color_gl_huang"
+            show_row "最大频率" "${cpu_max_mhz} MHz" "$gl_huang"
         fi
         if [ -n "$cpu_min_mhz" ]; then
-            show_row "最小频率" "${cpu_min_mhz} MHz" "$list_color_gl_lv"
+            show_row "最小频率" "${cpu_min_mhz} MHz" "$gl_lv"
         fi
         if [ -n "$bogomips" ]; then
-            show_row "BogoMIPS" "$bogomips" "$list_color_gl_bufan"
+            show_row "BogoMIPS" "$bogomips" "$gl_bufan"
         fi
         
         printf "\n"
         
         if [ -n "$l1d_cache" ]; then
-            show_row "L1d 缓存" "$l1d_cache" "$list_color_gl_bufan"
+            show_row "L1d 缓存" "$l1d_cache" "$gl_bufan"
         fi
         if [ -n "$l1i_cache" ]; then
-            show_row "L1i 缓存" "$l1i_cache" "$list_color_gl_bufan"
+            show_row "L1i 缓存" "$l1i_cache" "$gl_bufan"
         fi
         if [ -n "$l2_cache" ]; then
-            show_row "L2 缓存" "$l2_cache" "$list_color_gl_huang"
+            show_row "L2 缓存" "$l2_cache" "$gl_huang"
         fi
         if [ -n "$l3_cache" ]; then
-            show_row "L3 缓存" "$l3_cache" "$list_color_gl_zi"
+            show_row "L3 缓存" "$l3_cache" "$gl_zi"
         fi
         
         printf "\n"
         
         if [ -n "$cpu_total" ]; then
-            show_row "逻辑处理器数" "$cpu_total" "$list_color_gl_hong"
+            show_row "逻辑处理器数" "$cpu_total" "$gl_hong"
         fi
         if [ -n "$sockets" ] && [ -n "$cores_per_socket" ]; then
             total_cores=$((sockets * cores_per_socket))
-            show_row "物理核心数" "$total_cores" "$list_color_gl_huang"
+            show_row "物理核心数" "$total_cores" "$gl_huang"
         fi
         if [ -n "$sockets" ]; then
-            show_row "插槽数" "$sockets" "$list_color_gl_bufan"
+            show_row "插槽数" "$sockets" "$gl_bufan"
         fi
         if [ -n "$cores_per_socket" ]; then
-            show_row "每插槽核心数" "$cores_per_socket" "$list_color_gl_huang"
+            show_row "每插槽核心数" "$cores_per_socket" "$gl_huang"
         fi
         if [ -n "$threads_per_core" ]; then
-            show_row "每核心线程数" "$threads_per_core" "$list_color_gl_lv"
+            show_row "每核心线程数" "$threads_per_core" "$gl_lv"
         fi
         
         printf "\n"
         
         if [ -n "$virtualization" ]; then
-            show_row "虚拟化" "$virtualization" "$list_color_gl_lv"
+            show_row "虚拟化" "$virtualization" "$gl_lv"
         fi
         if [ -n "$numa_nodes" ]; then
-            show_row "NUMA 节点数" "$numa_nodes" "$list_color_gl_huang"
+            show_row "NUMA 节点数" "$numa_nodes" "$gl_huang"
         fi
         
     } | column_if_available
@@ -320,13 +324,13 @@ list_beautify_cpu_info() {
 list_beautify_docker_images() {
     {
         # 表头
-        printf "%s%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "仓库" "标签" "镜像ID" "创建时间" "大小" "$list_color_reset"
+        printf "%s%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "仓库" "标签" "镜像ID" "创建时间" "大小" "$reset"
         # 分割线
-        printf "%s%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "----------" "----------" "----------" "----------" "----------" "$list_color_reset"
+        printf "%s%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "----------" "----------" "----------" "----------" "----------" "$reset"
         
         # 镜像数据
         docker image ls --format "{{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | \
-        awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" -v cyan="$list_color_gl_bufan" -v blue="$list_color_gl_lan" -v white="$list_color_gl_bai" -v list_color_reset="$list_color_reset" '
+        awk -v green="$gl_lv" -v yellow="$gl_huang" -v cyan="$gl_bufan" -v blue="$gl_lan" -v white="$gl_bai" -v reset="$reset" '
         BEGIN {FS="\t"; OFS="\t"}
         {
             id = substr($3, 1, 12)
@@ -347,7 +351,7 @@ list_beautify_docker_images() {
             gsub(/ second ago/, "秒前", time)
             gsub(/About /, "", time)
             
-            print green $1 list_color_reset, yellow $2 list_color_reset, cyan id list_color_reset, blue time list_color_reset, white $5 list_color_reset
+            print green $1 reset, yellow $2 reset, cyan id reset, blue time reset, white $5 reset
         }'
     } | column_if_available
 }
@@ -355,8 +359,8 @@ list_beautify_docker_images() {
 ###### 美化SSH配置列表
 list_beautify_sshd_config() {
     {
-        grep -vE '^#|^$' /etc/ssh/sshd_config | awk -v gray="$list_color_gl_hui" -v green="$list_color_gl_lv" \
-            -v yellow="$list_color_gl_huang" -v blue="$list_color_gl_lan" -v purple="$list_color_gl_zi" -v list_color_reset="$list_color_reset" '
+        grep -vE '^#|^$' /etc/ssh/sshd_config | awk -v gray="$gl_hui" -v green="$gl_lv" \
+            -v yellow="$gl_huang" -v blue="$gl_lan" -v purple="$gl_zi" -v reset="$reset" '
         BEGIN {
             info["Port"] = "SSH服务端口"
             info["ListenAddress"] = "监听IP地址"
@@ -391,8 +395,8 @@ list_beautify_sshd_config() {
             info["KexAlgorithms"] = "密钥交换算法"
             info["Match"] = "条件匹配规则配置"
 
-            print gray "配置项名称\t参数值\t中文说明" list_color_reset
-            print gray "----------\t--------\t-------------------------" list_color_reset
+            print gray "配置项名称\t参数值\t中文说明" reset
+            print gray "----------\t--------\t-------------------------" reset
         }
         {
             key = $1
@@ -404,7 +408,7 @@ list_beautify_sshd_config() {
 
             desc = (key in info) ? info[key] : "其他SSH配置项"
 
-            print color key "\t" yellow val "\t" blue desc list_color_reset
+            print color key "\t" yellow val "\t" blue desc reset
         }' | column_if_available
     }
 }
@@ -414,12 +418,12 @@ list_beautify_journal_log() {
     {
         LINE=${1:-50}
 
-        journalctl -n $LINE --no-pager 2>/dev/null | awk -v gray="$list_color_gl_hui" -v green="$list_color_gl_lv" \
-        -v yellow="$list_color_gl_huang" -v purple="$list_color_gl_zi" -v red="$list_color_gl_hong" -v list_color_reset="$list_color_reset" '
+        journalctl -n $LINE --no-pager 2>/dev/null | awk -v gray="$gl_hui" -v green="$gl_lv" \
+        -v yellow="$gl_huang" -v purple="$gl_zi" -v red="$gl_hong" -v reset="$reset" '
         BEGIN {
             OFS = "\t"
-            print gray "时间\t主机名\t服务进程\t日志信息" list_color_reset
-            print gray "----------\t----------\t----------\t----------------------------------------" list_color_reset
+            print gray "时间\t主机名\t服务进程\t日志信息" reset
+            print gray "----------\t----------\t----------\t----------------------------------------" reset
         }
         /^$/ { next }
         {
@@ -432,7 +436,7 @@ list_beautify_journal_log() {
             color = yellow
             if (msg ~ /error|Error|ERROR|fail|Fail|FAIL|warning|Warning|WARNING/) color = red
 
-            print gray time list_color_reset, purple host list_color_reset, green service list_color_reset, color msg list_color_reset
+            print gray time reset, purple host reset, green service reset, color msg reset
         }' | column_if_available
     }
 }
@@ -440,11 +444,11 @@ list_beautify_journal_log() {
 ###### Docker磁盘使用列表
 list_beautify_docker_system() {
     {
-        docker system df | awk -v gray="$list_color_gl_hui" -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" \
-            -v blue="$list_color_gl_lan" -v cyan="$list_color_gl_bufan" -v list_color_reset="$list_color_reset" '
+        docker system df | awk -v gray="$gl_hui" -v green="$gl_lv" -v yellow="$gl_huang" \
+            -v blue="$gl_lan" -v cyan="$gl_bufan" -v reset="$reset" '
         BEGIN {
-            print gray "类型\t总数\t活跃\t大小\t可回收" list_color_reset
-            print gray "----------\t--------\t--------\t----------\t----------" list_color_reset
+            print gray "类型\t总数\t活跃\t大小\t可回收" reset
+            print gray "----------\t--------\t--------\t----------\t----------" reset
         }
         NR > 1 {
             type = $1
@@ -463,14 +467,14 @@ list_beautify_docker_system() {
             else if (type == "Containers") color = yellow
             else if (type == "Local Volumes") color = blue
             else if (type == "Build Cache") color = cyan
-            else color = list_color_reset
-            print color type "\t" total "\t" active "\t" size "\t" reclaim list_color_reset
+            else color = reset
+            print color type "\t" total "\t" active "\t" size "\t" reclaim reset
         }' | column_if_available
     }
 }
 
 ###### 美化iptables中INPUT链规则列表（最终完美对齐版）
-list_beautify_docker_system() {
+list_beautify_iptables_input() {
     local chain="${1:-INPUT}"
     if ! iptables -L "$chain" -n --line-numbers &>/dev/null; then
         echo -e "\033[1;31m错误: 需要 root 权限或链 $chain 不存在\033[0m" >&2
@@ -534,18 +538,18 @@ list_beautify_docker_system() {
 list_beautify_iptables_all() {
     {
         if ! iptables -L -n --line-numbers &>/dev/null; then
-            echo -e "${list_color_gl_hong}错误: 需要 root 权限运行 iptables${list_color_reset}"
+            echo -e "${gl_hong}错误: 需要 root 权限运行 iptables${reset}"
             return 1
         fi
         
         output=$(iptables -L -n --line-numbers 2>/dev/null)
         if [ -z "$output" ]; then
-            echo -e "${list_color_gl_huang}iptables 规则为空${list_color_reset}"
+            echo -e "${gl_huang}iptables 规则为空${reset}"
             return 0
         fi
         
-        echo "$output" | awk -v green="$list_color_gl_lv" -v red="$list_color_gl_hong" -v yellow="$list_color_gl_huang" \
-            -v cyan="$list_color_gl_bufan" -v blue="$list_color_gl_lan" -v list_color_reset="$list_color_reset" '
+        echo "$output" | awk -v green="$gl_lv" -v red="$gl_hong" -v yellow="$gl_huang" \
+            -v cyan="$gl_bufan" -v blue="$gl_lan" -v reset="$reset" '
         /^Chain / {
             chain = $2
             policy = ""
@@ -599,7 +603,7 @@ list_beautify_iptables_all() {
                 policy_display = policy
                 policy_color = yellow
             }
-            printf "%s%s%s  策略: %s%s%s\n\n", chain_color, chain_display, list_color_reset, policy_color, policy_display, list_color_reset
+            printf "%s%s%s  策略: %s%s%s\n\n", chain_color, chain_display, reset, policy_color, policy_display, reset
         }
         
         /^[0-9]/ && NF >= 6 {
@@ -671,13 +675,13 @@ list_beautify_iptables_all() {
                 ports_display = ""
             }
             
-            printf "  %s%2s%s\t", yellow, num, list_color_reset
-            printf "%s%-8s%s\t", target_color, target_display, list_color_reset
-            printf "%s%s%s\t", cyan, addr, list_color_reset
+            printf "  %s%2s%s\t", yellow, num, reset
+            printf "%s%-8s%s\t", target_color, target_display, reset
+            printf "%s%s%s\t", cyan, addr, reset
             if (ports_display != "") {
-                printf "%s%s%s", yellow, ports_display, list_color_reset
+                printf "%s%s%s", yellow, ports_display, reset
             } else {
-                printf "%s", list_color_reset
+                printf "%s", reset
             }
             printf "\n"
         }'
@@ -688,21 +692,21 @@ list_beautify_iptables_all() {
 ###### Docker 网络列表（完整）
 list_beautify_docker_network() {
     {
-        printf "%s%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "网络ID" "名称" "驱动" "作用域" "$list_color_reset"
-        printf "%s%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "--------" "--------" "--------" "--------" "$list_color_reset"
+        printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "网络ID" "名称" "驱动" "作用域" "$reset"
+        printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "--------" "--------" "--------" "--------" "$reset"
 
         data=$(docker network ls --format "{{.ID}}\t{{.Name}}\t{{.Driver}}\t{{.Scope}}")
         if [ -z "$data" ]; then
-            printf "%s%s\t%s\t%s\t%s%s\n" "$list_color_gl_huang" "(无网络)" "(无网络)" "(无网络)" "(无网络)" "$list_color_reset"
+            printf "%s%s\t%s\t%s\t%s%s\n" "$gl_huang" "(无网络)" "(无网络)" "(无网络)" "(无网络)" "$reset"
         else
-            echo "$data" | awk -v cyan="$list_color_gl_bufan" -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" -v blue="$list_color_gl_lan" -v list_color_reset="$list_color_reset" '
+            echo "$data" | awk -v cyan="$gl_bufan" -v green="$gl_lv" -v yellow="$gl_huang" -v blue="$gl_lan" -v reset="$reset" '
             BEGIN {FS="\t"; OFS="\t"}
             {
                 id = substr($1, 1, 12)
                 name = $2
                 driver = $3
                 scope = $4
-                print cyan id list_color_reset, green name list_color_reset, yellow driver list_color_reset, blue scope list_color_reset
+                print cyan id reset, green name reset, yellow driver reset, blue scope reset
             }'
         fi
     } | column_if_available
@@ -711,13 +715,13 @@ list_beautify_docker_network() {
 ###### Docker 网络列表（简单）
 list_beautify_docker_network_info() {
     {
-        printf "%s%-20s\t%-20s\t%-15s%s\n" "$list_color_gl_hui" "容器名称" "网络名称" "IP地址" "$list_color_reset"
-        printf "%s%-20s\t%-20s\t%-15s%s\n" "$list_color_gl_hui" "--------------------" "--------------------" "---------------" "$list_color_reset"
+        printf "%s%-20s\t%-20s\t%-15s%s\n" "$gl_hui" "容器名称" "网络名称" "IP地址" "$reset"
+        printf "%s%-20s\t%-20s\t%-15s%s\n" "$gl_hui" "--------------------" "--------------------" "---------------" "$reset"
 
         container_ids=$(docker ps -q)
 
         if [ -z "$container_ids" ]; then
-            printf "%s%-20s\t%-20s\t%-15s%s\n" "$list_color_gl_huang" "(无运行中容器)" "" "" "$list_color_reset"
+            printf "%s%-20s\t%-20s\t%-15s%s\n" "$gl_huang" "(无运行中容器)" "" "" "$reset"
         else
             for container_id in $container_ids; do
                 inspect_output=$(docker inspect --format '{{ .Name }}{{ range $net, $conf := .NetworkSettings.Networks }} {{ $net }} {{ $conf.IPAddress }}{{ end }}' "$container_id")
@@ -731,10 +735,10 @@ list_beautify_docker_network_info() {
                     shift 2
                     printf "%s\t%s\t%s\n" "$container_name" "$network_name" "$ip_address"
                 done
-            done | awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" -v cyan="$list_color_gl_bufan" -v list_color_reset="$list_color_reset" '
+            done | awk -v green="$gl_lv" -v yellow="$gl_huang" -v cyan="$gl_bufan" -v reset="$reset" '
             BEGIN {FS="\t"; OFS="\t"}
             {
-                print green $1 list_color_reset, yellow $2 list_color_reset, cyan $3 list_color_reset
+                print green $1 reset, yellow $2 reset, cyan $3 reset
             }'
         fi
     } | column_if_available
@@ -743,11 +747,11 @@ list_beautify_docker_network_info() {
 ###### Docker 容器列表 （完整）
 list_beautify_docker_ps_full() {
     {
-        printf "%s%s\t%s\t%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "容器ID" "镜像" "命令" "创建时间" "状态" "端口" "名称" "$list_color_reset"
-        printf "%s%s\t%s\t%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "--------" "--------" "--------" "--------" "--------" "--------" "--------" "$list_color_reset"
+        printf "%s%s\t%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "容器ID" "镜像" "命令" "创建时间" "状态" "端口" "名称" "$reset"
+        printf "%s%s\t%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "--------" "--------" "--------" "--------" "--------" "--------" "--------" "$reset"
 
         docker ps -a --format "{{.ID}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}}\t{{.Status}}\t{{.Ports}}\t{{.Names}}" | \
-        awk -v cyan="$list_color_gl_bufan" -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" -v blue="$list_color_gl_lan" -v white="$list_color_gl_bai" -v list_color_reset="$list_color_reset" '
+        awk -v cyan="$gl_bufan" -v green="$gl_lv" -v yellow="$gl_huang" -v blue="$gl_lan" -v white="$gl_bai" -v reset="$reset" '
         BEGIN {FS="\t"; OFS="\t"}
         {
             id = substr($1, 1, 12)
@@ -790,7 +794,7 @@ list_beautify_docker_ps_full() {
             gsub(/ second ago/, "秒前", status)
             gsub(/About /, "", status)
 
-            print cyan id list_color_reset, blue image list_color_reset, white cmd list_color_reset, blue created list_color_reset, yellow status list_color_reset, white ports list_color_reset, green name list_color_reset
+            print cyan id reset, blue image reset, white cmd reset, blue created reset, yellow status reset, white ports reset, green name reset
         }'
     } | column_if_available
 }
@@ -798,17 +802,17 @@ list_beautify_docker_ps_full() {
 ###### Docker 卷列表
 list_beautify_docker_volume() {
     {
-        printf "%s%s\t%s%s\n" "$list_color_gl_hui" "驱动" "卷名" "$list_color_reset"
-        printf "%s%s\t%s%s\n" "$list_color_gl_hui" "--------" "--------" "$list_color_reset"
+        printf "%s%s\t%s%s\n" "$gl_hui" "驱动" "卷名" "$reset"
+        printf "%s%s\t%s%s\n" "$gl_hui" "--------" "--------" "$reset"
 
         data=$(docker volume ls --format "{{.Driver}}\t{{.Name}}")
         if [ -z "$data" ]; then
-            printf "%s%s\t%s%s\n" "$list_color_gl_huang" "(无卷)" "(无卷)" "$list_color_reset"
+            printf "%s%s\t%s%s\n" "$gl_huang" "(无卷)" "(无卷)" "$reset"
         else
-            echo "$data" | awk -v cyan="$list_color_gl_bufan" -v green="$list_color_gl_lv" -v list_color_reset="$list_color_reset" '
+            echo "$data" | awk -v cyan="$gl_bufan" -v green="$gl_lv" -v reset="$reset" '
             BEGIN {FS="\t"; OFS="\t"}
             {
-                print cyan $1 list_color_reset, green $2 list_color_reset
+                print cyan $1 reset, green $2 reset
             }'
         fi
     } | column_if_available
@@ -820,17 +824,17 @@ list_beautify_docker_stats() {
         data=$(docker stats --no-stream --format "{{.Container}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}" 2>/dev/null)
         
         if [ -z "$data" ]; then
-            printf "%s%s\n" "$list_color_gl_huang" "没有运行中的容器" "$list_color_reset"
+            printf "%s%s\n" "$gl_huang" "没有运行中的容器" "$reset"
             return
         fi
 
         printf "%s%-12s\t%-20s\t%-8s\t%-20s\t%-8s\t%-12s\t%-12s\t%-6s%s\n" \
-            "$list_color_gl_hui" "容器ID" "名称" "CPU%" "内存使用/限制" "内存%" "网络I/O" "块I/O" "PIDs" "$list_color_reset"
+            "$gl_hui" "容器ID" "名称" "CPU%" "内存使用/限制" "内存%" "网络I/O" "块I/O" "PIDs" "$reset"
         printf "%s%-12s\t%-20s\t%-8s\t%-20s\t%-8s\t%-12s\t%-12s\t%-6s%s\n" \
-            "$list_color_gl_hui" "------------" "--------------------" "--------" "--------------------" "--------" "------------" "------------" "------" "$list_color_reset"
+            "$gl_hui" "------------" "--------------------" "--------" "--------------------" "--------" "------------" "------------" "------" "$reset"
 
-        echo "$data" | awk -v cyan="$list_color_gl_bufan" -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" \
-            -v blue="$list_color_gl_lan" -v white="$list_color_gl_bai" -v list_color_reset="$list_color_reset" '
+        echo "$data" | awk -v cyan="$gl_bufan" -v green="$gl_lv" -v yellow="$gl_huang" \
+            -v blue="$gl_lan" -v white="$gl_bai" -v reset="$reset" '
         BEGIN {FS="\t"; OFS="\t"}
         {
             id = substr($1, 1, 12)
@@ -842,8 +846,8 @@ list_beautify_docker_stats() {
             block_io = $7
             pids = $8
 
-            print cyan id list_color_reset, green name list_color_reset, yellow cpu list_color_reset, blue mem_usage list_color_reset, \
-                  yellow mem_perc list_color_reset, white net_io list_color_reset, white block_io list_color_reset, white pids list_color_reset
+            print cyan id reset, green name reset, yellow cpu reset, blue mem_usage reset, \
+                  yellow mem_perc reset, white net_io reset, white block_io reset, white pids reset
         }'
     } | column_if_available
 }
@@ -852,24 +856,24 @@ list_beautify_docker_stats() {
 ###### 美化 Linux 磁盘列表（简化）
 list_beautify_disk_simple() {
     {
-        printf "%s%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "设备名" "大小" "文件系统" "挂载点" "$list_color_reset"
-        printf "%s%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "--------" "--------" "--------" "--------" "$list_color_reset"
+        printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "设备名" "大小" "文件系统" "挂载点" "$reset"
+        printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "--------" "--------" "--------" "--------" "$reset"
 
         data=$(lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT | grep -v "sr\|loop" | tail -n +2)
         if [ -z "$data" ]; then
-            printf "%s%s\t%s\t%s\t%s%s\n" "$list_color_gl_huang" "(无数据)" "(无数据)" "(无数据)" "(无数据)" "$list_color_reset"
+            printf "%s%s\t%s\t%s\t%s%s\n" "$gl_huang" "(无数据)" "(无数据)" "(无数据)" "(无数据)" "$reset"
         else
-            echo "$data" | sed 's/^[[:space:]]*//' | awk -v name_color="$list_color_gl_lan" \
-                                                         -v size_color="$list_color_gl_lv" \
-                                                         -v fstype_color="$list_color_gl_huang" \
-                                                         -v mount_color="$list_color_gl_bufan" \
-                                                         -v list_color_reset="$list_color_reset" '
+            echo "$data" | sed 's/^[[:space:]]*//' | awk -v name_color="$gl_lan" \
+                                                         -v size_color="$gl_lv" \
+                                                         -v fstype_color="$gl_huang" \
+                                                         -v mount_color="$gl_bufan" \
+                                                         -v reset="$reset" '
             {
                 printf "%s%s%s\t%s%s%s\t%s%s%s\t%s%s%s\n", 
-                    name_color, $1, list_color_reset,
-                    size_color, $2, list_color_reset,
-                    fstype_color, $3, list_color_reset,
-                    mount_color, $4, list_color_reset
+                    name_color, $1, reset,
+                    size_color, $2, reset,
+                    fstype_color, $3, reset,
+                    mount_color, $4, reset
             }'
         fi
     } | column_if_available
@@ -878,8 +882,8 @@ list_beautify_disk_simple() {
 ###### 美化Linux网卡信息列表（完整）
 list_beautify_nic_info() {
     {
-        printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "接口名" "状态" "IPv4地址" "MAC地址" "MTU" "速度" "$list_color_reset"
-        printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "--------" "--------" "------------------" "--------------------" "----" "----" "$list_color_reset"
+        printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "接口名" "状态" "IPv4地址" "MAC地址" "MTU" "速度" "$reset"
+        printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "--------" "--------" "------------------" "--------------------" "----" "----" "$reset"
 
         for nic in $(ls /sys/class/net 2>/dev/null); do
             state=$(cat /sys/class/net/$nic/operstate 2>/dev/null)
@@ -905,34 +909,34 @@ list_beautify_nic_info() {
             
             case $state in
                 "up")
-                    state_color=$list_color_gl_lv
-                    state_display="${state_color}up$list_color_reset"
+                    state_color=$gl_lv
+                    state_display="${state_color}up$reset"
                     ;;
                 "down")
-                    state_color=$list_color_gl_hui
-                    state_display="${state_color}down$list_color_reset"
+                    state_color=$gl_hui
+                    state_display="${state_color}down$reset"
                     ;;
                 "unknown")
-                    state_color=$list_color_gl_hong
-                    state_display="${state_color}unknown$list_color_reset"
+                    state_color=$gl_hong
+                    state_display="${state_color}unknown$reset"
                     ;;
                 *)
-                    state_color=$list_color_gl_huang
-                    state_display="${state_color}$state$list_color_reset"
+                    state_color=$gl_huang
+                    state_display="${state_color}$state$reset"
                     ;;
             esac
             
             printf "%s%s%s\t%s\t%s%s%s\t%s%s%s\t%s%s%s\t%s%s%s\n" \
-                "$list_color_gl_lan" "$nic" "$list_color_reset" \
+                "$gl_lan" "$nic" "$reset" \
                 "$state_display" \
-                "$list_color_gl_bufan" "$ipaddr" "$list_color_reset" \
-                "$list_color_gl_huang" "$mac" "$list_color_reset" \
-                "$list_color_gl_zi" "$mtu" "$list_color_reset" \
-                "$list_color_gl_hui" "$speed" "$list_color_reset"
+                "$gl_bufan" "$ipaddr" "$reset" \
+                "$gl_huang" "$mac" "$reset" \
+                "$gl_zi" "$mtu" "$reset" \
+                "$gl_hui" "$speed" "$reset"
         done
         
         if [ -z "$(ls /sys/class/net 2>/dev/null)" ]; then
-            printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hong" "(无网络接口)" "(无网络接口)" "(无网络接口)" "(无网络接口)" "(无网络接口)" "(无网络接口)" "$list_color_reset"
+            printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hong" "(无网络接口)" "(无网络接口)" "(无网络接口)" "(无网络接口)" "(无网络接口)" "(无网络接口)" "$reset"
         fi
     } | column_if_available
 }
@@ -940,20 +944,20 @@ list_beautify_nic_info() {
 ###### 美化 Linux 磁盘列表（完整）
 list_beautify_disk_full() {
     {
-        printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "文件系统" "容量" "已用" "可用" "使用百分比" "挂载点" "$list_color_reset"
-        printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "--------" "--------" "--------" "--------" "--------" "--------" "$list_color_reset"
+        printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "文件系统" "容量" "已用" "可用" "使用百分比" "挂载点" "$reset"
+        printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "--------" "--------" "--------" "--------" "--------" "--------" "$reset"
 
         data=$(df -hP | grep -v "tmpfs\|udev\|overlay" | tail -n +2)
         if [ -z "$data" ]; then
-            printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$list_color_gl_huang" "(无数据)" "(无数据)" "(无数据)" "(无数据)" "(无数据)" "(无数据)" "$list_color_reset"
+            printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_huang" "(无数据)" "(无数据)" "(无数据)" "(无数据)" "(无数据)" "(无数据)" "$reset"
         else
-            echo "$data" | awk -v fs_color="$list_color_gl_lan" \
-                                -v size_color="$list_color_gl_lv" \
-                                -v used_color="$list_color_gl_huang" \
-                                -v avail_color="$list_color_gl_bufan" \
-                                -v use_color="$list_color_gl_huang" \
-                                -v mount_color="$list_color_gl_hui" \
-                                -v list_color_reset="$list_color_reset" '
+            echo "$data" | awk -v fs_color="$gl_lan" \
+                                -v size_color="$gl_lv" \
+                                -v used_color="$gl_huang" \
+                                -v avail_color="$gl_bufan" \
+                                -v use_color="$gl_huang" \
+                                -v mount_color="$gl_hui" \
+                                -v reset="$reset" '
             BEGIN {
                 FS="[[:space:]]+";
                 OFS="\t"
@@ -969,12 +973,12 @@ list_beautify_disk_full() {
                     mount = mount " " $i
                 }
 
-                print fs_color filesystem list_color_reset,
-                      size_color size list_color_reset,
-                      used_color used list_color_reset,
-                      avail_color avail list_color_reset,
-                      use_color use_percent list_color_reset,
-                      mount_color mount list_color_reset
+                print fs_color filesystem reset,
+                      size_color size reset,
+                      used_color used reset,
+                      avail_color avail reset,
+                      use_color use_percent reset,
+                      mount_color mount reset
             }'
         fi
     } | column_if_available
@@ -983,11 +987,11 @@ list_beautify_disk_full() {
 ###### Docker 容器列表 （简单）
 list_beautify_docker_ps() {
     {
-        printf "%s%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "容器ID" "名称" "状态" "端口" "$list_color_reset"
-        printf "%s%s\t%s\t%s\t%s%s\n" "$list_color_gl_hui" "--------" "--------" "--------" "--------" "$list_color_reset"
+        printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "容器ID" "名称" "状态" "端口" "$reset"
+        printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "--------" "--------" "--------" "--------" "$reset"
 
         docker ps -a --format "{{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" | \
-        awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" -v cyan="$list_color_gl_bufan" -v blue="$list_color_gl_lan" -v white="$list_color_gl_bai" -v list_color_reset="$list_color_reset" '
+        awk -v green="$gl_lv" -v yellow="$gl_huang" -v cyan="$gl_bufan" -v blue="$gl_lan" -v white="$gl_bai" -v reset="$reset" '
         BEGIN {FS="\t"; OFS="\t"}
         {
             id = substr($1, 1, 12)
@@ -1011,7 +1015,7 @@ list_beautify_docker_ps() {
             gsub(/ second ago/, "秒前", status)
             gsub(/About /, "", status)
 
-            print cyan id list_color_reset, green name list_color_reset, yellow status list_color_reset, white ports list_color_reset
+            print cyan id reset, green name reset, yellow status reset, white ports reset
         }'
     } | column_if_available
 }
@@ -1019,16 +1023,16 @@ list_beautify_docker_ps() {
 ###### Docker 容器列表 （超极简）
 list_beautify_docker_ps_simple() {
     {
-        printf "%s%s\t%s%s\n" "$list_color_gl_hui" "容器ID" "名称" "$list_color_reset"
-        printf "%s%s\t%s%s\n" "$list_color_gl_hui" "--------" "--------" "$list_color_reset"
+        printf "%s%s\t%s%s\n" "$gl_hui" "容器ID" "名称" "$reset"
+        printf "%s%s\t%s%s\n" "$gl_hui" "--------" "--------" "$reset"
 
         docker ps -a --format "{{.ID}}\t{{.Names}}\t{{.Image}}" | \
-        awk -v cyan="$list_color_gl_bufan" -v green="$list_color_gl_lv" -v list_color_reset="$list_color_reset" '
+        awk -v cyan="$gl_bufan" -v green="$gl_lv" -v reset="$reset" '
         BEGIN {FS="\t"; OFS="\t"}
         {
             id = substr($1, 1, 12)
             name = $2
-            print cyan id list_color_reset, green name list_color_reset
+            print cyan id reset, green name reset
         }'
     } | column_if_available
 }
@@ -1036,8 +1040,8 @@ list_beautify_docker_ps_simple() {
 ###### 美化Linux用户列表
 list_beautify_user_info() {
     {
-        printf "%s%-24s\t%-34s\t%-20s\t%-10s%s\n" "$list_color_gl_hui" "用户名" "用户权限" "用户组" "sudo权限" "$list_color_reset"
-        printf "%s%-24s\t%-34s\t%-20s\t%-10s%s\n" "$list_color_gl_hui" "------------------------" "----------------------------------" "--------------------" "----------" "$list_color_reset"
+        printf "%s%-24s\t%-34s\t%-20s\t%-10s%s\n" "$gl_hui" "用户名" "用户权限" "用户组" "sudo权限" "$reset"
+        printf "%s%-24s\t%-34s\t%-20s\t%-10s%s\n" "$gl_hui" "------------------------" "----------------------------------" "--------------------" "----------" "$reset"
 
         while IFS=: read -r username _ _ _ _ homedir shell; do
             groups_info=$(groups "$username" 2>/dev/null | cut -d: -f2- | sed 's/^ //')
@@ -1052,10 +1056,10 @@ list_beautify_user_info() {
             fi
 
             printf "%s\t%s\t%s\t%s\n" "$username" "$homedir" "$groups_info" "$sudo_status"
-        done </etc/passwd | awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" -v blue="$list_color_gl_lan" -v cyan="$list_color_gl_bufan" -v list_color_reset="$list_color_reset" '
+        done </etc/passwd | awk -v green="$gl_lv" -v yellow="$gl_huang" -v blue="$gl_lan" -v cyan="$gl_bufan" -v reset="$reset" '
         BEGIN {FS="\t"; OFS="\t"}
         {
-            print green $1 list_color_reset, yellow $2 list_color_reset, blue $3 list_color_reset, cyan $4 list_color_reset
+            print green $1 reset, yellow $2 reset, blue $3 reset, cyan $4 reset
         }'
     } | column_if_available
 }
@@ -1063,13 +1067,13 @@ list_beautify_user_info() {
 ###### 美化 lspci 命令的函数
 list_beautify_pci_info() {
     {
-        printf "%s%s\t%s\t%s%s\n" "$list_color_gl_hui" "总线号" "设备类型" "设备描述" "$list_color_reset"
-        printf "%s%s\t%s\t%s%s\n" "$list_color_gl_hui" "-------" "----------------" "-------------------------------------------" "$list_color_reset"
+        printf "%s%s\t%s\t%s%s\n" "$gl_hui" "总线号" "设备类型" "设备描述" "$reset"
+        printf "%s%s\t%s\t%s%s\n" "$gl_hui" "-------" "----------------" "-------------------------------------------" "$reset"
         
         data=$(lspci 2>/dev/null)
         
         if [ -z "$data" ]; then
-            printf "%s%s\t%s\t%s%s\n" "$list_color_gl_hong" "(错误)" "(错误)" "无法执行 lspci 命令" "$list_color_reset"
+            printf "%s%s\t%s\t%s%s\n" "$gl_hong" "(错误)" "(错误)" "无法执行 lspci 命令" "$reset"
         else
             total_devices=$(echo "$data" | wc -l)
             
@@ -1087,56 +1091,56 @@ list_beautify_pci_info() {
                 
                 case "$device_type" in
                     "Host bridge"|"主机桥")
-                        type_color=$list_color_gl_lan
-                        type_display="${type_color}主机桥$list_color_reset"
+                        type_color=$gl_lan
+                        type_display="${type_color}主机桥$reset"
                         ;;
                     "VGA compatible controller"|"VGA兼容控制器")
-                        type_color=$list_color_gl_zi
-                        type_display="${type_color}VGA控制器$list_color_reset"
+                        type_color=$gl_zi
+                        type_display="${type_color}VGA控制器$reset"
                         ;;
                     "Ethernet controller"|"以太网控制器")
-                        type_color=$list_color_gl_lv
-                        type_display="${type_color}以太网卡$list_color_reset"
+                        type_color=$gl_lv
+                        type_display="${type_color}以太网卡$reset"
                         ;;
                     "Network controller"|"网络控制器")
-                        type_color=$list_color_gl_bufan
-                        type_display="${type_color}网络控制器$list_color_reset"
+                        type_color=$gl_bufan
+                        type_display="${type_color}网络控制器$reset"
                         ;;
                     "USB controller"|"USB控制器")
-                        type_color=$list_color_gl_huang
-                        type_display="${type_color}USB控制器$list_color_reset"
+                        type_color=$gl_huang
+                        type_display="${type_color}USB控制器$reset"
                         ;;
                     "SATA controller"|"SATA控制器")
-                        type_color=$list_color_gl_hong
-                        type_display="${type_color}SATA控制器$list_color_reset"
+                        type_color=$gl_hong
+                        type_display="${type_color}SATA控制器$reset"
                         ;;
                     "Audio device"|"音频设备")
-                        type_color=$list_color_gl_bufan
-                        type_display="${type_color}音频设备$list_color_reset"
+                        type_color=$gl_bufan
+                        type_display="${type_color}音频设备$reset"
                         ;;
                     "PCI bridge"|"PCI桥")
-                        type_color=$list_color_gl_hui
-                        type_display="${type_color}PCI桥$list_color_reset"
+                        type_color=$gl_hui
+                        type_display="${type_color}PCI桥$reset"
                         ;;
                     "Non-Volatile memory controller"|"非易失性内存控制器")
-                        type_color=$list_color_gl_hong
-                        type_display="${type_color}NVMe控制器$list_color_reset"
+                        type_color=$gl_hong
+                        type_display="${type_color}NVMe控制器$reset"
                         ;;
                     "SCSI storage controller"|"SCSI存储控制器")
-                        type_color=$list_color_gl_zi
-                        type_display="${type_color}SCSI控制器$list_color_reset"
+                        type_color=$gl_zi
+                        type_display="${type_color}SCSI控制器$reset"
                         ;;
                     "SMBus"|"系统管理总线")
-                        type_color=$list_color_gl_hui
-                        type_display="${type_color}系统管理总线$list_color_reset"
+                        type_color=$gl_hui
+                        type_display="${type_color}系统管理总线$reset"
                         ;;
                     "Communication controller"|"通信控制器")
-                        type_color=$list_color_gl_bufan
-                        type_display="${type_color}通信控制器$list_color_reset"
+                        type_color=$gl_bufan
+                        type_display="${type_color}通信控制器$reset"
                         ;;
                     *)
-                        type_color=$list_color_gl_huang
-                        type_display="${type_color}$device_type$list_color_reset"
+                        type_color=$gl_huang
+                        type_display="${type_color}$device_type$reset"
                         ;;
                 esac
                 
@@ -1145,13 +1149,13 @@ list_beautify_pci_info() {
                 fi
                 
                 printf "%s%s%s\t%s\t%s%s%s\n" \
-                    "$list_color_gl_lan" "$bus_id" "$list_color_reset" \
+                    "$gl_lan" "$bus_id" "$reset" \
                     "$type_display" \
-                    "$type_color" "$device_detail" "$list_color_reset"
+                    "$type_color" "$device_detail" "$reset"
             done
             
             printf "\n"
-            printf "%sPCI设备%s%s%s个%s\n" "$list_color_gl_hui" "$list_color_gl_lv" "$total_devices" "$list_color_gl_hui" "$list_color_reset"
+            printf "%sPCI设备%s%s%s个%s\n" "$gl_hui" "$gl_lv" "$total_devices" "$gl_hui" "$reset"
         fi
         
     } | column_if_available
@@ -1162,9 +1166,9 @@ list_beautify_login_log() {
     {
         # 中文表头（严格对齐）
         printf "%s%-12s\t%-10s\t%-18s\t%-25s\t%-20s%s\n" \
-            "$list_color_gl_hui" "用户名" "终端" "来源IP" "登录时间" "状态" "$list_color_reset"
+            "$gl_hui" "用户名" "终端" "来源IP" "登录时间" "状态" "$reset"
         printf "%s%-12s\t%-10s\t%-18s\t%-25s\t%-20s%s\n" \
-            "$list_color_gl_hui" "------------" "----------" "------------------" "-------------------------" "--------------------" "$list_color_reset"
+            "$gl_hui" "------------" "----------" "------------------" "-------------------------" "--------------------" "$reset"
 
         # 获取 last -n 10 并美化 + 中文翻译
         last -n 10 2>/dev/null | awk '
@@ -1177,14 +1181,14 @@ list_beautify_login_log() {
             if ($0 ~ /still logged in/) stat = "在线中"
             else if ($0 ~ /gone/) stat = "已退出"
             print user, tty, from, time, stat
-        }' | awk -v green="$list_color_gl_lv" \
-            -v yellow="$list_color_gl_huang" \
-            -v blue="$list_color_gl_lan" \
-            -v cyan="$list_color_gl_bufan" \
-            -v purple="$list_color_gl_zi" \
-            -v gray="$list_color_gl_hui" \
-            -v white="$list_color_gl_bai" \
-            -v reset="$list_color_reset" '
+        }' | awk -v green="$gl_lv" \
+            -v yellow="$gl_huang" \
+            -v blue="$gl_lan" \
+            -v cyan="$gl_bufan" \
+            -v purple="$gl_zi" \
+            -v gray="$gl_hui" \
+            -v white="$gl_bai" \
+            -v reset="$reset" '
         BEGIN { FS=" "; OFS="\t" }
         {
             printf "%s%-12s%s\t", green,    $1, reset
@@ -1204,21 +1208,21 @@ list_beautify_secure_log() {
     elif [ -f /var/log/auth.log ]; then
         log_file="/var/log/auth.log"
     else
-        echo -e "${list_color_gl_huang}未找到安全日志文件${list_color_reset}"
+        echo -e "${gl_huang}未找到安全日志文件${reset}"
         return 1
     fi
 
     {
         # 表头（中文）
         printf "%s%-24s\t%-12s\t%-15s\t%-20s\t%-60s%s\n" \
-            "$list_color_gl_hui" "时间" "主机名" "进程" "事件类型" "详细信息" "$list_color_reset"
+            "$gl_hui" "时间" "主机名" "进程" "事件类型" "详细信息" "$reset"
         printf "%s%-24s\t%-12s\t%-15s\t%-20s\t%-60s%s\n" \
-            "$list_color_gl_hui" "------------------------" "------------" "---------------" "--------------------" "------------------------------------------------------------" "$list_color_reset"
+            "$gl_hui" "------------------------" "------------" "---------------" "--------------------" "------------------------------------------------------------" "$reset"
 
-        tail -n 20 "$log_file" 2>/dev/null | awk -v gray="$list_color_gl_hui" \
-            -v purple="$list_color_gl_zi" -v green="$list_color_gl_lv" \
-            -v yellow="$list_color_gl_huang" -v red="$list_color_gl_hong" \
-            -v blue="$list_color_gl_lan" -v reset="$list_color_reset" '
+        tail -n 20 "$log_file" 2>/dev/null | awk -v gray="$gl_hui" \
+            -v purple="$gl_zi" -v green="$gl_lv" \
+            -v yellow="$gl_huang" -v red="$gl_hong" \
+            -v blue="$gl_lan" -v reset="$reset" '
         {
             # 检测日志格式
             # 格式1：ISO8601时间戳 (2026-03-27T13:17:01.720196+08:00)
@@ -1397,12 +1401,12 @@ list_beautify_secure_log() {
 list_beautify_mem_info() {
     {
         printf "%s%-18s\t%-12s\t%-12s\t%-12s\t%-12s%s\n" \
-            "$list_color_gl_hui" "内存类型" "总大小(MB)" "已用(MB)" "空闲(MB)" "使用率" "$list_color_reset"
+            "$gl_hui" "内存类型" "总大小(MB)" "已用(MB)" "空闲(MB)" "使用率" "$reset"
         printf "%s%-18s\t%-12s\t%-12s\t%-12s\t%-12s%s\n" \
-            "$list_color_gl_hui" "------------------" "------------" "------------" "------------" "------------" "$list_color_reset"
+            "$gl_hui" "------------------" "------------" "------------" "------------" "------------" "$reset"
 
-        free -m | awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" \
-            -v blue="$list_color_gl_lan" -v red="$list_color_gl_hong" -v reset="$list_color_reset" '
+        free -m | awk -v green="$gl_lv" -v yellow="$gl_huang" \
+            -v blue="$gl_lan" -v red="$gl_hong" -v reset="$reset" '
         function percent(u,t) { return t+0 == 0 ? "0%" : sprintf("%.1f%%", u*100/t) }
         NR==2 {   # 物理内存行
             total=$2; used=$3; free=$4
@@ -1429,14 +1433,14 @@ list_beautify_mem_info() {
 list_beautify_load_avg() {
     {
         printf "%s%-18s\t%-10s\t%-10s\t%-10s\t%-20s%s\n" \
-            "$list_color_gl_hui" "负载指标" "1分钟" "5分钟" "15分钟" "CPU逻辑核心数" "$list_color_reset"
+            "$gl_hui" "负载指标" "1分钟" "5分钟" "15分钟" "CPU逻辑核心数" "$reset"
         printf "%s%-18s\t%-10s\t%-10s\t%-10s\t%-20s%s\n" \
-            "$list_color_gl_hui" "------------------" "----------" "----------" "----------" "--------------------" "$list_color_reset"
+            "$gl_hui" "------------------" "----------" "----------" "----------" "--------------------" "$reset"
 
         cpu_num=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo "未知")
 
-        uptime | awk -v cpu="$cpu_num" -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" \
-            -v red="$list_color_gl_hong" -v blue="$list_color_gl_lan" -v reset="$list_color_reset" '
+        uptime | awk -v cpu="$cpu_num" -v green="$gl_lv" -v yellow="$gl_huang" \
+            -v red="$gl_hong" -v blue="$gl_lan" -v reset="$reset" '
         {
             m1 = $(NF-2); gsub(/,/, "", m1)
             m5 = $(NF-1); gsub(/,/, "", m5)
@@ -1460,9 +1464,9 @@ list_beautify_load_avg() {
 list_beautify_uptime() {
     {
         printf "%s%-18s\t%-30s\t%-20s%s\n" \
-            "$list_color_gl_hui" "开机时间" "运行时长" "当前时间" "$list_color_reset"
+            "$gl_hui" "开机时间" "运行时长" "当前时间" "$reset"
         printf "%s%-18s\t%-30s\t%-20s%s\n" \
-            "$list_color_gl_hui" "------------------" "------------------------------" "--------------------" "$list_color_reset"
+            "$gl_hui" "------------------" "------------------------------" "--------------------" "$reset"
 
         # 获取开机时间（兼容旧版）
         boot_time=$(uptime -s 2>/dev/null || who -b 2>/dev/null | awk '{print $3,$4}')
@@ -1480,17 +1484,17 @@ list_beautify_uptime() {
         now_time=$(date +"%Y-%m-%d %H:%M:%S")
 
         printf "%s%-18s%s\t%s%-30s%s\t%s%-20s%s\n" \
-            "$list_color_gl_lan" "${boot_time:-未知}" "$list_color_reset" \
-            "$list_color_gl_huang" "${up_time:-未知}" "$list_color_reset" \
-            "$list_color_gl_lv" "${now_time}" "$list_color_reset"
+            "$gl_lan" "${boot_time:-未知}" "$reset" \
+            "$gl_huang" "${up_time:-未知}" "$reset" \
+            "$gl_lv" "${now_time}" "$reset"
     } | column_if_available
 }
 
 ###### 美化系统所有服务（systemd）状态
 list_beautify_systemd_services() {
     {
-        printf "%s%-20s\t%-15s\t%-15s\t%-30s%s\n" "$list_color_gl_hui" "服务名" "状态" "启动类型" "描述" "$list_color_reset"
-        printf "%s%-20s\t%-15s\t%-15s\t%-30s%s\n" "$list_color_gl_hui" "--------------------" "---------------" "---------------" "------------------------------" "$list_color_reset"
+        printf "%s%-20s\t%-15s\t%-15s\t%-30s%s\n" "$gl_hui" "服务名" "状态" "启动类型" "描述" "$reset"
+        printf "%s%-20s\t%-15s\t%-15s\t%-30s%s\n" "$gl_hui" "--------------------" "---------------" "---------------" "------------------------------" "$reset"
 
         systemctl list-units --type=service --no-pager 2>/dev/null | awk '
         NR>1 && /\.service/ && !/systemd-/ {
@@ -1500,7 +1504,7 @@ list_beautify_systemd_services() {
             desc=substr($0, index($0,$5))
             gsub(/\.service/, "", srv)
             print srv, stat, startup, desc
-        }' | head -20 | awk -v green="$list_color_gl_lv" -v red="$list_color_gl_hong" -v yellow="$list_color_gl_huang" -v blue="$list_color_gl_lan" -v reset="$list_color_reset" '
+        }' | head -20 | awk -v green="$gl_lv" -v red="$gl_hong" -v yellow="$gl_huang" -v blue="$gl_lan" -v reset="$reset" '
         BEGIN {OFS="\t"}
         {
             c=green; if ($2=="failed") c=red; if ($2=="exited") c=yellow
@@ -1516,11 +1520,11 @@ list_beautify_systemd_services() {
 ###### 美化系统环境变量（常用）
 list_beautify_env() {
     {
-        printf "%s%-20s\t%-50s%s\n" "$list_color_gl_hui" "变量名" "变量值" "$list_color_reset"
-        printf "%s%-20s\t%-50s%s\n" "$list_color_gl_hui" "-----------------" "---------------------------------------------------" "$list_color_reset"
+        printf "%s%-20s\t%-50s%s\n" "$gl_hui" "变量名" "变量值" "$reset"
+        printf "%s%-20s\t%-50s%s\n" "$gl_hui" "-----------------" "---------------------------------------------------" "$reset"
 
         env | grep -E '^(PATH|USER|HOME|SHELL|PWD|LANG|HOSTNAME|TERM)' | sort | \
-            awk -v green="$list_color_gl_lv" -v blue="$list_color_gl_lan" -v reset="$list_color_reset" '
+            awk -v green="$gl_lv" -v blue="$gl_lan" -v reset="$reset" '
         BEGIN {FS="="; OFS="\t"}
         {
             key = $1
@@ -1537,13 +1541,13 @@ list_beautify_env() {
 list_beautify_crontab() {
     {
         printf "%s%-12s\t%-8s\t%-8s\t%-8s\t%-12s\t%-40s%s\n" \
-            "$list_color_gl_hui" "分钟" "小时" "日期" "月份" "星期" "执行命令" "$list_color_reset"
+            "$gl_hui" "分钟" "小时" "日期" "月份" "星期" "执行命令" "$reset"
         printf "%s%-12s\t%-8s\t%-8s\t%-8s\t%-12s\t%-40s%s\n" \
-            "$list_color_gl_hui" "------------" "--------" "--------" "--------" "------------" "----------------------------------------" "$list_color_reset"
+            "$gl_hui" "------------" "--------" "--------" "--------" "------------" "----------------------------------------" "$reset"
 
         crontab -l 2>/dev/null | grep -v '^#' | awk NF | \
-            awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" \
-                -v blue="$list_color_gl_lan" -v reset="$list_color_reset" '
+            awk -v green="$gl_lv" -v yellow="$gl_huang" \
+                -v blue="$gl_lan" -v reset="$reset" '
         BEGIN {OFS="\t"}
         {
             # 如果第一个字段是 @reboot 等特殊字符串，则将其放入分钟列，其余字段留空
@@ -1576,8 +1580,8 @@ list_beautify_crontab() {
 ###### 美化打开文件数（系统限制）
 list_beautify_file_limit() {
     {
-        printf "%s%-22s\t%-20s\t%-20s%s\n" "$list_color_gl_hui" "限制类型" "软限制" "硬限制" "$list_color_reset"
-        printf "%s%-22s\t%-20s\t%-20s%s\n" "$list_color_gl_hui" "----------------------" "--------------------" "--------------------" "$list_color_reset"
+        printf "%s%-22s\t%-20s\t%-20s%s\n" "$gl_hui" "限制类型" "软限制" "硬限制" "$reset"
+        printf "%s%-22s\t%-20s\t%-20s%s\n" "$gl_hui" "----------------------" "--------------------" "--------------------" "$reset"
 
         # 当前进程最大打开数
         soft_limit=$(ulimit -n)
@@ -1588,19 +1592,19 @@ list_beautify_file_limit() {
         used_fds=$(ls /proc/[0-9]*/fd 2>/dev/null | wc -l)
 
         printf "%s%-22s%s\t%s%-20s%s\t%s%-20s%s\n" \
-            "$list_color_gl_lan" "当前进程最大打开数" "$list_color_reset" \
-            "$list_color_gl_huang" "$soft_limit" "$list_color_reset" \
-            "$list_color_gl_hong" "$hard_limit" "$list_color_reset"
+            "$gl_lan" "当前进程最大打开数" "$reset" \
+            "$gl_huang" "$soft_limit" "$reset" \
+            "$gl_hong" "$hard_limit" "$reset"
 
         printf "%s%-22s%s\t%s%-20s%s\t%s%-20s%s\n" \
-            "$list_color_gl_lan" "系统全局最大打开数" "$list_color_reset" \
-            "$list_color_gl_huang" "$sys_max" "$list_color_reset" \
-            "$list_color_gl_hong" "无" "$list_color_reset"
+            "$gl_lan" "系统全局最大打开数" "$reset" \
+            "$gl_huang" "$sys_max" "$reset" \
+            "$gl_hong" "无" "$reset"
 
         printf "%s%-22s%s\t%s%-20s%s\t%s%-20s%s\n" \
-            "$list_color_gl_lan" "当前已使用文件句柄" "$list_color_reset" \
-            "$list_color_gl_lv" "$used_fds" "$list_color_reset" \
-            "$list_color_gl_hong" "$sys_max" "$list_color_reset"
+            "$gl_lan" "当前已使用文件句柄" "$reset" \
+            "$gl_lv" "$used_fds" "$reset" \
+            "$gl_hong" "$sys_max" "$reset"
     } | column_if_available
 }
 
@@ -1608,13 +1612,13 @@ list_beautify_file_limit() {
 list_beautify_mounts() {
     {
         printf "%s%-25s\t%-25s\t%-15s\t%-20s%s\n" \
-            "$list_color_gl_hui" "设备" "挂载点" "文件系统" "权限" "$list_color_reset"
+            "$gl_hui" "设备" "挂载点" "文件系统" "权限" "$reset"
         printf "%s%-25s\t%-25s\t%-15s\t%-20s%s\n" \
-            "$list_color_gl_hui" "-------------------------" "-------------------------" "---------------" "--------------------" "$list_color_reset"
+            "$gl_hui" "-------------------------" "-------------------------" "---------------" "--------------------" "$reset"
 
         mount | grep -E '^/dev/' | grep -v 'loop' | sort | \
-            awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" \
-                -v blue="$list_color_gl_lan" -v reset="$list_color_reset" '
+            awk -v green="$gl_lv" -v yellow="$gl_huang" \
+                -v blue="$gl_lan" -v reset="$reset" '
         BEGIN {OFS="\t"}
         {
             dev = $1
@@ -1634,12 +1638,12 @@ list_beautify_mounts() {
 ###### 美化系统所有用户组（前30个）
 list_beautify_group_info() {
     {
-        printf "%s%-20s\t%-10s\t%-30s%s\n" "$list_color_gl_hui" "组名" "GID" "组成员" "$list_color_reset"
-        printf "%s%-20s\t%-10s\t%-30s%s\n" "$list_color_gl_hui" "--------------------" "----------" "------------------------------" "$list_color_reset"
+        printf "%s%-20s\t%-10s\t%-30s%s\n" "$gl_hui" "组名" "GID" "组成员" "$reset"
+        printf "%s%-20s\t%-10s\t%-30s%s\n" "$gl_hui" "--------------------" "----------" "------------------------------" "$reset"
 
         cat /etc/group 2>/dev/null | head -30 | \
-            awk -v green="$list_color_gl_lv" -v yellow="$list_color_gl_huang" \
-                -v blue="$list_color_gl_lan" -v reset="$list_color_reset" '
+            awk -v green="$gl_lv" -v yellow="$gl_huang" \
+                -v blue="$gl_lan" -v reset="$reset" '
         BEGIN {FS=":"; OFS="\t"}
         {
             printf "%s%-20s%s\t%s%-10s%s\t%s%-30s%s\n",
@@ -1653,11 +1657,11 @@ list_beautify_group_info() {
 ###### 美化系统所有Shell列表
 list_beautify_shell_list() {
     {
-        printf "%s%-40s%s\n" "$list_color_gl_hui" "系统可用Shell路径" "$list_color_reset"
-        printf "%s%-40s%s\n" "$list_color_gl_hui" "----------------------------------------" "$list_color_reset"
+        printf "%s%-40s%s\n" "$gl_hui" "系统可用Shell路径" "$reset"
+        printf "%s%-40s%s\n" "$gl_hui" "----------------------------------------" "$reset"
 
         cat /etc/shells 2>/dev/null | grep -v '^#' | grep -v '^$' | \
-            awk -v green="$list_color_gl_lv" -v reset="$list_color_reset" '
+            awk -v green="$gl_lv" -v reset="$reset" '
         {
             printf "%s%-40s%s\n", green, $0, reset
         }'
@@ -1714,7 +1718,7 @@ list_beautify_all() {
 
     echo -e "${gl_zi}>>> iptables INPUT链规则${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    list_beautify_docker_system
+    list_beautify_iptables_input
     echo -e ""
 
     echo -e "${gl_zi}>>> iptables 所有规则（中文彩色）${gl_bai}"
@@ -1777,53 +1781,53 @@ list_beautify_all() {
     list_beautify_secure_log
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 系统内存与交换分区${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 系统内存与交换分区${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_mem_info
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 系统CPU平均负载${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 系统CPU平均负载${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_load_avg
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 系统开机运行时间${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 系统开机运行时间${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_uptime
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 系统服务状态（前20个）${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 系统服务状态（前20个）${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_systemd_services
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 常用环境变量${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 常用环境变量${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_env
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 当前用户定时任务 crontab${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 当前用户定时任务 crontab${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_crontab
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 文件句柄限制（系统/进程）${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 文件句柄限制（系统/进程）${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_file_limit
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 磁盘挂载点（真实设备）${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 磁盘挂载点（真实设备）${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_mounts
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 系统用户组（前30个）${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 系统用户组（前30个）${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_group_info
     echo -e ""
 
-    echo -e "${list_color_gl_zi}>>> 系统可用Shell列表${list_color_gl_bai}"
-    echo -e "${list_color_gl_bufan}————————————————————————————————————————————————${list_color_gl_bai}"
+    echo -e "${gl_zi}>>> 系统可用Shell列表${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_shell_list
     echo -e ""
 
@@ -3843,7 +3847,6 @@ list_dir_colorful() {
     return 0
 }
 
-###### 自定义仓库克隆函数
 ###### 自定义仓库克隆函数
 clone_custom_repo() {
     local repoUrl cleanUrl repoName overwrite
@@ -9798,10 +9801,10 @@ go_parent_directory() {
     if [[ "$(pwd)" != "/" ]]; then
         local current_path="$(pwd)"
         cd ..
-        echo -ne "${gl_lv}已返回上级目录: ${gl_huang}$(pwd) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+        echo -e "${gl_lv}已返回上级目录: ${gl_huang}$(pwd) ${gl_bai}"
         exit_animation    # 即将退出动画
     else
-        echo -ne "${gl_huang}已经在根目录: ${gl_hong}/ ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+        echo -e "${gl_huang}已经在根目录: ${gl_hong}/ ${gl_bai}"
         exit_animation    # 即将退出动画
     fi
 }
@@ -12330,7 +12333,7 @@ linux_iptables_panel() {
         echo -e "${gl_huang}>>> 当前iptables规则${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         # iptables -L INPUT
-        list_beautify_iptables_chain INPUT
+        list_beautify_iptables_input INPUT
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_zi}>>> 高级防火墙管理${gl_bai}"
@@ -13595,7 +13598,7 @@ iptables_manager() {
         check_iptables_status_enhanced
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         # iptables -L INPUT
-        list_beautify_iptables_chain INPUT
+        list_beautify_iptables_input INPUT
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_zi}>>> iptables规则管理${gl_bai}"
@@ -16778,6 +16781,7 @@ fix_dpkg() {
 }
 
 linux_update() {
+    exit_if_fnos_system || return 1  # 是FnOS退出
     clear
     root_use
     echo ""
@@ -16809,6 +16813,7 @@ linux_update() {
 }
 
 linux_clean() {
+    exit_if_fnos_system || return 1  # 是FnOS退出
     clear
     echo ""
     echo -e "${gl_zi}>>> 正在系统清理${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -17268,7 +17273,6 @@ linux_add_sshpasswd() {
 
 root_use() {
     clear
-
     if [ "$EUID" -ne 0 ]; then
         echo -e "\n${gl_zi}>>> ROOT登录检查${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -20985,9 +20989,6 @@ remote_rsync_manager() {
         esac
     done
 }
-
-
-
 
 ###### 修复nano
 fix_nano_config() {
@@ -38077,7 +38078,7 @@ image_converter_resize_batch() {
     read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}返回): ")" selection
 
     [[ -z "$selection" ]] && { cancel_empty "上一级选单"; return 1; }        # break 或 continue 或 return ，视上下文而定
-    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return; }     # break 或 continue 或 return ，视上下文而定
+    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return 1; }     # break 或 continue 或 return ，视上下文而定
 
     local selected_files=()
 
@@ -45432,7 +45433,6 @@ pve_running_status_simple() {
     # 检查命令是否存在
     if ! command -v qm &>/dev/null; then
         log_error "qm命令未找到，可能不在PVE节点上"
-        exit_animation    # 即将退出动画
         return 1
     fi
 
@@ -45956,22 +45956,33 @@ check_sriov_status() {
 is_pve_system() {
     if [ ! -d "/var/lib/vz/template/iso" ]; then
         echo -e ""
-        echo -en "\r${gl_hong}你这不是 ${gl_huang}PVE${gl_hong} 系统！即将退出${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+        echo -en "\r${gl_hong}你这不是 ${gl_huang}PVE${gl_hong} 系统！\c"
         exit_animation    # 即将退出动画
         return 1   # 检测失败，返回非0
     fi
     return 0       # 检测成功，返回0
 }
 
-###### 检查是不是 FnOS 系统
+###### 检查不是 FnOS 系统 退出
 is_fnos_system() {
     if [ ! -d "/vol1/1000" ]; then
         echo -e ""
-        echo -en "\r${gl_hong}你这不是 ${gl_huang}FnOS${gl_hong} 系统！即将退出${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+        echo -en "\r${gl_hong}你这不是 ${gl_huang}FnOS${gl_hong} 系统！\c"
         exit_animation    # 即将退出动画
         return 1   # 检测失败，返回非0
     fi
     return 0       # 检测成功，返回0
+}
+
+###### 检查是 FnOS 系统 退出
+exit_if_fnos_system() {
+    if [ -d "/vol1/1000" ]; then
+        echo -e ""
+        echo -en "\r${gl_hong}检测到 ${gl_huang}FnOS${gl_hong} 系统，不支持此系统! \c"
+        exit_animation
+        return 1
+    fi
+    return 0
 }
 
 ###### 检查是不是 iStoreOS 系统
@@ -47217,16 +47228,16 @@ show_compose_commands_menu() {
         docker inspect -f \
             '{{if .State.Running}}'"$gl_lv"'已启动'"$gl_bai"'{{else}}'"$gl_hui"'已停止'"$gl_bai"'{{end}}' \
             "$current_dir_name" >/dev/null 2>&1 && {
-            echo -e "${gl_bufan}当前容器状态：$(docker inspect -f \
+            echo -e "${gl_bai}当前容器状态：$(docker inspect -f \
                 '{{if .State.Running}}'"$gl_lv"'已启动'"$gl_bai"'{{else}}'"$gl_hui"'已停止'"$gl_bai"'{{end}}' \
                 "$current_dir_name")"
         } || {
-            printf "${gl_bufan}当前容器状态：${gl_hui}容器 ${gl_huang}%s${gl_hui} 不存在(${gl_huang}确保容器名和文件夹名称一致${gl_hui})${gl_bai}\n" "$current_dir_name"
+            printf "${gl_bai}当前容器状态：${gl_hui}容器 ${gl_huang}%s${gl_hui} 不存在(${gl_huang}确保容器名和文件夹名称一致${gl_hui})${gl_bai}\n" "$current_dir_name"
         }
 
         show_inner_url # 访问链接
 
-        echo -e "${gl_bufan}公网访问链接：${gl_lv}https://$current_dir_name.mobufan.eu.org:666${gl_bai}"
+        echo -e "${gl_bai}公网访问链接：${gl_lv}https://$current_dir_name.mobufan.eu.org:666${gl_bai}"
 
         # 检查容器状态并返回颜色代码
         check_container_status() {
@@ -47498,7 +47509,19 @@ show_compose_commands_menu() {
             break_end
             ;;
         26)
-            # 永久修改重启策略
+            local TARGET_SERVICE="$MAIN_SERVICE"
+            if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
+                local selected_service=$(select_service)
+                [[ -n "$selected_service" ]] && TARGET_SERVICE="$selected_service"
+            fi
+            
+            if [[ -z "$TARGET_SERVICE" ]]; then
+                echo -e "${gl_hong}未找到可修改的服务${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+                break_end
+                continue
+            fi
+            
             install yq
             clear
             echo -e ""
@@ -47507,43 +47530,38 @@ show_compose_commands_menu() {
 
             if [ ! -f "docker-compose.yml" ] && [ ! -f "docker-compose.yaml" ]; then
                 echo -e "${gl_hong}❌ 未找到 docker-compose.yml 文件${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
                 continue
             fi
 
-            # 选择配置文件
             compose_file="docker-compose.yml"
             if [ ! -f "$compose_file" ]; then
                 compose_file="docker-compose.yaml"
             fi
 
             echo -e "${gl_bai}配置文件: ${gl_huang}$compose_file${gl_bai}"
+            echo -e "${gl_bai}目标服务: ${gl_huang}$TARGET_SERVICE${gl_bai}"
             echo -e ""
 
-            # 显示当前配置（过滤掉注释行）
             echo -e "${gl_huang}当前配置:${gl_bai}"
 
-            # 方法1: 使用grep过滤掉注释行
             if command -v yq &>/dev/null; then
-                # 如果有yq工具，可以更好地解析yaml
-                yq e '.services.tvhelper' "$compose_file" 2>/dev/null || {
+                yq e ".services.$TARGET_SERVICE" "$compose_file" 2>/dev/null || {
                     echo -e "${gl_bai}使用grep过滤注释行:${gl_bai}"
-                    grep -A 20 "^\s*tvhelper:" "$compose_file" | grep -v "^\s*#" | head -15
+                    grep -A 20 "^\s*$TARGET_SERVICE:" "$compose_file" | grep -v "^\s*#" | head -15
                 }
             else
-                # 使用grep过滤掉注释行
-                echo -e "${gl_bai}服务 tvhelper 的配置:${gl_bai}"
-                grep -A 20 "^\s*tvhelper:" "$compose_file" | grep -v "^\s*#" | head -15
+                echo -e "${gl_bai}服务 $TARGET_SERVICE 的配置:${gl_bai}"
+                grep -A 20 "^\s*$TARGET_SERVICE:" "$compose_file" | grep -v "^\s*#" | head -15
             fi
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e ""
 
-            # 显示当前重启策略
-            current_restart=$(grep -A 10 "^\s*tvhelper:" "$compose_file" | grep "^\s*restart:" | head -1 | sed 's/^\s*restart:\s*//' || echo "未设置")
-            echo -e "${gl_bai}当前重启策略: ${gl_huang}${current_restart:-未设置}${gl_bai}"
+            current_restart=$(grep -A 10 "^\s*$TARGET_SERVICE:" "$compose_file" | grep "^\s*restart:" | head -1 | sed 's/^\s*restart:\s*//' || echo "未设置")
+            echo -e "${gl_bai}当前重启策略: ${gl_lv}${current_restart:-未设置}${gl_bai}"
 
-            # 重启策略选项
             echo -e "${gl_huang}>>> 请选择重启策略:${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}1.  ${gl_lv}no${gl_bai} - 不自动重启 (默认)"
@@ -47564,73 +47582,59 @@ show_compose_commands_menu() {
             3) new_policy="on-failure" ;;
             4) new_policy="unless-stopped" ;;
             5)
-                read -r -e -p "$(echo -e "${gl_bai}请输入自定义策略${gl_huang}on-failure:3${gl_bai}(${gl_huang}0${gl_bai}返回)"：)" new_policy
-                [ "$new_policy" == "0" ] && { cancel_return "上一级选单"; continue; }    # break 或 continue 或 return ，视上下文而定
+                read -r -e -p "$(echo -e "${gl_bai}请输入自定义策略${gl_huang}on-failure:3${gl_bai}(${gl_huang}0${gl_bai}返回): ")" new_policy
+                [ "$new_policy" == "0" ] && { cancel_return "上一级选单"; continue; }
                 ;;
-            0) cancel_return; continue ;;      # 返回到上一级菜单
-            00 | 000 | 0000) exit_script ;;    # 感谢使用，再见！
-            *) handle_invalid_input ;;         # 无效的输入,请重新输入!
+            0) cancel_return; continue ;;
+            00|000|0000) exit_script ;;
+            *) handle_invalid_input ;;
             esac
 
-            # 备份原文件
-            # backup_file="$compose_file.backup.$(date +%Y%m%d%H%M%S)"
-            # cp "$compose_file" "$backup_file"
-            # echo -e "${gl_bai}已备份原文件: ${gl_huang}$backup_file${gl_bai}"
-
             echo -e ""
-            # 修改重启策略
             if grep -q "^\s*restart:" "$compose_file"; then
-                # 如果已存在 restart 行，则替换
                 if sed -i "s/^\(\s*\)restart:.*/\1restart: $new_policy/" "$compose_file"; then
                     echo -e "${gl_lv}✓ 已更新重启策略${gl_bai}"
                 else
                     echo -e "${gl_hong}✗ 更新重启策略失败${gl_bai}"
                 fi
             else
-                # 如果不存在，在 tvhelper 服务下添加
-                if grep -q "^\s*tvhelper:" "$compose_file"; then
-                    # 在 tvhelper 服务下添加 restart 配置
-                    # 找到 tvhelper 的行号
-                    line_num=$(grep -n "^\s*tvhelper:" "$compose_file" | head -1 | cut -d: -f1)
+                if grep -q "^\s*$TARGET_SERVICE:" "$compose_file"; then
+                    line_num=$(grep -n "^\s*$TARGET_SERVICE:" "$compose_file" | head -1 | cut -d: -f1)
                     if [ -n "$line_num" ]; then
-                        # 在 tvhelper 下添加 restart 配置
                         sed -i "${line_num}a\ \ \ \ restart: $new_policy" "$compose_file"
                         echo -e "${gl_lv}✓ 已添加重启策略${gl_bai}"
                     else
-                        echo -e "${gl_hong}✗ 未找到 tvhelper 服务定义${gl_bai}"
+                        echo -e "${gl_hong}✗ 未找到 $TARGET_SERVICE 服务定义${gl_bai}"
                     fi
                 else
-                    echo -e "${gl_hong}✗ 未找到 tvhelper 服务定义${gl_bai}"
+                    echo -e "${gl_hong}✗ 未找到 $TARGET_SERVICE 服务定义${gl_bai}"
                 fi
             fi
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-            # 显示修改后的配置（过滤掉注释行）
             echo -e "${gl_huang}修改后的配置:${gl_bai}"
             if command -v yq &>/dev/null; then
-                yq e '.services.tvhelper' "$compose_file" 2>/dev/null || {
+                yq e ".services.$TARGET_SERVICE" "$compose_file" 2>/dev/null || {
                     echo -e "${gl_bai}使用grep显示修改后的配置:${gl_bai}"
-                    grep -A 20 "^\s*tvhelper:" "$compose_file" | grep -v "^\s*#" | head -20
+                    grep -A 20 "^\s*$TARGET_SERVICE:" "$compose_file" | grep -v "^\s*#" | head -20
                 }
             else
-                echo -e "${gl_bai}服务 tvhelper 的配置:${gl_bai}"
-                grep -A 20 "^\s*tvhelper:" "$compose_file" | grep -v "^\s*#" | head -20
+                echo -e "${gl_bai}服务 $TARGET_SERVICE 的配置:${gl_bai}"
+                grep -A 20 "^\s*$TARGET_SERVICE:" "$compose_file" | grep -v "^\s*#" | head -20
             fi
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-            # 检查容器是否在运行
-            if docker inspect tvhelper >/dev/null 2>&1; then
-                # 询问是否更新运行中的容器
+            if docker inspect "$TARGET_SERVICE" >/dev/null 2>&1; then
                 echo -e ""
-                echo -e "${gl_huang}检测到容器 tvhelper 正在运行${gl_bai}"
+                echo -e "${gl_huang}检测到容器 $TARGET_SERVICE 正在运行${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}是否立即更新容器的重启策略？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" update_now
 
                 if [[ "$update_now" =~ ^[Yy]$ ]]; then
                     echo -e "${gl_bai}更新容器重启策略${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                    if docker update --restart="$new_policy" tvhelper >/dev/null 2>&1; then
+                    if docker update --restart="$new_policy" "$TARGET_SERVICE" >/dev/null 2>&1; then
                         echo -e "${gl_lv}✓ 容器重启策略已更新${gl_bai}"
                     else
                         echo -e "${gl_hong}✗ 容器重启策略更新失败${gl_bai}"
@@ -47638,10 +47642,9 @@ show_compose_commands_menu() {
                 else
                     echo -e "${gl_huang}注意: 配置文件已修改，但容器重启策略未更新${gl_bai}"
                     echo -e "${gl_bai}如需应用到容器，请手动执行:${gl_bai}"
-                    echo -e "${gl_lv}docker update --restart=$new_policy tvhelper${gl_bai}"
+                    echo -e "${gl_lv}docker update --restart=$new_policy $TARGET_SERVICE${gl_bai}"
                 fi
 
-                # 询问是否重新创建容器
                 echo -e ""
                 echo -e "${gl_huang}是否重新创建容器以应用配置？${gl_bai}"
                 echo -e "${gl_bai}重新创建容器会停止并重新启动容器，但会保留数据卷${gl_bai}"
@@ -47663,7 +47666,7 @@ show_compose_commands_menu() {
                     echo -e "${gl_bai}手动执行: ${gl_lv}docker-compose down && docker-compose up -d${gl_bai}"
                 fi
             else
-                echo -e "${gl_huang}容器 tvhelper 未运行${gl_bai}"
+                echo -e "${gl_huang}容器 $TARGET_SERVICE 未运行${gl_bai}"
                 echo -e "${gl_bai}下次启动容器时会应用新的重启策略${gl_bai}"
             fi
 
@@ -54531,12 +54534,7 @@ uninstall_docker_environment() {
         echo -e ""
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_warn "Docker 未安装，无需卸载"
-        echo -ne "\r${gl_hong}2${gl_bai} 秒后自动退出${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        sleep_fractional 1
-        echo -ne "\r${gl_huang}1${gl_bai} 秒后自动退出${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        sleep_fractional 1
-        echo -e "\r${gl_lv}0${gl_bai} 秒后自动退出${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        exit_animation
         return 1
     fi
     echo -e ""
@@ -55147,10 +55145,6 @@ download_docker_projects() {
 
 ###### 备份 Compose 项目
 backup_compose_project() {
-    # 尝试初始化回收站
-    if [[ -z "$TRASH_CMD" ]]; then
-        install_trash
-    fi
 
     cd /vol1/1000/compose
 
@@ -55215,6 +55209,7 @@ backup_compose_project() {
         
         display_horizontal_list "${list[@]}"
 
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_zi}>>> Compose 项目备份模式${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -56583,6 +56578,8 @@ git_safe_push() {
         log_error "Git 用户名或邮箱未配置，请先配置。"
         echo -e "       ${gl_huang}git config --global user.name \"Your Name\"${gl_bai}"
         echo -e "       ${gl_huang}git config --global user.email \"your.email@example.com\"${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
         return 2
     fi
 
@@ -56592,36 +56589,136 @@ git_safe_push() {
     echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
     repo_dir=$(basename "$(pwd)")
     echo -e "${gl_bai}当前项目名称: ${gl_huang}${repo_dir} ${gl_bai}仓库${gl_bai}"
+    echo -e "${gl_bai}当前分支: ${gl_lv}$(git branch --show-current 2>/dev/null)${gl_bai}"
+    
+    # 检查远程仓库
+    if ! git remote | grep -q .; then
+        log_error "没有配置远程仓库"
+        echo -e "       ${gl_huang}请先添加远程仓库: git remote add origin <repository-url>${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
+        return 1
+    fi
+    
+    echo -e "${gl_bai}远程仓库: ${gl_lv}$(git remote -v | head -1)${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    ls --color=auto -xa
+    
+    # 检查当前状态
+    log_info "检查当前 Git 状态${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bai}状态:${gl_bai}"
+    git status --short 2>/dev/null || echo -e "  ${gl_huang}无法获取 Git 状态${gl_bai}"
+    
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-    # 2. 添加并检查变更
-    log_info "正在添加所有更改到暂存区${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    git add .
-
-    if [[ -z $(git status --porcelain) ]]; then
-        log_ok "无变更，无需提交"
-        return 0
+    
+    # 1. 检查是否有任何更改（包括已暂存和未暂存）
+    local status_output
+    status_output=$(git status --porcelain 2>/dev/null)
+    
+    if [[ -z "$status_output" ]]; then
+        # 2. 没有本地更改，检查是否有未推送的提交
+        local ahead_count=0
+        if git rev-parse @{u} >/dev/null 2>&1; then
+            ahead_count=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+        fi
+        
+        if [[ "$ahead_count" -gt 0 ]]; then
+            log_info "有 ${gl_huang}${ahead_count}${gl_lan} 个已提交但未推送的更改"
+        else
+            log_ok "无变更，无需提交"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
+            return 0
+        fi
+    else
+        # 3. 有本地更改，分析更改类型
+        local has_staged_changes=false
+        local has_unstaged_changes=false
+        local has_untracked_files=false
+        
+        # 逐行分析状态
+        while IFS= read -r line; do
+            if [[ -z "$line" ]]; then
+                continue
+            fi
+            
+            # 获取状态标记
+            local staged="${line:0:1}"
+            local unstaged="${line:1:1}"
+            
+            # 检查是否有已暂存的更改
+            if [[ "$staged" != " " ]] && [[ "$staged" != "?" ]]; then
+                has_staged_changes=true
+            fi
+            
+            # 检查是否有未暂存的更改
+            if [[ "$unstaged" != " " ]] && [[ "$unstaged" != "?" ]]; then
+                has_unstaged_changes=true
+            fi
+            
+            # 检查是否有未跟踪的文件
+            if [[ "$staged" == "?" ]] && [[ "$unstaged" == "?" ]]; then
+                has_untracked_files=true
+            fi
+        done <<< "$status_output"
+        
+        # 4. 处理不同类型的更改
+        if [[ "$has_unstaged_changes" == true ]] || [[ "$has_untracked_files" == true ]]; then
+            log_info "正在添加所有未跟踪/修改的文件到暂存区${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            git add .
+            
+            if [[ $? -ne 0 ]]; then
+                log_error "添加文件失败"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+                break_end
+                return 3
+            fi
+            
+            # 重新检查是否有已暂存的更改
+            has_staged_changes=true
+        fi
+        
+        # 5. 提交更改
+        if [[ "$has_staged_changes" == true ]]; then
+            # 显示将要提交的更改
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            log_info "将要提交的更改:${gl_bai}"
+            git status --short
+            
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            log_info "正在提交更改${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            git commit -m "update $(date '+%Y-%m-%d %H:%M:%S')"
+            
+            if [[ $? -ne 0 ]]; then
+                log_error "提交失败，请检查 Git 状态。"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+                break_end
+                return 4
+            fi
+        fi
     fi
-
-    # 3. 提交
-    log_info "正在提交更改${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    git commit -m "update"
-    if [[ $? -ne 0 ]]; then
-        log_error "提交失败，请检查 Git 状态。"
-        return 3
+    
+    # 6. 检查是否有未推送的提交
+    local ahead_count=0
+    if git rev-parse @{u} >/dev/null 2>&1; then
+        ahead_count=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
     fi
-
-    # 4. 推送
-    log_info "正在推送到远程仓库${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    git push
-    if [[ $? -ne 0 ]]; then
-        log_error "推送失败，请检查网络连接或远程仓库配置。"
-        return 4
+    
+    # 7. 推送更改
+    if [[ "$ahead_count" -gt 0 ]]; then
+        log_info "正在推送到远程仓库${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        git push
+        if [[ $? -ne 0 ]]; then
+            log_error "推送失败，请检查网络连接或远程仓库配置。"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
+            return 5
+        fi
+        
+        log_ok "推送成功！"
+    else
+        log_ok "部署成功！"
     fi
-
-    log_ok "部署成功！"
+    
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
     return 0
@@ -56640,67 +56737,208 @@ git_safe_pull() {
     if [[ -z $branch ]]; then
         branch=$(git symbolic-ref --short HEAD 2>/dev/null) || {
             log_error "无法获取当前分支信息，请确保你在某个分支上。"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
             return 2
         }
     fi
 
+    # 获取上游分支信息
+    local upstream_branch=$(git rev-parse --abbrev-ref "@{upstream}" 2>/dev/null)
+    
     echo -e ""
-    echo -e "${gl_zi}>>> 拉取当前项目更新${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_zi}>>> 拉取当前项目更新${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 显示仓库信息
     echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
     repo_dir=$(basename "$(pwd)")
     echo -e "${gl_bai}当前项目名称: ${gl_huang}${repo_dir} ${gl_bai}仓库${gl_bai}"
+    echo -e "${gl_bai}当前分支: ${gl_lv}${branch}${gl_bai}"
+    
+    if [[ -n "$upstream_branch" ]]; then
+        echo -e "${gl_bai}上游分支: ${gl_lv}${upstream_branch}${gl_bai}"
+    else
+        echo -e "${gl_bai}上游分支: ${gl_huang}未设置${gl_bai}"
+    fi
+    
+    echo -e "${gl_bai}远程名称: ${gl_lv}${remote}${gl_bai}"
+    
+    # 显示远程信息
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    ls --color=auto -xa
+    log_info "检查远程仓库信息${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    
+    if git remote get-url "$remote" &>/dev/null; then
+        echo -e "${gl_bai}远程仓库URL: ${gl_lv}$(git remote get-url "$remote")${gl_bai}"
+    else
+        echo -e "${gl_bai}远程仓库URL: ${gl_huang}未配置${gl_bai}"
+    fi
+    
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    log_info "当前分支：${branch}"
-    log_info "正在检查远程更新${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    log_info "当前工作目录内容:${gl_bai}"
+    ls --color=auto -lha | head -20
+    echo -e "${gl_huang}(显示前20个文件/目录)${gl_bai}"
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    
+    # 检查工作目录状态
+    log_info "检查工作目录状态${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    local status_output=$(git status --short 2>/dev/null)
+    if [[ -n "$status_output" ]]; then
+        echo -e "${gl_bai}当前有未提交的更改:${gl_bai}"
+        echo -e "${status_output}" | while IFS= read -r line; do
+            echo -e "  ${gl_huang}${line}${gl_bai}"
+        done
+        
+        read -r -e -p "$(echo -e "${gl_huang}有未提交的更改，是否继续拉取? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" continue_pull
+        
+        if [[ ! "$continue_pull" =~ ^[Yy]$ ]]; then
+            log_warn "已取消拉取操作"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
+            return 0
+        fi
+    else
+        log_ok "工作目录干净，可以安全拉取"
+    fi
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     # 2. 拉取最新远程引用
     log_info "正在拉取最新的远程信息${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    git fetch "$remote" || {
+    echo -e "${gl_bai}执行: git fetch ${gl_huang}${remote}${gl_bai}"
+    
+    if git fetch "$remote"; then
+        log_ok "远程信息获取成功"
+        
+        # 显示获取到的分支信息
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_info "远程分支更新:${gl_bai}"
+        git branch -r | head -10 | while IFS= read -r remote_branch; do
+            echo -e "  ${gl_lv}${remote_branch}${gl_bai}"
+        done
+        echo -e "${gl_huang}(显示前10个远程分支)${gl_bai}"
+    else
         log_error "git fetch 失败。"
+        echo -e "${gl_bai}可能原因:${gl_bai}"
+        echo -e "  ${gl_huang}1. 网络连接问题${gl_bai}"
+        echo -e "  ${gl_huang}2. 远程仓库不存在${gl_bai}"
+        echo -e "  ${gl_huang}3. 权限不足${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         break_end
         return 3
-    }
+    fi
 
     # 3. 获取三段式提交哈希
-    local_commit=$(git rev-parse @) || return 4
+    local_commit=$(git rev-parse @) || {
+        log_error "无法获取本地提交哈希"
+        return 4
+    }
+    
     remote_commit=$(git rev-parse "@{u}" 2>/dev/null) || {
-        log_error "本地分支未关联远程分支，请先执行："
-        echo -e "       ${gl_huang}git branch --set-upstream-to=${remote}/${branch} ${branch}${gl_bai}"
+        log_error "本地分支未关联远程分支"
+        echo -e "${gl_bai}请执行以下命令设置上游分支:${gl_bai}"
+        echo -e "  ${gl_huang}git branch --set-upstream-to=${remote}/${branch} ${branch}${gl_bai}"
+        echo -e "${gl_bai}或者手动设置跟踪分支:${gl_bai}"
+        echo -e "  ${gl_huang}git branch -u ${remote}/${branch}${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         break_end
         return 5
     }
+    
     # shellcheck disable=SC1083
-    base_commit=$(git merge-base @ @{u}) || return 6
+    base_commit=$(git merge-base @ @{u}) || {
+        log_error "无法计算合并基础"
+        return 6
+    }
+    
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    log_info "版本对比信息:${gl_bai}"
+    echo -e "${gl_bai}本地提交: ${gl_lv}$(git log --oneline -1 @ 2>/dev/null || echo "未知")${gl_bai}"
+    echo -e "${gl_bai}远程提交: ${gl_lv}$(git log --oneline -1 "@{u}" 2>/dev/null || echo "未知")${gl_bai}"
+    echo -e "${gl_bai}合并基础: ${gl_lv}$(git log --oneline -1 "$base_commit" 2>/dev/null || echo "未知")${gl_bai}"
 
     # 4. 比对并处理
     if [[ $local_commit == "$remote_commit" ]]; then
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_ok "当前分支已经是最新版本，无需更新。"
+        
+        # 显示最近提交
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_info "最近的提交记录:${gl_bai}"
+        git log --oneline -5
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         break_end
         return 0
     fi
 
     if [[ $local_commit == "$base_commit" ]]; then
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_warn "检测到远程有更新，正在拉取最新代码${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        git pull --ff-only "$remote" "$branch" && {
+        
+        # 显示将要拉取的提交
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_info "将要拉取的更新:${gl_bai}"
+        git log --oneline "$local_commit".."$remote_commit" 2>/dev/null || echo -e "  ${gl_huang}无法获取更新日志${gl_bai}"
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_bai}执行: git pull --ff-only ${gl_huang}${remote} ${branch}${gl_bai}"
+        
+        if git pull --ff-only "$remote" "$branch"; then
             log_ok "更新成功！"
+            
+            # 显示更新后的最新提交
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            log_info "更新后的最新提交:${gl_bai}"
+            git log --oneline -3
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            
+            # 检查是否需要合并或处理
+            if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+                log_warn "注意: 拉取后工作目录有未提交的更改"
+                git status --short
+            fi
+            
+            break_end
             return 0
-        } || {
+        else
             log_error "更新失败，请检查错误信息。"
+            
+            # 显示可能的冲突
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            log_info "可能的冲突文件:${gl_bai}"
+            git status --short | grep -E "^AA|^UU|^DD" || echo -e "  ${gl_huang}未检测到冲突文件${gl_bai}"
+            
+            echo -e "${gl_bai}解决冲突后，可以执行:${gl_bai}"
+            echo -e "  ${gl_huang}git add .${gl_bai}   # 添加解决后的文件"
+            echo -e "  ${gl_huang}git commit${gl_bai}  # 提交合并结果"
+            
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
             return 7
-        }
+        fi
     else
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_warn "本地分支与远程分支存在分歧（可能有未推送的提交），请手动解决冲突后再更新。"
+        
+        # 显示本地和远程的差异
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_info "本地有未推送的提交:${gl_bai}"
+        git log --oneline "@{u}".."$local_commit" 2>/dev/null || echo -e "  ${gl_huang}无法获取未推送的提交${gl_bai}"
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_info "远程有未拉取的提交:${gl_bai}"
+        git log --oneline "$local_commit".."@{u}" 2>/dev/null || echo -e "  ${gl_huang}无法获取远程提交${gl_bai}"
+        
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        echo -e "${gl_bai}建议的操作:${gl_bai}"
+        echo -e "  ${gl_huang}1. 先推送本地提交: git push${gl_bai}"
+        echo -e "  ${gl_huang}2. 再拉取远程更新: git pull${gl_bai}"
+        echo -e "  ${gl_huang}3. 或者合并远程分支: git pull --no-ff${gl_bai}"
+        
+        break_end
         return 8
     fi
-
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    break_end
 }
 
 ######  Git 个人 Docker 项目管理
@@ -64038,6 +64276,8 @@ linux_istoreos_menu() {
         esac
     done
 }
+
+
 mobufan_sh() {
     while true; do
         clear
