@@ -29,7 +29,7 @@ download_core() {
         log_warn "主源下载失败或文件为空，切换到备用源下载"
         log_info "正在从备用源下载: https://sh.meimolihan.eu.org/mobufan.sh"
         curl -sSL -A "Mozilla/5.0" --max-time 30 \
-        https://sh.meimolihan.eu.org/mobufan.sh -o "$save_path"
+        https://raw.giteeusercontent.com/meimolihan/sh/raw/master/install/mobufan.sh -o "$save_path"
     fi
 
     [[ -s "$save_path" ]] && return 0 || return 1
