@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.5.9"
+sh_v="1.6.0"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'   # 灰色
@@ -38078,7 +38078,7 @@ image_converter_resize_batch() {
     read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}返回): ")" selection
 
     [[ -z "$selection" ]] && { cancel_empty "上一级选单"; return 1; }        # break 或 continue 或 return ，视上下文而定
-    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return 1; }     # break 或 continue 或 return ，视上下文而定
+    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return; }     # break 或 continue 或 return ，视上下文而定
 
     local selected_files=()
 
@@ -43144,32 +43144,41 @@ run_commands_on_servers() {
 }
 
 ###### mobufan.sh 脚本更新
-mobufan_update() {
-    cd ~
+mmobufan_update() {
+    cd ~ || return
+    local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
+    local backup_url="https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"
+    local log_url="https://gitee.com/meimolihan/sh/raw/master/log/mobufan_sh_log.txt"
+
     while true; do
         clear
         echo -e "${gl_zi}>>> 更新日志${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bai}全部日志: ${gl_lv}https://gitee.com/meimolihan/sh/raw/master/log/mobufan_sh_log.txt${gl_bai}"
+        echo -e "${gl_bai}全部日志: ${gl_lv}${log_url}${gl_bai}"
 
-        curl -s https://gitee.com/meimolihan/sh/raw/master/log/mobufan_sh_log.txt | tail -n 30
+        # 修复：获取日志（带UA+跳转）
+        curl -sSL -A "Mozilla/5.0" --max-time 5 "$log_url" | tail -n 30
 
         echo -e ""
 
-        # 获取远程版本号
+        # 获取远程版本号（双源容错）
         local sh_v_new
-        sh_v_new=$(curl -s https://gitee.com/meimolihan/sh/raw/master/mobufan.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
-        if [ "$sh_v" = "$sh_v_new" ]; then
+        sh_v_new=$(curl -sSL -A "Mozilla/5.0" --max-time 5 "$download_url" 2>/dev/null | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
+        if [[ -z $sh_v_new ]]; then
+            sh_v_new=$(curl -sSL -A "Mozilla/5.0" --max-time 5 "$backup_url" 2>/dev/null | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
+        fi
+
+        if [[ "$sh_v" = "$sh_v_new" ]]; then
             echo -e "${gl_lv}你已经是最新版本！${gl_huang}v$sh_v${gl_bai}"
         else
             echo -e "${gl_lv}发现新版本！${gl_bai}"
-            echo -e "当前版本 ${gl_lv}v$sh_v${gl_bai}        最新版本 ${gl_huang}v$sh_v_new${gl_bai}"
+            echo -e "当前版本 ${gl_lv}v$sh_v${gl_bai}        最新版本 ${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
         fi
 
         local cron_job="mobufan.sh"
         local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
 
-        if [ -n "$existing_cron" ]; then
+        if [[ -n "$existing_cron" ]]; then
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_lv}自动更新已开启，每天凌晨 ${gl_huang}2${gl_bai} 点脚本会自动更新！${gl_bai}"
         fi
@@ -43181,81 +43190,113 @@ mobufan_update() {
         echo -e "${gl_huang}0.  ${gl_bai}返回主菜单               ${gl_hong}00. ${gl_bai}退出脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "请输入你的选择: " choice
+
         case "$choice" in
         1)
             clear
-            local sh_v_new
-            sh_v_new=$(curl -s https://gitee.com/meimolihan/sh/raw/master/mobufan.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
-            curl -sS --connect-timeout 10 -O https://gitee.com/meimolihan/sh/raw/master/mobufan.sh || curl -sS --connect-timeout 10 -O https://gitee.com/meimolihan/sh/raw/master/mobufan.sh && chmod +x mobufan.sh
+            # 下载脚本（主源+备用源）
+            if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null; then
+                curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$backup_url" 2>/dev/null || {
+                    log_error "下载失败，请检查网络"
+                    sleep_fractional 1
+                    continue
+                }
+            fi
+            # 校验文件不为空
+            [[ ! -s mobufan.sh ]] && { log_error "下载文件为空"; sleep_fractional 1; continue; }
+
+            chmod +x mobufan.sh
             canshu_v6
             CheckFirstRun_true
             yinsiyuanquan2
             cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
-            echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v$sh_v_new${gl_bai}"
-            # 倒计时 3 秒
+            chmod +x /usr/local/bin/m 2>/dev/null
+
+            echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
             echo -ne "${gl_bai}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_bai} 秒"
             sleep_fractional 1
-            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_huang}2${gl_bai} 秒"
+            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_huang}1${gl_bai} 秒"
             sleep_fractional 1
-            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_lv}1${gl_bai} 秒"
+            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_lv}0${gl_bai} 秒"
             sleep_fractional 1
             echo -e "\r${gl_bai}正在启动新版本脚本${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             bash ~/mobufan.sh
             exit
             ;;
+
         2 | up)
             clear
-            local sh_v_new
-            sh_v_new=$(curl -s https://gitee.com/meimolihan/sh/raw/master/mobufan.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
-            curl -sS --connect-timeout 10 -O https://gitee.com/meimolihan/sh/raw/master/mobufan.sh || curl -sS --connect-timeout 10 -O https://gitee.com/meimolihan/sh/raw/master/mobufan.sh && chmod +x mobufan.sh
-            # curl -sS -O https://gitee.com/meimolihan/sh/raw/master/mobufan.sh && chmod +x mobufan.sh
+            # 强制更新（主源+备用源）
+            curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null
+            if [[ ! -s mobufan.sh ]]; then
+                curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$backup_url" 2>/dev/null
+            fi
+            [[ ! -s mobufan.sh ]] && { log_error "下载失败，文件为空"; sleep_fractional 1; continue; }
+
+            chmod +x mobufan.sh
             canshu_v6
             CheckFirstRun_true
             yinsiyuanquan2
             cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
-            echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v$sh_v_new${gl_bai}"
-            # 倒计时 3 秒
+            chmod +x /usr/local/bin/m 2>/dev/null
+
+            echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
             echo -ne "${gl_bai}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_bai} 秒"
             sleep_fractional 1
-            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_huang}2${gl_bai} 秒"
+            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_huang}1${gl_bai} 秒"
             sleep_fractional 1
-            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_lv}1${gl_bai} 秒"
+            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_lv}0${gl_bai} 秒"
             sleep_fractional 1
             echo -e "\r${gl_bai}正在启动新版本脚本${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             bash ~/mobufan.sh
             exit
             ;;
+
         3)
             clear
-            local country=$(curl -s ipinfo.io/country)
-            local ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
-            if [ "$country" = "CN" ]; then
-                SH_Update_task="curl -sS -O https://gitee.com/meimolihan/sh/raw/master/mobufan.sh && chmod +x mobufan.sh && sed -i 's/canshu=\"default\"/canshu=\"CN\"/g' ./mobufan.sh"
-            elif [ -n "$ipv6_address" ]; then
-                SH_Update_task="curl -sS -O https://gitee.com/meimolihan/sh/raw/master/mobufan.sh && chmod +x mobufan.sh && sed -i 's/canshu=\"default\"/canshu=\"V6\"/g' ./mobufan.sh"
+            local country=$(curl -sSL -A "Mozilla/5.0" --max-time 2 ipinfo.io/country 2>/dev/null || echo "unknown")
+            local ipv6_address=$(curl -sSL -A "Mozilla/5.0" --max-time 2 ipv6.ip.sb 2>/dev/null || echo "")
+
+            if [[ "$country" = "CN" ]]; then
+                SH_Update_task="curl -sSL -A \"Mozilla/5.0\" -O $download_url && chmod +x mobufan.sh && sed -i 's/canshu=\"default\"/canshu=\"CN\"/g' ./mobufan.sh"
+            elif [[ -n "$ipv6_address" ]]; then
+                SH_Update_task="curl -sSL -A \"Mozilla/5.0\" -O $download_url && chmod +x mobufan.sh && sed -i 's/canshu=\"default\"/canshu=\"V6\"/g' ./mobufan.sh"
             else
-                SH_Update_task="curl -sS -O https://gitee.com/meimolihan/sh/raw/master/mobufan.sh && chmod +x mobufan.sh"
+                SH_Update_task="curl -sSL -A \"Mozilla/5.0\" -O $download_url && chmod +x mobufan.sh"
             fi
+
             check_crontab_installed
-            (crontab -l | grep -v "mobufan.sh") | crontab -
+            (crontab -l 2>/dev/null | grep -v "mobufan.sh") | crontab -
             (
                 crontab -l 2>/dev/null
                 echo "$(shuf -i 0-59 -n 1) 2 * * * bash -c \"$SH_Update_task\""
             ) | crontab -
-            echo -e "${gl_lv}自动更新已开启，每天凌晨2点脚本会自动更新！${gl_bai}"
-            exit_animation    # 即将退出动画
-            continue # 继续循环，不退出
+
+            log_ok "自动更新已开启，每天凌晨2点自动更新"
+            exit_animation
+            continue
             ;;
+
         4)
             clear
-            (crontab -l | grep -v "mobufan.sh") | crontab -
-            echo -e "${gl_lv}自动更新已关闭${gl_bai}"
-            exit_animation    # 即将退出动画
-            continue # 继续循环，不退出
+            (crontab -l 2>/dev/null | grep -v "mobufan.sh") | crontab -
+            log_ok "自动更新已关闭"
+            exit_animation
+            continue
             ;;
-        0) cancel_return ""主菜单 ; break ;;        # 返回到上一级菜单
-        00 | 000 | 0000) exit_script ;;             # 感谢使用，再见！
-        *) handle_invalid_input ;;                  # 无效的输入,请重新输入!
+
+        0)
+            cancel_return "主菜单"
+            break
+            ;;
+
+        00 | 000 | 0000)
+            exit_script
+            ;;
+
+        *)
+            handle_invalid_input
+            ;;
         esac
     done
 }
@@ -47314,7 +47355,8 @@ show_compose_commands_menu() {
             echo -e ""
             echo -e "${gl_bai}正在更新 ${gl_huang}$current_dir_name${gl_bai} 容器${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            docker-compose down && docker-compose pull && docker-compose up -d --remove-orphans && docker image prune -f
+            # docker-compose down && docker-compose pull && docker-compose up -d --remove-orphans && docker image prune -f
+            docker-compose pull && docker-compose up -d --remove-orphans && docker image prune -f
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
@@ -55145,6 +55187,10 @@ download_docker_projects() {
 
 ###### 备份 Compose 项目
 backup_compose_project() {
+    # 尝试初始化回收站
+    if [[ -z "$TRASH_CMD" ]]; then
+        install_trash
+    fi
 
     cd /vol1/1000/compose
 
@@ -61286,54 +61332,61 @@ linux_work() {
 update_mobufan_script() {
     local sh_v_new
     local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
+    local backup_url="https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"
 
     echo -e ""
     
     # 切换到用户主目录
-    cd ~
+    cd ~ || return 1
     
-    # 获取远程最新版本号
-    sh_v_new=$(curl -s "$download_url" | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
+    # 获取远程最新版本号（修复空文件问题）
+    sh_v_new=$(curl -sSL --max-time 5 -A "Mozilla/5.0" "$download_url" 2>/dev/null | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
+    if [[ -z "$sh_v_new" ]]; then
+        sh_v_new=$(curl -sSL --max-time 5 -A "Mozilla/5.0" "$backup_url" 2>/dev/null | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
+    fi
+
+    # 下载脚本（带重试 + 备用源 + 防空文件）
+    if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null; then
+        sleep 1
+        if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null; then
+            curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$backup_url" 2>/dev/null || {
+                log_error "下载失败，请检查网络连接"
+                return 1
+            }
+        fi
+    fi
     
-    # 下载脚本（带重试机制）
-    if ! curl -sS --connect-timeout 10 -O "$download_url" 2>/dev/null; then
-        # 第一次下载失败，尝试第二次
-        curl -sS --connect-timeout 10 -O "$download_url" || {
-            echo -e "${gl_hong}下载失败，请检查网络连接${gl_bai}"
-            return 1
-        }
+    # 校验文件不为空
+    if [[ ! -s ~/mobufan.sh ]]; then
+        log_error "下载的脚本文件为空，更新失败"
+        return 1
     fi
     
     # 赋予执行权限
     chmod +x ~/mobufan.sh
     
-    # 执行参数设置和初始化函数（假设这些函数在脚本其他位置定义）
+    # 执行参数设置和初始化函数
     canshu_v6
     CheckFirstRun_true
     yinsiyuanquan2
     
     # 复制到系统路径
     cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
+    chmod +x /usr/local/bin/m 2>/dev/null
     
     # 显示更新成功信息
-    echo -e "${gl_lv}脚本已更新到最新版本！${gl_huang}v$sh_v_new${gl_bai}"
-    
-    # 倒计时提示
-    # echo -ne "\r${gl_hong}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_hong} 秒${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    # sleep_fractional 0.5
-    # echo -ne "\r${gl_huang}即将启动新版本脚本，倒计时: ${gl_huang}1${gl_huang} 秒${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    # sleep_fractional 0.5
-    # echo -ne "\r${gl_lv}即将启动新版本脚本，倒计时: ${gl_lv}0${gl_lv} 秒${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    # sleep_fractional 0.5
+    log_ok "脚本已更新到最新版本！v${sh_v_new:-未知版本}"
+
+    # 启动动画
     echo -ne "${gl_lv}即将启动新版本脚本${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.6
     echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.6
+    echo ""
     
-    # 执行新脚本并退出当前进程
+    # 执行新脚本并退出
     bash ~/mobufan.sh
     exit 0
-    clear
 }
 
 ###### iStoreOS管理工具
