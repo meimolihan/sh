@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.6.3.1"
+sh_v="1.6.3"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'   # 灰色
@@ -8606,7 +8606,7 @@ tv_rename_ultimate() {
 
 # 格式化并复制脚本函数
 format_and_copy_script() {
-    local script_path="~/mobufan.sh"
+    local script_path="/root/mobufan.sh"
     local target_dir="/mnt/tmp"
     
     # 检查脚本文件是否存在
@@ -8742,8 +8742,8 @@ format_and_copy_script() {
     else
         echo -e "${gl_bai}跳过下载到本地${gl_bai}"
         echo -e "${gl_huang}提示: 您可以使用以下命令手动下载:${gl_bai}"
-        echo -e "  ${gl_zi}sz ~/mobufan.sh${gl_bai}"
-        echo -e "  ${gl_zi}scp root@$(hostname -I | awk '{print $1}'):~/mobufan.sh .${gl_bai}"
+        echo -e "  ${gl_zi}sz /root/mobufan.sh${gl_bai}"
+        echo -e "  ${gl_zi}scp root@$(hostname -I | awk '{print $1}'):/root/mobufan.sh .${gl_bai}"
     fi
     
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -39649,7 +39649,7 @@ linux_uninstall_mobufan() {
         clear
         (crontab -l | grep -v "mobufan.sh") | crontab -
         rm -f /usr/local/bin/m
-        rm ~/mobufan.sh
+        rm /root/mobufan.sh
         rm /root/.mobufan_license
         echo -e "${gl_lv}脚本已卸载，再见！${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -61308,15 +61308,16 @@ linux_work() {
 
 # 功能：检查并更新 mobufan.sh 脚本到最新版本
 update_mobufan_script() {
-
     echo ""
     local script_url="https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh"
 
     # 优先使用 curl
-    if command -v curl &> /dev/null; then
-        echo -e "使用 curl 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}""
+    if command -v curl &>/dev/null; then
+        echo -e "使用 curl 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         if bash <(curl -fsSL "$script_url"); then
             echo "✅ curl 安装成功"
+            # 执行脚本
+            bash ~/mobufan.sh
             return 0
         else
             echo -e "❌ curl 安装失败，尝试使用 wget ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -61324,19 +61325,22 @@ update_mobufan_script() {
     fi
 
     # curl 失败则使用 wget
-    if command -v wget &> /dev/null; then
+    if command -v wget &>/dev/null; then
         echo -e "使用 wget 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         if bash <(wget -qO- "$script_url"); then
             echo "✅ wget 安装成功"
+            # 执行脚本
+            bash ~/mobufan.sh
             return 0
         else
             echo "❌ wget 安装失败"
         fi
     fi
 
+    echo "❌ 安装更新失败：curl 和 wget 均不可用或网络异常"
     return 1
-    bash ~/mobufan.sh
 }
+
 
 ###### iStoreOS管理工具
 # 检查iStoreOS风格化函数
