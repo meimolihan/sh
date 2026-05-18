@@ -43122,7 +43122,7 @@ run_commands_on_servers() {
 }
 
 ###### mobufan.sh 脚本更新
-mmobufan_update() {
+mobufan_update() {
     cd ~ || return
     local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
     local backup_url="https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"
