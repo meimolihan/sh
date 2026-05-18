@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.6.1"
+sh_v="1.6.2"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'   # 灰色
@@ -39615,7 +39615,7 @@ linux_install_mobufan() {
     echo -e ""
     echo -e "${gl_zi}>>> 安装mobufan脚本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_lv}bash <(curl -sL gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)${gl_bai}"
+    echo -e "${gl_lv}bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定卸载科技Lion脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
     [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }      # break 或 continue 或 return ，视上下文而定
@@ -39623,7 +39623,7 @@ linux_install_mobufan() {
     case "$choice" in
     [Yy])
         clear
-        bash <(curl -sL gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
+        bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
         ;;
     [Nn])
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -61308,63 +61308,145 @@ linux_work() {
 
 # 功能：检查并更新 mobufan.sh 脚本到最新版本
 update_mobufan_script() {
-    local sh_v_new
+    local sh_v_new=""
     local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
     local backup_url="https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"
-
+    local temp_script="${TMPDIR:-/tmp}/mobufan.sh.$$"
+    local target_script="${HOME}/mobufan.sh"
+    
     echo -e ""
     
     # 切换到用户主目录
-    cd ~ || return 1
+    cd ~ || {
+        log_error "无法切换到用户主目录"
+        return 1
+    }
     
-    # 获取远程最新版本号（修复空文件问题）
-    sh_v_new=$(curl -sSL --max-time 5 -A "Mozilla/5.0" "$download_url" 2>/dev/null | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
-    if [[ -z "$sh_v_new" ]]; then
-        sh_v_new=$(curl -sSL --max-time 5 -A "Mozilla/5.0" "$backup_url" 2>/dev/null | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
-    fi
-
-    # 下载脚本（带重试 + 备用源 + 防空文件）
-    if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null; then
-        sleep 1
-        if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null; then
-            curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$backup_url" 2>/dev/null || {
-                log_error "下载失败，请检查网络连接"
-                return 1
-            }
+    # 清理可能存在的临时文件
+    rm -f "$temp_script"
+    
+    # ===== 下载函数（带重试和备用源）=====
+    _download_script() {
+        local url="$1"
+        local output="$2"
+        local max_retries=2
+        local retry=0
+        
+        while [[ $retry -lt $max_retries ]]; do
+            if curl -fsSL --connect-timeout 10 --max-time 30 \
+                -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.0" \
+                -o "$output" "$url" 2>/dev/null; then
+                
+                # 校验文件不为空且包含有效内容
+                if [[ -s "$output" ]] && grep -q 'sh_v=' "$output"; then
+                    return 0
+                else
+                    rm -f "$output"
+                    [[ $retry -eq 0 ]] && log_warn "下载内容无效，尝试重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+                fi
+            else
+                [[ $retry -eq 0 ]] && log_warn "下载失败，尝试重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            fi
+            
+            ((retry++))
+            [[ $retry -lt $max_retries ]] && sleep 1
+        done
+        
+        return 1
+    }
+    
+    # ===== 优先下载并验证 =====
+    log_info "正在检查更新 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    
+    if _download_script "$download_url" "$temp_script"; then
+        log_ok "主源下载成功"
+    else
+        log_warn "主源失败，尝试备用源 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        if ! _download_script "$backup_url" "$temp_script"; then
+            log_error "所有下载源均失败，请检查网络连接"
+            rm -f "$temp_script"
+            return 1
         fi
+        log_ok "备用源下载成功"
     fi
     
-    # 校验文件不为空
-    if [[ ! -s ~/mobufan.sh ]]; then
-        log_error "下载的脚本文件为空，更新失败"
+    # ===== 获取远程版本号 =====
+    sh_v_new=$(grep -o 'sh_v="[0-9.]*"' "$temp_script" | cut -d '"' -f 2)
+    
+    if [[ -z "$sh_v_new" ]]; then
+        log_error "无法解析远程版本号"
+        rm -f "$temp_script"
         return 1
     fi
     
-    # 赋予执行权限
-    chmod +x ~/mobufan.sh
+    # ===== 版本对比（可选：如果本地有版本号的话）=====
+    if [[ -n "${sh_v:-}" ]] && [[ "$sh_v_new" == "$sh_v" ]]; then
+        log_info "当前已是最新版本 v${sh_v}，无需更新"
+        rm -f "$temp_script"
+        return 0
+    fi
     
-    # 执行参数设置和初始化函数
-    canshu_v6
-    CheckFirstRun_true
-    yinsiyuanquan2
+    # ===== 安全替换本地脚本 =====
+    # 先备份旧版本（如果存在）
+    [[ -f "$target_script" ]] && cp -f "$target_script" "${target_script}.bak" 2>/dev/null
+    
+    # 原子替换：先复制到临时位置，再重命名（防止脚本执行中断导致文件损坏）
+    if ! cp -f "$temp_script" "$target_script"; then
+        log_error "脚本替换失败"
+        rm -f "$temp_script" "${target_script}.bak"
+        return 1
+    fi
+    
+    rm -f "$temp_script"
+    
+    # 校验最终文件
+    if [[ ! -s "$target_script" ]] || ! grep -q 'sh_v=' "$target_script"; then
+        log_error "脚本文件验证失败，正在恢复 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        [[ -f "${target_script}.bak" ]] && mv -f "${target_script}.bak" "$target_script"
+        return 1
+    fi
+    
+    # 清理备份
+    rm -f "${target_script}.bak"
+    
+    # 赋予执行权限
+    chmod +x "$target_script"
+    
+    # ===== 执行初始化函数 =====
+    # 使用 source 在当前 shell 加载新脚本中的函数，避免子 shell 问题
+    # 注意：这里假设这些函数定义在新脚本中，且执行无副作用
+    if [[ -f "$target_script" ]]; then
+        # 重新 source 以获取最新函数定义
+        # 使用 eval 或 source 取决于你的脚本结构
+        source "$target_script" 2>/dev/null || true
+    fi
+    
+    # 执行参数设置和初始化
+    canshu_v6 2>/dev/null || true
+    CheckFirstRun_true 2>/dev/null || true
+    yinsiyuanquan2 2>/dev/null || true
     
     # 复制到系统路径
-    cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
-    chmod +x /usr/local/bin/m 2>/dev/null
+    cp -f "$target_script" /usr/local/bin/m 2>/dev/null && \
+        chmod +x /usr/local/bin/m 2>/dev/null || \
+        log_warn "系统路径更新失败（可能需要 root 权限）"
     
     # 显示更新成功信息
-    log_ok "脚本已更新到最新版本！v${sh_v_new:-未知版本}"
-
-    # 启动动画
+    log_ok "脚本已更新到最新版本 v${sh_v_new}"
+    
+    # 更新本地版本变量（如果存在）
+    sh_v="$sh_v_new"
+    
+    # ===== 启动动画 =====
     echo -ne "${gl_lv}即将启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.6
     echo -ne " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.6
     echo ""
     
-    # 执行新脚本并退出
-    bash ~/mobufan.sh
-    exit 0
+    # ===== 执行新脚本并退出 =====
+    # 使用 exec 替换当前进程，避免残留
+    exec bash "$target_script"
 }
 
 ###### iStoreOS管理工具
@@ -64467,7 +64549,7 @@ else
         ;;
     u | up)
         echo -e "${gl_bai}正在强制更新 ${gl_bufan}mobufan.sh${gl_bai} 脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        bash <(curl -sL gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
+        bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
         ;;
     f | file | 文件管理)
         shift
