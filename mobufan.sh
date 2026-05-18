@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.6.3"
+sh_v="1.6.3.1"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'   # 灰色
@@ -61308,145 +61308,32 @@ linux_work() {
 
 # 功能：检查并更新 mobufan.sh 脚本到最新版本
 update_mobufan_script() {
-    local sh_v_new=""
-    local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
-    local backup_url="https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"
-    local temp_script="${TMPDIR:-/tmp}/mobufan.sh.$$"
-    local target_script="${HOME}/mobufan.sh"
-    
-    echo -e ""
-    
-    # 切换到用户主目录
-    cd ~ || {
-        log_error "无法切换到用户主目录"
-        return 1
-    }
-    
-    # 清理可能存在的临时文件
-    rm -f "$temp_script"
-    
-    # ===== 下载函数（带重试和备用源）=====
-    _download_script() {
-        local url="$1"
-        local output="$2"
-        local max_retries=2
-        local retry=0
-        
-        while [[ $retry -lt $max_retries ]]; do
-            if curl -fsSL --connect-timeout 10 --max-time 30 \
-                -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.0" \
-                -o "$output" "$url" 2>/dev/null; then
-                
-                # 校验文件不为空且包含有效内容
-                if [[ -s "$output" ]] && grep -q 'sh_v=' "$output"; then
-                    return 0
-                else
-                    rm -f "$output"
-                    [[ $retry -eq 0 ]] && log_warn "下载内容无效，尝试重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                fi
-            else
-                [[ $retry -eq 0 ]] && log_warn "下载失败，尝试重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            fi
-            
-            ((retry++))
-            [[ $retry -lt $max_retries ]] && sleep 1
-        done
-        
-        return 1
-    }
-    
-    # ===== 优先下载并验证 =====
-    log_info "正在检查更新 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    
-    if _download_script "$download_url" "$temp_script"; then
-        log_ok "主源下载成功"
-    else
-        log_warn "主源失败，尝试备用源 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if ! _download_script "$backup_url" "$temp_script"; then
-            log_error "所有下载源均失败，请检查网络连接"
-            rm -f "$temp_script"
-            return 1
+
+    local script_url="https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh"
+
+    # 优先使用 curl
+    if command -v curl &> /dev/null; then
+        echo "使用 curl 安装..."
+        if bash <(curl -fsSL "$script_url"); then
+            echo "✅ curl 安装成功"
+            return 0
+        else
+            echo "❌ curl 安装失败，尝试使用 wget ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         fi
-        log_ok "备用源下载成功"
     fi
-    
-    # ===== 获取远程版本号 =====
-    sh_v_new=$(grep -o 'sh_v="[0-9.]*"' "$temp_script" | cut -d '"' -f 2)
-    
-    if [[ -z "$sh_v_new" ]]; then
-        log_error "无法解析远程版本号"
-        rm -f "$temp_script"
-        return 1
+
+    # curl 失败则使用 wget
+    if command -v wget &> /dev/null; then
+        echo "使用 wget 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        if bash <(wget -qO- "$script_url"); then
+            echo "✅ wget 安装成功"
+            return 0
+        else
+            echo "❌ wget 安装失败"
+        fi
     fi
-    
-    # ===== 版本对比（可选：如果本地有版本号的话）=====
-    if [[ -n "${sh_v:-}" ]] && [[ "$sh_v_new" == "$sh_v" ]]; then
-        log_info "当前已是最新版本 v${sh_v}，无需更新"
-        rm -f "$temp_script"
-        return 0
-    fi
-    
-    # ===== 安全替换本地脚本 =====
-    # 先备份旧版本（如果存在）
-    [[ -f "$target_script" ]] && cp -f "$target_script" "${target_script}.bak" 2>/dev/null
-    
-    # 原子替换：先复制到临时位置，再重命名（防止脚本执行中断导致文件损坏）
-    if ! cp -f "$temp_script" "$target_script"; then
-        log_error "脚本替换失败"
-        rm -f "$temp_script" "${target_script}.bak"
-        return 1
-    fi
-    
-    rm -f "$temp_script"
-    
-    # 校验最终文件
-    if [[ ! -s "$target_script" ]] || ! grep -q 'sh_v=' "$target_script"; then
-        log_error "脚本文件验证失败，正在恢复 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        [[ -f "${target_script}.bak" ]] && mv -f "${target_script}.bak" "$target_script"
-        return 1
-    fi
-    
-    # 清理备份
-    rm -f "${target_script}.bak"
-    
-    # 赋予执行权限
-    chmod +x "$target_script"
-    
-    # ===== 执行初始化函数 =====
-    # 使用 source 在当前 shell 加载新脚本中的函数，避免子 shell 问题
-    # 注意：这里假设这些函数定义在新脚本中，且执行无副作用
-    if [[ -f "$target_script" ]]; then
-        # 重新 source 以获取最新函数定义
-        # 使用 eval 或 source 取决于你的脚本结构
-        source "$target_script" 2>/dev/null || true
-    fi
-    
-    # 执行参数设置和初始化
-    canshu_v6 2>/dev/null || true
-    CheckFirstRun_true 2>/dev/null || true
-    yinsiyuanquan2 2>/dev/null || true
-    
-    # 复制到系统路径
-    cp -f "$target_script" /usr/local/bin/m 2>/dev/null && \
-        chmod +x /usr/local/bin/m 2>/dev/null || \
-        log_warn "系统路径更新失败（可能需要 root 权限）"
-    
-    # 显示更新成功信息
-    log_ok "脚本已更新到最新版本 v${sh_v_new}"
-    
-    # 更新本地版本变量（如果存在）
-    sh_v="$sh_v_new"
-    
-    # ===== 启动动画 =====
-    echo -ne "${gl_lv}即将启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.6
-    echo -ne " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.6
-    echo ""
-    
-    # ===== 执行新脚本并退出 =====
-    # 使用 exec 替换当前进程，避免残留
-    exec bash "$target_script"
+
+    return 1
 }
 
 ###### iStoreOS管理工具
