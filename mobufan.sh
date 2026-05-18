@@ -61314,18 +61314,18 @@ update_mobufan_script() {
 
     # 优先使用 curl
     if command -v curl &> /dev/null; then
-        echo "使用 curl 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}""
+        echo -e "使用 curl 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}""
         if bash <(curl -fsSL "$script_url"); then
             echo "✅ curl 安装成功"
             return 0
         else
-            echo "❌ curl 安装失败，尝试使用 wget ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "❌ curl 安装失败，尝试使用 wget ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         fi
     fi
 
     # curl 失败则使用 wget
     if command -v wget &> /dev/null; then
-        echo "使用 wget 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        echo -e "使用 wget 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         if bash <(wget -qO- "$script_url"); then
             echo "✅ wget 安装成功"
             return 0
