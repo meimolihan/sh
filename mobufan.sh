@@ -55519,6 +55519,7 @@ backup_all_compose_projects() {
 
     # 记录批量列表
     write_log "$log_file" "批量备份项目列表："
+    write_log "$log_file" "备份项目数量共计：${#projects[@]} 个"
     write_log "$log_file" ""
 
     local success_count=0
