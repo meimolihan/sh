@@ -55164,6 +55164,60 @@ download_docker_projects() {
 }
 
 ###### 备份 Compose 项目
+# 日志记录函数（和你主脚本保持一致）
+write_log() {
+    local log_file="$1"
+    local log_content="$2"
+    echo -e "$log_content" >> "$log_file"
+}
+
+# 创建日志文件
+init_log_file() {
+    local backup_dest_dir="$1"
+    local logs_dir="${backup_dest_dir}/logs"
+    mkdir -p "$logs_dir"
+    local timestamp=$(date +"%Y-%m-%d-%H-%M-%S")
+    local log_file="${logs_dir}/${timestamp}.log"
+    touch "$log_file"
+    echo "$log_file"
+}
+
+# 写日志头部
+write_log_header() {
+    local log_file="$1"
+    local start_time="$2"
+    local backup_type="$3"
+    write_log "$log_file" ">>> ${backup_type}"
+    write_log "$log_file" ""
+    write_log "$log_file" "备份时间：    ${start_time}"
+    write_log "$log_file" ""
+}
+
+# 写日志尾部
+write_log_footer() {
+    local log_file="$1"
+    local end_time="$2"
+    local log_file_path="$3"
+    write_log "$log_file" ""
+    write_log "$log_file" "脚本结束时间：${end_time}"
+    write_log "$log_file" "日志文件路径：${log_file_path}"
+}
+
+# 获取文件大小
+get_human_size() {
+    local file_path="$1"
+    if [[ -f "$file_path" ]]; then
+        local size_bytes=$(stat -c%s "$file_path" 2>/dev/null || stat -f%z "$file_path" 2>/dev/null)
+        if [[ -n "$size_bytes" ]]; then
+            numfmt --to=iec-i --suffix=B "$size_bytes" 2>/dev/null || echo "${size_bytes}B"
+        else
+            du -h "$file_path" 2>/dev/null | cut -f1
+        fi
+    else
+        echo "未知"
+    fi
+}
+
 backup_compose_project() {
     # 尝试初始化回收站
     if [[ -z "$TRASH_CMD" ]]; then
@@ -55175,6 +55229,9 @@ backup_compose_project() {
     # 固定输出目录
     local BACKUP_TEMP_DIR="/tmp"
     local BACKUP_DEST_DIR="/vol2/1000/file/myfile/compose/downloads"
+    local LOG_FILE=""
+    local SCRIPT_START_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+    local BACKUP_TYPE=""
     
     # 确保目标目录存在
     mkdir -p "$BACKUP_DEST_DIR" || {
@@ -55247,9 +55304,28 @@ backup_compose_project() {
             return
         fi
 
+        # ========== 创建日志 ==========
+        LOG_FILE=$(init_log_file "$BACKUP_DEST_DIR")
+        log_ok "日志文件已创建：${LOG_FILE}"
+
+        if [[ "$choice" == "666" ]]; then
+            BACKUP_TYPE="Compose批量备份"
+        else
+            BACKUP_TYPE="Compose独立备份"
+        fi
+        write_log_header "$LOG_FILE" "$SCRIPT_START_TIME" "$BACKUP_TYPE"
+
         # 666 备份全部项目
         if [[ "$choice" == "666" ]]; then
-            backup_all_compose_projects "${list[@]}"
+            backup_all_compose_projects "$LOG_FILE" "${list[@]}"
+            
+            # 写入日志尾部
+            local SCRIPT_END_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+            write_log_footer "$LOG_FILE" "$SCRIPT_END_TIME" "$LOG_FILE"
+            
+            echo -e ""
+            log_ok "日志已保存至：${LOG_FILE}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             continue
         fi
@@ -55290,8 +55366,14 @@ backup_compose_project() {
         esac
 
         # 执行单个项目备份
-        backup_single_compose_project "$target" "$format" "$BACKUP_TEMP_DIR" "$BACKUP_DEST_DIR"
+        backup_single_compose_project "$target" "$format" "$BACKUP_TEMP_DIR" "$BACKUP_DEST_DIR" "$LOG_FILE" "false"
         
+        # 写入日志尾部
+        local SCRIPT_END_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+        write_log_footer "$LOG_FILE" "$SCRIPT_END_TIME" "$LOG_FILE"
+
+        echo -e ""
+        log_ok "日志已保存至：${LOG_FILE}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         break_end
     done
@@ -55303,11 +55385,14 @@ backup_single_compose_project() {
     local format="$2"
     local BACKUP_TEMP_DIR="$3"
     local BACKUP_DEST_DIR="$4"
+    local log_file="$5"
+    local is_batch_backup="${6:-false}"
     
     local target_name=$(basename "$target")
     local backup_name="${target_name}.${format}"
     local temp_backup_path="$BACKUP_TEMP_DIR/$backup_name"
     local final_backup_path="$BACKUP_DEST_DIR/$backup_name"
+    local source_abs_path=$(cd "$(dirname "$target")" && pwd)/$(basename "$target")
 
     echo -e ""
     echo -e "${gl_huang}>>> 开始备份: ${gl_lv}$target_name   ${gl_huang}格式: ${gl_lv}$format${gl_bai}"
@@ -55322,6 +55407,18 @@ backup_single_compose_project() {
     # 检查压缩是否成功
     if [[ $compress_result -ne 0 ]] || [[ ! -f "$compress_output" ]]; then
         echo -e "${gl_hong}备份失败：压缩过程出错${gl_bai}"
+        
+        # 写入失败日志
+        if [[ "$is_batch_backup" == "true" ]]; then
+            write_log "$log_file" "  - $target_name"
+            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "状态：        备份失败"
+            write_log "$log_file" ""
+        else
+            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "状态：        备份失败"
+        fi
+        
         return 1
     fi
 
@@ -55329,7 +55426,19 @@ backup_single_compose_project() {
     if ! mv "$compress_output" "$temp_backup_path" 2>/dev/null; then
         echo -e "${gl_hong}移动临时文件失败${gl_bai}"
         rm -f "$compress_output" 2>/dev/null
-        exit_animation    # 即将退出动画
+        
+        # 写入失败日志
+        if [[ "$is_batch_backup" == "true" ]]; then
+            write_log "$log_file" "  - $target_name"
+            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "状态：        移动临时文件失败"
+            write_log "$log_file" ""
+        else
+            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "状态：        移动临时文件失败"
+        fi
+        
+        exit_animation
         return 1
     fi
 
@@ -55337,22 +55446,48 @@ backup_single_compose_project() {
     echo -e "${gl_bai}正在移动备份文件到目标目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     
     if mv -f "$temp_backup_path" "$final_backup_path" 2>/dev/null; then
+        local file_size=$(get_human_size "$final_backup_path")
         echo -e "${gl_lv}备份完成！${gl_bai}"
         echo -e "${gl_bai}备份文件: ${gl_huang}$final_backup_path${gl_bai}"
-        
-        # 显示文件大小
-        local file_size=$(du -h "$final_backup_path" 2>/dev/null | cut -f1)
         echo -e "${gl_bai}文件大小: ${gl_lv}$file_size${gl_bai}"
+        
+        # 写入成功日志
+        if [[ "$is_batch_backup" == "true" ]]; then
+            write_log "$log_file" "  - $target_name"
+            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "备份文件路径：$final_backup_path"
+            write_log "$log_file" "压缩后大小：  $file_size"
+            write_log "$log_file" ""
+        else
+            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "备份文件路径：$final_backup_path"
+            write_log "$log_file" "压缩后大小：  $file_size"
+        fi
+        
         return 0
     else
         echo -e "${gl_hong}移动备份文件失败！${gl_bai}"
         echo -e "${gl_bai}临时文件保留在: $temp_backup_path${gl_bai}"
+        
+        # 写入失败日志
+        if [[ "$is_batch_backup" == "true" ]]; then
+            write_log "$log_file" "  - $target_name"
+            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "状态：        移动目标文件失败"
+            write_log "$log_file" ""
+        else
+            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "状态：        移动目标文件失败"
+        fi
+        
         return 1
     fi
 }
 
 ###### 备份全部 Compose 项目
 backup_all_compose_projects() {
+    local log_file="$1"
+    shift
     local projects=("$@")
     
     echo -e ""
@@ -55382,13 +55517,17 @@ backup_all_compose_projects() {
     echo -e "${gl_bai}备份格式: ${gl_lv}$format${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
+    # 记录批量列表
+    write_log "$log_file" "批量备份项目列表："
+    write_log "$log_file" ""
+
     local success_count=0
     local fail_count=0
     local BACKUP_TEMP_DIR="/tmp"
     local BACKUP_DEST_DIR="/vol2/1000/file/myfile/compose/downloads"
 
     for target in "${projects[@]}"; do
-        if backup_single_compose_project "$target" "$format" "$BACKUP_TEMP_DIR" "$BACKUP_DEST_DIR"; then
+        if backup_single_compose_project "$target" "$format" "$BACKUP_TEMP_DIR" "$BACKUP_DEST_DIR" "$log_file" "true"; then
             ((success_count++))
         else
             ((fail_count++))
