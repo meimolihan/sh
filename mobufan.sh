@@ -55309,9 +55309,7 @@ backup_single_compose_project() {
     local temp_backup_path="$BACKUP_TEMP_DIR/$backup_name"
     local final_backup_path="$BACKUP_DEST_DIR/$backup_name"
 
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}开始备份: ${gl_huang}$target_name${gl_bai}"
-    echo -e "${gl_bai}格式: ${gl_lv}$format${gl_bai}"
+    echo -e "${gl_bai}开始备份: ${gl_huang}$target_name${gl_bai}  格式: ${gl_lv}$format${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     # 在当前目录压缩，然后移动到临时目录
