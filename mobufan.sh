@@ -55411,12 +55411,12 @@ backup_single_compose_project() {
         # 写入失败日志
         if [[ "$is_batch_backup" == "true" ]]; then
             write_log "$log_file" "  - $target_name"
-            write_log "$log_file" "源文件目录：      $source_abs_path"
-            write_log "$log_file" "状态：        备份失败"
+            write_log "$log_file" "源文件目录：$source_abs_path"
+            write_log "$log_file" "状态：     备份失败"
             write_log "$log_file" ""
         else
-            write_log "$log_file" "源文件目录：      $source_abs_path"
-            write_log "$log_file" "状态：        备份失败"
+            write_log "$log_file" "源文件目录：$source_abs_path"
+            write_log "$log_file" "状态：     备份失败"
         fi
         
         return 1
@@ -55430,12 +55430,12 @@ backup_single_compose_project() {
         # 写入失败日志
         if [[ "$is_batch_backup" == "true" ]]; then
             write_log "$log_file" "  - $target_name"
-            write_log "$log_file" "源文件目录：      $source_abs_path"
-            write_log "$log_file" "状态：        移动临时文件失败"
+            write_log "$log_file" "源文件目录：$source_abs_path"
+            write_log "$log_file" "状态：     移动临时文件失败"
             write_log "$log_file" ""
         else
-            write_log "$log_file" "源文件目录：      $source_abs_path"
-            write_log "$log_file" "状态：        移动临时文件失败"
+            write_log "$log_file" "源文件目录：$source_abs_path"
+            write_log "$log_file" "状态：     移动临时文件失败"
         fi
         
         exit_animation
@@ -55454,12 +55454,12 @@ backup_single_compose_project() {
         # 写入成功日志
         if [[ "$is_batch_backup" == "true" ]]; then
             write_log "$log_file" "  - $target_name"
-            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "源文件目录：  $source_abs_path"
             write_log "$log_file" "备份文件路径：$final_backup_path"
             write_log "$log_file" "压缩后大小：  $file_size"
             write_log "$log_file" ""
         else
-            write_log "$log_file" "源文件目录：      $source_abs_path"
+            write_log "$log_file" "源文件目录：  $source_abs_path"
             write_log "$log_file" "备份文件路径：$final_backup_path"
             write_log "$log_file" "压缩后大小：  $file_size"
         fi
@@ -55472,12 +55472,12 @@ backup_single_compose_project() {
         # 写入失败日志
         if [[ "$is_batch_backup" == "true" ]]; then
             write_log "$log_file" "  - $target_name"
-            write_log "$log_file" "源文件目录：      $source_abs_path"
-            write_log "$log_file" "状态：        移动目标文件失败"
+            write_log "$log_file" "源文件目录：$source_abs_path"
+            write_log "$log_file" "状态：     移动目标文件失败"
             write_log "$log_file" ""
         else
-            write_log "$log_file" "源文件目录：      $source_abs_path"
-            write_log "$log_file" "状态：        移动目标文件失败"
+            write_log "$log_file" "源文件目录：$source_abs_path"
+            write_log "$log_file" "状态：     移动目标文件失败"
         fi
         
         return 1
