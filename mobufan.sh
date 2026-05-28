@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.6.4.1"
+sh_v="1.6.4.2"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'   # 灰色
