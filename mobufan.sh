@@ -45448,7 +45448,7 @@ check_pve_version() {
     fi
 }
 
-# pve_running_status_simple() {
+pve_running_status_simple_test() {
     # 检查命令是否存在
     if ! command -v qm &>/dev/null; then
         log_error "qm命令未找到，可能不在PVE节点上"
