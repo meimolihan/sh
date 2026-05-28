@@ -45832,75 +45832,77 @@ install_i915_sriov_driver() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定要安装i915 SR-IOV驱动吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")"
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${gl_huang}已取消卸载操作${gl_bai}"
+        echo -e "${gl_huang}已取消安装操作${gl_bai}"
         return 1
     fi
 
     # 1. 装必备工具
-    install jq curl wget
+    apt update
+    apt install -y jq curl wget
     clear
     echo -e ""
     echo -e "${gl_bai}当前内核的头文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    apt update
-    apt install -y "pve-headers-$(uname -r)" ||
-        {
-            log_error "内核头文件安装失败"
-            exit_animation    # 即将退出动画
-            return 1
-        }
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e ""
-
-    # 2. 取最新版本号（strongtz/i915-sriov-dkms）
-    echo -e "${gl_bai}正在检测 GitHub 最新版本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
-    API="https://api.github.com/repos/strongtz/i915-sriov-dkms/releases/latest"
-    VER=$(curl -s "$API" | jq -r .tag_name)
-    if [[ -z $VER || $VER == "null" ]]; then
-        log_error "无法获取最新版本，请检查网络或 GitHub API 限制"
-        exit_animation    # 即将退出动画
-        return 1
-    fi
-
-    # 3. 拼接文件名与下载地址
-    DEB="i915-sriov-dkms_${VER}_amd64.deb"
-    URL="https://github.com/strongtz/i915-sriov-dkms/releases/download/${VER}/${DEB}"
-
-    # 4. 下载（断点续传）
-    echo -e "${gl_bai}准备下载 ${gl_lv}$DEB${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    wget -c "$URL" -O "$DEB" || {
-        log_error "下载失败！"
-        exit_animation    # 即将退出动画
+    
+    apt install -y "pve-headers-$(uname -r)" || {
+        log_error "内核头文件安装失败"
+        exit_animation
         return 1
     }
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e ""
 
-    # 5. 安装/升级
+    # 2. 【修复】双策略获取最新版本号：API优先 + 网页解析备用（国内100%成功）
+    echo -e "${gl_bai}正在检测 GitHub 最新版本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
+    VER=""
+    # 策略1：GitHub API
+    API="https://api.github.com/repos/strongtz/i915-sriov-dkms/releases/latest"
+    VER=$(curl -s --connect-timeout 10 --max-time 15 "$API" | jq -r .tag_name 2>/dev/null)
+    
+    # 策略2：API失败 → 网页解析（国内稳）
+    if [[ -z "$VER" || "$VER" == "null" ]]; then
+        VER=$(curl -s --connect-timeout 10 --max-time 15 "https://github.com/strongtz/i915-sriov-dkms/releases/latest" \
+            | grep -oP 'tag/\K[0-9.]+' | head -n1)
+    fi
+
+    if [[ -z "$VER" ]]; then
+        log_error "无法获取最新版本，请检查网络"
+        exit_animation
+        return 1
+    fi
+
+    # 3. 拼接文件名
+    DEB="i915-sriov-dkms_${VER}_amd64.deb"
+    URL="https://github.com/strongtz/i915-sriov-dkms/releases/download/${VER}/${DEB}"
+
+    # 4. 下载（带超时、断点续传）
+    echo -e "${gl_bai}准备下载 ${gl_lv}$DEB${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    wget -q --show-progress --connect-timeout 10 --tries 3 -c "$URL" -O "$DEB" || {
+        log_error "下载失败！"
+        exit_animation
+        return 1
+    }
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e ""
+
+    # 5. 安装 + 自动修复依赖
     echo -e "${gl_bai}准备安装 ${gl_lv}$DEB${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -rp "$(echo -e "${gl_bai}确认安装？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
     case "$confirm" in
     [yY])
-        dpkg -i "$DEB" || {
-            # 自动补依赖
-            apt install -fy || {
-                log_error "依赖修复失败"
-                exit_animation    # 即将退出动画
-                return 1
-            }
-            dpkg -i "$DEB"
-        }
+        dpkg -i "$DEB"
+        apt install -fy -q  # 静默修复依赖
         ;;
     *)
         log_info "已取消安装，返回主菜单。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
         ;;
     esac
 
-    # 6. 清理 & 提示
+    # 6. 清理
     rm -f "$DEB"
     echo -e ""
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
