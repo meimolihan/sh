@@ -45448,7 +45448,7 @@ check_pve_version() {
     fi
 }
 
-pve_running_status_simple() {
+# pve_running_status_simple() {
     # 检查命令是否存在
     if ! command -v qm &>/dev/null; then
         log_error "qm命令未找到，可能不在PVE节点上"
@@ -45474,6 +45474,119 @@ pve_running_status_simple() {
     else
         echo -e "     ${gl_huang}无运行中的容器${gl_bai}"
     fi
+}
+
+# PVE 全部实例列表 美化工具
+parse_qm_list() {
+    local data
+    data=$(qm list 2>/dev/null | tail -n +2)
+    if [ -z "$data" ]; then
+        return
+    fi
+    echo "$data" | while read -r line; do
+        vmid=$(echo "$line" | awk '{print $1}')
+        status=$(echo "$line" | awk '{print $3}')
+        mem=$(echo "$line" | awk '{print $4}')
+        disk=$(echo "$line" | awk '{print $5}')
+        lock=$(echo "$line" | awk '{print $6}')
+        name=$(echo "$line" | sed -E "s/^[ ]*${vmid}[ ]+//;s/[ ]+${status}.*$//" | xargs)
+
+        if [[ $status == "running" ]]; then
+            status_cn="运行中"
+            st_color="$gl_lv"
+        else
+            status_cn="已停止"
+            st_color="$gl_hong"
+        fi
+        
+        echo -e "${gl_huang}VM${reset}\t${gl_lan}${vmid}${reset}\t${gl_bufan}${name}${reset}\t${st_color}${status_cn}${reset}\t${gl_huang}${mem}${reset}\t${gl_zi}${disk}${reset}\t${gl_hui}${lock}${reset}"
+    done
+}
+
+parse_pct_list() {
+    local raw_output
+    raw_output=$(pct list 2>/dev/null)
+    
+    local data
+    data=$(echo "$raw_output" | tail -n +2)
+    if [ -z "$data" ]; then
+        return
+    fi
+    
+    echo "$data" | while read -r line; do
+        ctid=$(echo "$line" | awk '{print $1}')
+        
+        [[ ! "$ctid" =~ ^[0-9]+$ ]] && continue
+        
+        status=$(echo "$line" | awk '{print $2}')
+        if [[ "$status" != "running" && "$status" != "stopped" ]]; then
+            status=$(echo "$line" | awk '{print $3}')
+        fi
+        
+        local fields=($line)
+        local field_count=${#fields[@]}
+        
+        if [ $field_count -ge 7 ]; then
+            mem="${fields[2]}"
+            disk="${fields[4]}"
+            lock="${fields[5]}"
+            name=$(echo "$line" | awk '{for(i=7;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/ $//')
+        elif [ $field_count -eq 4 ]; then
+            mem="${fields[2]}"
+            disk="-"
+            lock="-"
+            name=$(echo "$line" | awk '{for(i=4;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/ $//')
+        elif [ $field_count -eq 3 ]; then
+            mem="-"
+            disk="-"
+            lock="-"
+            name=$(echo "$line" | awk '{for(i=3;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/ $//')
+        else
+            name=$(echo "$line" | sed -E "s/^[ ]*${ctid}[ ]+//" | sed -E "s/^${status}[ ]+//" | sed -E 's/[ ]+[0-9]+[ ]+[0-9.]+[ ]+[^ ]*[ ]*$//')
+        fi
+        
+        name=$(echo "$name" | xargs)
+        [ -z "$name" ] && name="(未命名)"
+        
+        [[ ! "$mem" =~ ^[0-9]+$ ]] && mem="-"
+        [[ ! "$disk" =~ ^[0-9.]+$ ]] && disk="-"
+        [ -z "$lock" ] && lock="-"
+        
+        if [[ $status == "running" ]]; then
+            status_cn="运行中"
+            st_color="$gl_lv"
+        elif [[ $status == "stopped" ]]; then
+            status_cn="已停止"
+            st_color="$gl_hong"
+        else
+            status_cn="$status"
+            st_color="$gl_huang"
+        fi
+        
+        echo -e "${gl_lan}CT${reset}\t${gl_lan}${ctid}${reset}\t${gl_bufan}${name}${reset}\t${st_color}${status_cn}${reset}\t${gl_huang}${mem}${reset}\t${gl_zi}${disk}${reset}\t${gl_hui}${lock}${reset}"
+    done
+}
+
+show_all_instance() {
+    clear
+    if ! command -v qm &> /dev/null; then
+        echo -e ""
+        echo -e "${gl_zi}>>> PVE 全部实例列表(VM虚拟机 + CT容器)${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_error "未检测到Proxmox VE环境，请确保脚本在PVE节点上运行"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
+        return 1
+    fi
+
+    {
+        printf "%s%s\t%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "类型" "ID" "名称" "状态" "内存" "磁盘" "锁" "$reset"
+        printf "%s%s\t%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "----" "----" "----" "----" "----" "----" "----" "$reset"
+
+        parse_qm_list
+        parse_pct_list
+    } | column_if_available
+
 }
 
 # 函数_PVE 资源锁状态检测
@@ -46999,7 +47112,7 @@ linux_pve_menu() {
         echo -e "${gl_zi}>>> ${gl_bufan}PVE  ${gl_zi}管理${gl_bai}"
         check_pve_version
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        pve_running_status_simple
+        show_all_instance
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         # 1. 虚拟机基本操作
