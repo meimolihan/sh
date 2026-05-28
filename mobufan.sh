@@ -45568,7 +45568,6 @@ parse_pct_list() {
 }
 
 pve_running_status_simple() {
-    clear
     if ! command -v qm &> /dev/null; then
         echo -e ""
         echo -e "${gl_zi}>>> PVE 全部实例列表(VM虚拟机 + CT容器)${gl_bai}"
