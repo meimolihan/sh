@@ -45567,7 +45567,7 @@ parse_pct_list() {
     done
 }
 
-show_all_instance() {
+pve_running_status_simple() {
     clear
     if ! command -v qm &> /dev/null; then
         echo -e ""
@@ -47112,7 +47112,7 @@ linux_pve_menu() {
         echo -e "${gl_zi}>>> ${gl_bufan}PVE  ${gl_zi}管理${gl_bai}"
         check_pve_version
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        show_all_instance
+        pve_running_status_simple
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         # 1. 虚拟机基本操作
