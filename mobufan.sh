@@ -56088,6 +56088,7 @@ linux_fnos_menu() {
         echo -e "${gl_bufan}23. ${gl_bai}随机壁纸管理        ${gl_bufan}24. ${gl_bai}电视剧集重命名"
         echo -e "${gl_bufan}25. ${gl_bai}FnOS开启BBR         ${gl_bufan}26. ${gl_bai}FnOS关闭BBR"
         echo -e "${gl_bufan}27. ${gl_bai}硬盘分区管理        ${gl_bufan}28. ${gl_bai}常用目录管理"
+        echo -e "${gl_bufan}29. ${gl_bai}CmdBox项目管理"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_lv}66. ${gl_bai}安装${gl_bufan}Docker${gl_bai}环境      ${gl_hong}99. ${gl_bai}卸载${gl_bufan}Docker${gl_bai}环境"
         echo -e "${gl_lv}666.${gl_bai}安装${gl_bufan}Compose${gl_bai}环境     ${gl_hong}999.${gl_bai}卸载${gl_bufan}Compose${gl_bai}环境"
@@ -56125,6 +56126,7 @@ linux_fnos_menu() {
         26) fnos_disable_bbr ;;                                             # FnOS关闭BBR
         27) linux_disk_manager "测试项目" ;;                                 # 硬盘分区管理工具
         28) manage_backup_files_simple "linux_file" ;;                      # 常用目录管理
+        29) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/cmdbox_admin_menu.sh) ;;
         66) install_add_docker ;;                                           # 安装更新Docker环境
         99) uninstall_docker_environment ;;                                 # 卸载Docker环境
         666) install_docker_compose ;;                                      # 安装Compose
