@@ -17091,7 +17091,7 @@ fetch_remote_ssh_keys() {
     local temp_file
 
     if [[ -z "${keys_url}" ]]; then
-        echo -e "${gl_lv}http://10.10.10.251:5000/file/myfile/ssh/mobufan_ssh.txt${gl_bai}"
+        echo -e "${gl_lv}https://dufs.mobufan.eu.org:666/ssh/mobufan_ssh.txt${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入您的远端公钥URL(${gl_huang}0${gl_bai}返回)"：)" keys_url
         # 检查是否输入0返回
         [[ -z "$keys_url" ]] && { cancel_empty "上一级选单"; return 1; }         # break 或 continue 或 return ，视上下文而定
@@ -32988,7 +32988,7 @@ linux_sshkey_panel() {
             echo -e ""
             echo -e "${gl_zi}>>> 从URL导入已有公钥${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bai}公钥格式：${gl_lv}http://10.10.10.251:5000/file/myfile/ssh/mobufan_ssh.txt${gl_bai}"
+            echo -e "${gl_bai}公钥格式：${gl_lv}https://dufs.mobufan.eu.org:666/ssh/mobufan_ssh.txt${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入您的远端公钥URL(${gl_huang}0${gl_bai}返回)"：)" keys_url
             [[ "$keys_url" == "0" ]] && { cancel_return "ROOT私钥登录模式"; continue; }         # break 或 continue 或 return ，视上下文而定
             [ -z "$confirm_clean" ] && { cancel_empty "上一级选单"; return 1; }                 # break 或 continue 或 return ，视上下文而定
@@ -48222,7 +48222,7 @@ install_docker_compose() {
     # 2. 设置下载地址
     echo ""
     log_info "官方项目地址: ${gl_lv}https://github.com/docker/compose/releases${gl_bai}"
-    log_info "个人内网地址: ${gl_lv}http://10.10.10.251:5000/file/myfile/compose/v5.1.0/docker-compose-linux-x86_64${gl_bai}"
+    log_info "个人内网地址: ${gl_lv}https://dufs.mobufan.eu.org:666/compose/v5.1.0/docker-compose-linux-x86_64${gl_bai}"
     log_info "默认下载地址: ${gl_lv}$DEFAULT_URL${gl_bai}"
     echo ""
 
@@ -52243,8 +52243,8 @@ fnos_handle_firmware_missing() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         # 定义默认链接（基于您提供的有效链接）
-        local default_url_bmg="http://10.10.10.251:5000/file/myfile/fnos/i915/bmg_dmc.bin"
-        local default_url_skl="http://10.10.10.251:5000/file/myfile/fnos/i915/skl_guc.bin"
+        local default_url_bmg="https://dufs.mobufan.eu.org:666/fnos/i915/bmg_dmc.bin"
+        local default_url_skl="https://dufs.mobufan.eu.org:666/fnos/i915/skl_guc.bin"
 
         # 处理 bxtg_dmc.bin 错误（使用 bmg_dmc.bin 链接）
         if [ $has_bxtg_error -gt 0 ]; then
@@ -55050,7 +55050,7 @@ download_docker_repo() {
 ###### 下载Docker项目（HTTP模式，替代Git克隆）
 download_docker_projects() {
     # 基础URL变量（可修改为你自己的服务器地址）
-    DOCKER_PROJECTS_BASE_URL="http://10.10.10.251:5000/file/myfile/compose/downloads"
+    DOCKER_PROJECTS_BASE_URL="https://dufs.mobufan.eu.org:666/compose/downloads"
 
     # 定义所有项目文件名（对应服务器上的压缩包）
     declare -A projects=(
@@ -62908,7 +62908,7 @@ wukongdaily_restore_from_url() {
         echo -e "${gl_lan}支持的URL格式:${gl_bai}"
         echo -e "  ${gl_hui}• http:// 或 https:// 开头的网络地址${gl_bai}"
         echo -e "  ${gl_hui}• 本地文件路径${gl_bai}"
-        echo -e "  ${gl_lv}• http://10.10.10.251:5000/file/myfile/istoreos/backup/wukong_backup/2026-03-23_03-15/backup.tar.gz${gl_bai}"
+        echo -e "  ${gl_lv}• https://dufs.mobufan.eu.org:666/istoreos/backup/wukong_backup/2026-03-23_03-15/backup.tar.gz${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         
         read -r -e -p "$(echo -e "${gl_bai}请输入备份文件URL或路径(${gl_huang}0${gl_bai}返回): ")" backup_url
@@ -63810,7 +63810,7 @@ istoreos_restore_from_url() {
         echo -e "${gl_lan}支持的URL格式:${gl_bai}"
         echo -e "  ${gl_hui}• http:// 或 https:// 开头的网络地址${gl_bai}"
         echo -e "  ${gl_hui}• 本地文件路径${gl_bai}"
-        echo -e "  ${gl_lv}• http://10.10.10.251:5000/file/myfile/istoreos/backup/istoreos_backup/2026-03-23_03-14/backup.tar.gz${gl_bai}"
+        echo -e "  ${gl_lv}• https://dufs.mobufan.eu.org:666/istoreos/backup/istoreos_backup/2026-03-23_03-14/backup.tar.gz${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         
         read -r -e -p "$(echo -e "${gl_bai}请输入备份文件URL或路径(${gl_huang}0${gl_bai}返回): ")" backup_url
@@ -64611,7 +64611,7 @@ linux_m_info() {
     echo -e "${gl_bufan}更新脚本${gl_bai}            ${gl_huang}m g ${gl_hong}| ${gl_huang}m up${gl_bai}"
     echo -e "${gl_bufan}安全防御${gl_bai}            ${gl_huang}m fy ${gl_hong}| ${gl_huang}m f2b ${gl_hong}| ${gl_huang}m 安全防御${gl_bai}"
     echo -e "${gl_bufan}FnOS容器${gl_bai}            ${gl_huang}m fnos ${gl_hong}| ${gl_huang}m 飞牛${gl_bai}"
-    echo -e "${gl_bufan}私钥登录${gl_bai}            ${gl_huang}m sshkey${gl_hong}| ${gl_huang}m sshkey ${gl_lv}<url>${gl_bai} (导入公钥链接：m sshkey http://10.10.10.251:5000/file/myfile/ssh/mobufan_ssh.txt)"
+    echo -e "${gl_bufan}私钥登录${gl_bai}            ${gl_huang}m sshkey${gl_hong}| ${gl_huang}m sshkey ${gl_lv}<url>${gl_bai} (导入公钥链接：m sshkey https://dufs.mobufan.eu.org:666/ssh/mobufan_ssh.txt)"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bufan}压缩解压${gl_bai}            ${gl_huang}m zip ${gl_hong}| ${gl_huang}m gz ${gl_hong}| ${gl_huang}m rar${gl_bai}"
     echo -e "${gl_bufan}文件压缩${gl_bai}            ${gl_huang}m ys ${gl_hong}| ${gl_huang}m 压缩${gl_bai}"
