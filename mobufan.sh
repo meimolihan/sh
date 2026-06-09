@@ -64591,6 +64591,7 @@ mobufan_sh() {
         6666) update_mobufan_script ;;      # 立即更新脚本
         66666) update_mobufan_script ;;     # 立即更新脚本 
         666666) update_mobufan_script ;;    # 立即更新脚本
+        29 | 1129) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/cmdbox_admin_menu.sh) ;;
         0) exit_script ;;                   # 感谢使用，再见！
         *) handle_invalid_input ;;          # 无效的输入,请重新输入!
         esac
