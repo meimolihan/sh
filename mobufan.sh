@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.6.4.2"
+sh_v="1.6.4.3"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'   # 灰色
@@ -128,24 +128,80 @@ exit_script() {
 }
 
 ###### 空输入提示
+# cancel_empty() {
+#     local menu_name="${1:-上一级选单}"
+#     echo -e "${gl_hong}空输入，返回 ${gl_huang}${menu_name} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+#     sleep_fractional 0.5
+#     echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+#     sleep_fractional 0.6
+#     echo ""
+#     clear
+# }
+
 cancel_empty() {
     local menu_name="${1:-上一级选单}"
-    echo -e "${gl_hong}空输入，返回 ${gl_huang}${menu_name} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.5
-    echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.6
-    echo ""
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai}空输入，返回 ${gl_huang}${menu_name} ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai}成功返回${gl_huang}${menu_name}${gl_bai} \n"
     clear
 }
 
 ###### 输入0返回提示
+# cancel_return() {
+#     local menu_name="${1:-上一级选单}"
+#     echo -ne "${gl_lv}即将返回 ${gl_huang}${menu_name} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+#     sleep_fractional 0.5
+#     echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+#     sleep_fractional 0.6
+#     echo ""
+#     clear
+# }
+
 cancel_return() {
     local menu_name="${1:-上一级选单}"
-    echo -ne "${gl_lv}即将返回 ${gl_huang}${menu_name} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.5
-    echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.6
-    echo ""
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai}即将返回 ${gl_huang}${menu_name} ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功返回${gl_huang}${menu_name}${gl_bai} \n"
     clear
 }
 
