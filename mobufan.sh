@@ -31,11 +31,30 @@ sleep_fractional() {
 
 ###### 退出动画函数
 exit_animation() {
-    echo -ne "${gl_lv}即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.5
-    echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.6
-    echo ""
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai} 正在退出 ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功退出\n"
+    clear
 }
 
 ###### 按任意键继续...
@@ -70,12 +89,40 @@ handle_y_n() {
 }
 
 ###### 退出脚本
+# exit_script() {
+#     echo ""
+#     echo -ne "${gl_hong}感谢使用，再见！${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+#     sleep_fractional 0.5
+#     echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+#     sleep_fractional 0.6
+#     clear
+#     exit 0
+# }
+
 exit_script() {
-    echo ""
-    echo -ne "${gl_hong}感谢使用，再见！${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.5
-    echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    sleep_fractional 0.6
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai} 正在退出 ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功退出\n"
     clear
     exit 0
 }
