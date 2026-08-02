@@ -39141,7 +39141,7 @@ linux_ssh_key_distribution() {
     # 直接读取输入（无循环）
     read -r -e -p "$(echo -e "${gl_bai}请输入要批量推钥的主机号，用空格或逗号隔开（例：${gl_lv}251 ${gl_huang}253 ${gl_hong}254${gl_bai}，${gl_huang}0${gl_bai}返回）: ")" input
     [ "$input" == "0" ] && { cancel_return "上一级选单"; return 1; }        # break 或 continue 或 return ，视上下文而定
-    [ -z "$repoUrl" ] && { cancel_empty "上一级选单"; return 1; }           # break 或 continue 或 return ，视上下文而定
+    [ -z "$input" ] && { cancel_empty "上一级选单"; return 1; }           # break 或 continue 或 return ，视上下文而定
 
     # 把逗号替换成空格，再压成数组
     hosts=(${input//,/ })
