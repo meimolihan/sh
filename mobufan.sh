@@ -61655,32 +61655,49 @@ linux_work() {
 
 # 功能：检查并更新 mobufan.sh 脚本到最新版本
 update_mobufan_script() {
+
     echo ""
-    local script_url="shturl.cc/kaMcZESz5pw7LxRDPNZ3soirKkxoy6qYNcg0ic3Q6pqFyQYGxK0"
-
-    if command -v curl &>/dev/null; then
-        echo -e "${gl_lv}使用 curl 在线执行脚本${gl_bai}"
-        if bash <(curl -fsSL --connect-timeout 10 "$script_url"); then
-            echo "✅ curl 更新执行成功"
-            return 0
-        else
-            echo -e "${gl_hong}❌ curl 执行失败，尝试 wget${gl_bai}"
-        fi
+    
+    cd ~ || return
+    local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
+    local backup_url="https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"
+    local log_url="https://gitee.com/meimolihan/sh/raw/master/log/mobufan_sh_log.txt"
+    
+    # 下载脚本（主源+备用源）
+    if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null; then
+        curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$backup_url" 2>/dev/null || {
+            log_error "下载失败，请检查网络"
+            sleep_fractional 1
+            return 1
+        }
     fi
 
-    if command -v wget &>/dev/null; then
-        echo -e "${gl_lv}使用 wget 在线执行脚本${gl_bai}"
-        if bash <(wget -qO- --connect-timeout=10 "$script_url"); then
-            echo "✅ wget 更新执行成功"
-            return 0
-        else
-            echo -e "${gl_hong}❌ wget 执行失败${gl_bai}"
-        fi
-    fi
+    # 校验文件不为空
+    [[ ! -s mobufan.sh ]] && {
+        log_error "下载文件为空"
+        sleep_fractional 1
+        return 1
+    }
 
-    echo -e "${gl_hong}❌ 安装更新失败：curl/wget 均不可用或网络异常${gl_bai}"
-    break_end
-    return 1
+    chmod +x mobufan.sh
+    canshu_v6
+    CheckFirstRun_true
+    yinsiyuanquan2
+
+    cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
+    chmod +x /usr/local/bin/m 2>/dev/null
+
+    echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
+    echo -ne "${gl_bai}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_bai} 秒"
+    sleep_fractional 1
+    echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_huang}1${gl_bai} 秒"
+    sleep_fractional 1
+    echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_lv}0${gl_bai} 秒"
+    sleep_fractional 1
+    echo -e "\r${gl_bai}正在启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+
+    bash ~/mobufan.sh
+    exit
 }
 
 ###### iStoreOS管理工具
