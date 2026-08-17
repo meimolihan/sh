@@ -61653,52 +61653,7 @@ linux_work() {
     done
 }
 
-# 功能：检查并更新 mobufan.sh 脚本到最新版本
-update_mobufan_script() {
 
-    echo ""
-    
-    cd ~ || return
-    local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
-    local backup_url="https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"
-    local log_url="https://gitee.com/meimolihan/sh/raw/master/log/mobufan_sh_log.txt"
-    
-    # 下载脚本（主源+备用源）
-    if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null; then
-        curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$backup_url" 2>/dev/null || {
-            log_error "下载失败，请检查网络"
-            sleep_fractional 1
-            return 1
-        }
-    fi
-
-    # 校验文件不为空
-    [[ ! -s mobufan.sh ]] && {
-        log_error "下载文件为空"
-        sleep_fractional 1
-        return 1
-    }
-
-    chmod +x mobufan.sh
-    canshu_v6
-    CheckFirstRun_true
-    yinsiyuanquan2
-
-    cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
-    chmod +x /usr/local/bin/m 2>/dev/null
-
-    echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
-    echo -ne "${gl_bai}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_bai} 秒"
-    sleep_fractional 1
-    echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_huang}1${gl_bai} 秒"
-    sleep_fractional 1
-    echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_lv}0${gl_bai} 秒"
-    sleep_fractional 1
-    echo -e "\r${gl_bai}正在启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-
-    bash ~/mobufan.sh
-    exit
-}
 
 ###### iStoreOS管理工具
 # 检查iStoreOS风格化函数
@@ -64691,10 +64646,6 @@ mobufan_sh() {
         15) temp_dir_menu "" "主菜单" ;;     # 测试项目
         16) linux_work ;;                   # 后台工作
         00) mobufan_update ;;               # 更新脚本
-        66 | 666) update_mobufan_script ;;  # 立即更新脚本
-        6666) update_mobufan_script ;;      # 立即更新脚本
-        66666) update_mobufan_script ;;     # 立即更新脚本 
-        666666) update_mobufan_script ;;    # 立即更新脚本
         29 | 1129) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/cmdbox_admin_menu.sh) ;;
         0) exit_script ;;                   # 感谢使用，再见！
         *) handle_invalid_input ;;          # 无效的输入,请重新输入!
