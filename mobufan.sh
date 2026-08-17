@@ -61656,39 +61656,32 @@ linux_work() {
 # 功能：检查并更新 mobufan.sh 脚本到最新版本
 update_mobufan_script() {
     echo ""
-    local script_url="https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh"
+    local script_url="shturl.cc/kaMcZESz5pw7LxRDPNZ3soirKkxoy6qYNcg0ic3Q6pqFyQYGxK0"
 
-    # 优先使用 curl
     if command -v curl &>/dev/null; then
-        echo -e "使用 curl 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if bash <(curl -fsSL "$script_url"); then
-            echo "✅ curl 安装成功"
-            # 执行脚本
-            bash ~/mobufan.sh
+        echo -e "${gl_lv}使用 curl 在线执行脚本${gl_bai}"
+        if bash <(curl -fsSL --connect-timeout 10 "$script_url"); then
+            echo "✅ curl 更新执行成功"
             return 0
         else
-            echo -e "❌ curl 安装失败，尝试使用 wget ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "${gl_hong}❌ curl 执行失败，尝试 wget${gl_bai}"
         fi
     fi
 
-    # curl 失败则使用 wget
     if command -v wget &>/dev/null; then
-        echo -e "使用 wget 安装 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if bash <(wget -qO- "$script_url"); then
-            echo "✅ wget 安装成功"
-            # 执行脚本
-            bash ~/mobufan.sh
+        echo -e "${gl_lv}使用 wget 在线执行脚本${gl_bai}"
+        if bash <(wget -qO- --connect-timeout=10 "$script_url"); then
+            echo "✅ wget 更新执行成功"
             return 0
         else
-            echo "❌ wget 安装失败"
+            echo -e "${gl_hong}❌ wget 执行失败${gl_bai}"
         fi
     fi
 
-    echo "❌ 安装更新失败：curl 和 wget 均不可用或网络异常"
+    echo -e "${gl_hong}❌ 安装更新失败：curl/wget 均不可用或网络异常${gl_bai}"
     break_end
-    #return 1
+    return 1
 }
-
 
 ###### iStoreOS管理工具
 # 检查iStoreOS风格化函数
