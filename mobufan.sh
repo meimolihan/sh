@@ -10,6 +10,7 @@ list_color_init() {
     export gl_bai=$'\033[38;5;15m'   # 白色
     export gl_zi=$'\033[38;5;13m'    # 紫色
     export gl_bufan=$'\033[38;5;14m' # 亮青色
+    export gl_cheng=$'\033[38;5;208m' # 橙色
     export reset=$'\033[0m'          # 重置
 }
 list_color_init
@@ -206,20 +207,6 @@ cancel_return() {
 }
 
 ################################### 列表美化 ########################################
-
-###### 列表公用颜色变量
-list_color_init() {
-    export gl_hui=$'\033[38;5;59m'
-    export gl_hong=$'\033[38;5;9m'
-    export gl_lv=$'\033[38;5;10m'
-    export gl_huang=$'\033[38;5;11m'
-    export gl_lan=$'\033[38;5;32m'
-    export gl_bai=$'\033[38;5;15m'
-    export gl_zi=$'\033[38;5;13m'
-    export gl_bufan=$'\033[38;5;14m'
-    export reset=$'\033[0m'
-}
-list_color_init
 
 ###### 用于替代 column 命令的函数
 column_if_available() {
@@ -2498,10 +2485,11 @@ display_storage_info() {
                 echo -e "  ${gl_zi}750: 所有者rwx，组r-x，其他用户无权限${gl_bai}"
                 echo -e "    ${gl_bufan}(通常用于共享给组的目录)${gl_bai}"
                 ;;
-            *)
-                echo -e "  ${gl_bufan}权限分解:${gl_bai}"
-                ;;
-        esac
+        *)
+            log_error "不支持的发行版: $OS"
+            return 1
+            ;;
+    esac
         
         # 显示详细的权限分解
         echo -e ""
@@ -3702,21 +3690,19 @@ start() {
 
 # 停止服务
 stop() {
-    systemctl stop "$1"
-    if cmd; then
-        echo "${gl_huang}$1${gl_bai} 服务已停止。"
+    if systemctl stop "$1"; then
+        log_ok "${gl_huang}$1${gl_bai} 服务已停止。"
     else
-        echo "停止 ${gl_huang}$1${gl_bai} 服务失败。"
+        log_error "停止 ${gl_huang}$1${gl_bai} 服务失败。"
     fi
 }
 
 # 查看服务状态
 status() {
-    systemctl status "$1"
-    if cmd; then
-        echo "$1 服务状态已显示。"
+    if systemctl status "$1"; then
+        log_ok "$1 服务状态已显示。"
     else
-        echo "错误：无法显示 $1 服务状态。"
+        log_error "无法显示 $1 服务状态。"
     fi
 }
 
@@ -4141,7 +4127,8 @@ safe_rm() {
     0) cancel_return; return 2 ;;
     *)
         echo -e "${gl_bai}错误：请输入 ${gl_lv}y ${gl_bai}或 ${gl_hong}N${gl_bai}"
-        exit 1
+        handle_invalid_input
+        return 1
         ;;
     esac
 
@@ -5198,7 +5185,7 @@ remove_duplicate_files() {
         if [ -z "$(ls -A "$search_path" 2>/dev/null)" ]; then
             echo -e "${gl_huang}当前目录为空${gl_bai}"
         else
-            cd ${search_path} && list_dir_colorful 0 4
+            cd "${search_path}" && list_dir_colorful 0 4
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
@@ -18340,7 +18327,7 @@ create_backup() {
         log_ok "备份创建成功: $BACKUP_DIR/$BACKUP_NAME"
     else
         log_error "备份创建失败！"
-        exit 1
+        return 1
     fi
 
     break_end
@@ -27143,7 +27130,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
             wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20250901.zip
             unzip latest.zip
             rm latest.zip
@@ -27175,7 +27162,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
             wget -O latest.zip ${gh_proxy}github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip
             unzip -o latest.zip
             rm latest.zip
@@ -27208,7 +27195,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
             # wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
             wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && mv maccms10-*/* . && rm -r maccms10-* && rm maccms10.zip
             cd /etc/nginx/html/$yuming/template/ && wget ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/DYXS2.zip && unzip DYXS2.zip && rm /etc/nginx/html/$yuming/template/DYXS2.zip
@@ -27248,7 +27235,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
             wget ${gh_proxy}github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
             restart_ldnmp
@@ -27295,7 +27282,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
 
             docker exec php sh -c "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\""
             docker exec php sh -c "php composer-setup.php"
@@ -27342,7 +27329,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
             wget -O latest.zip ${gh_proxy}github.com/typecho/typecho/releases/latest/download/typecho.zip
             unzip latest.zip
             rm latest.zip
@@ -27378,7 +27365,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
             wget -O latest.zip ${gh_proxy}github.com/linkstackorg/linkstack/releases/latest/download/linkstack.zip
             unzip latest.zip
             rm latest.zip
@@ -27411,7 +27398,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
 
             clear
             echo -e "[${gl_huang}1/6${gl_bai}] 上传PHP源码"
@@ -27633,7 +27620,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
 
             wget ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/ai_prompt_generator.zip
             unzip $(ls -t *.zip | head -n 1)
@@ -27670,7 +27657,7 @@ linux_ldnmp() {
 
             cd /etc/nginx/html
             mkdir $yuming
-            cd $yuming
+            cd "$yuming"
 
             clear
             echo -e "[${gl_huang}1/2${gl_bai}] 上传静态源码"
@@ -30972,7 +30959,7 @@ samba_view_logs() {
         if [[ ! -f "/var/log/samba/log.smbd" ]]; then
             echo -e "${gl_hong}错误: 日志文件不存在${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit 1
+            return 1
         fi
 
         echo -e "${gl_qing}最后 20 行日志:${gl_bai}"
@@ -38903,7 +38890,8 @@ linux_setup_ssh() {
         OS_VERSION=$(awk '{print $3}' /etc/redhat-release)
         OS_NAME=$(cat /etc/redhat-release)
     else
-        log_error "无法检测操作系统"; exit 1
+        log_error "无法检测操作系统"
+        return 1
     fi
     log_info "检测到操作系统: $OS_NAME"
     
@@ -39034,7 +39022,8 @@ linux_setup_ssh() {
             systemctl status sshd --no-pager -l
             ;;
         *)
-            log_error "不支持的发行版: $OS"; exit 1
+            log_error "不支持的发行版: $OS"
+            return 1
             ;;
     esac
     log_ok "SSH 服务已重启并生效"
