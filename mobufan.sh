@@ -166,16 +166,6 @@ cancel_empty() {
     clear
 }
 
-###### 输入0返回提示
-# cancel_return() {
-#     local menu_name="${1:-上一级选单}"
-#     echo -ne "${gl_lv}即将返回 ${gl_huang}${menu_name} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-#     sleep_fractional 0.5
-#     echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-#     sleep_fractional 0.6
-#     echo ""
-#     clear
-# }
 
 cancel_return() {
     local menu_name="${1:-上一级选单}"
@@ -61695,7 +61685,8 @@ update_mobufan_script() {
     fi
 
     echo "❌ 安装更新失败：curl 和 wget 均不可用或网络异常"
-    return 1
+    break_end
+    #return 1
 }
 
 
