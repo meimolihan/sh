@@ -46052,13 +46052,13 @@ modify_grub_params() {
     echo -e "${gl_zi}>>> 修改 GRUB 默认引导参数${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bai}原行：${gl_huang}$(grep ^GRUB_CMDLINE_LINUX_DEFAULT /etc/default/grub)${gl_bai}"
-    echo -e "${gl_bai}新行：${gl_lv}GRUB_CMDLINE_LINUX_DEFAULT="quiet iommu=pt i915.enable_guc=3 i915.max_vfs=7\"${gl_bai}"
+    echo -e "${gl_bai}新行：${gl_lv}GRUB_CMDLINE_LINUX_DEFAULT=\"quiet intel_iommu=on i915.enable_guc=3 i915.max_vfs=7 module_blacklist=xe\"${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确认写入？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
 
     case "$confirm" in
     [yY])
-        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet iommu=pt i915.enable_guc=3 i915.max_vfs=7"/' /etc/default/grub
+        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on i915.enable_guc=3 i915.max_vfs=7 module_blacklist=xe"/' /etc/default/grub
         log_info "${gl_bai}已更新 ${gl_huang}/etc/default/grub${gl_bai}，需要执行 'update-grub' 生效。"
 
         # 二次确认：是否立即 update-grub
@@ -47319,7 +47319,7 @@ linux_pve_menu() {
         3)  pve_restart_selector ;;                                             # 交互重启虚拟机
         4)  pve_instance_management ;;                                          # 手动管理虚拟机
         5)  show_kernel_version || continue ;;                                  # 查看内核版本
-        6)  show_pve_kernel 7.0 || continue ;;                               # 查看可用内核
+        6)  show_pve_kernel 7.0 ;;                                         # 查看可用内核
         7)  install_and_pin_kernel || continue ;;                               # 安装内核并固化
         8)  reboot_for_new_kernel || continue ;;                                # 重启应用新内核
         9)  modify_grub_params || continue ;;                                   # 修改GRUB引导参数
