@@ -45898,13 +45898,78 @@ show_kernel_version() {
 }
 
 ###### 查看可用内核
-show_available_kernels() {
-    is_pve_system || return 1  # 非PVE系统退出
+filter_kernel_version() {
+    local pkg="$1"
+    local min_ver="$2"
+    [[ -z "$min_ver" ]] && return 0
+
+    local ver_raw
+    ver_raw=$(echo "$pkg" | sed -E \
+        -e 's/^(proxmox|pve)-kernel-//' \
+        -e 's/\+deb[0-9u-]*//' \
+        -e 's/-rc[0-9]+//' \
+        -e 's/-pve.*//' \
+        -e 's/-[0-9]+$//' \
+        -e 's/-signed$//')
+
+    local smallest
+    smallest=$(printf "%s\n" "$min_ver" "$ver_raw" | sort -V | head -n1)
+    if [[ "$smallest" == "$ver_raw" ]]; then
+        return 1   # ver_raw < min_ver
+    fi
+    return 0       # ver_raw >= min_ver
+}
+
+parse_pve_kernel() {
+    local min_version="$1"
+    apt-cache pkgnames 2>/dev/null \
+        | grep -E '^(proxmox|pve)-kernel-' \
+        | grep -v -- '-signed$' \
+        | sort -V \
+        | while read -r pkg_name; do
+            [[ -z $pkg_name ]] && continue
+
+            local desc
+            desc=$(apt-cache show "$pkg_name" 2>/dev/null | grep -m1 '^Description:' | sed 's/^Description://' | xargs)
+            [[ -z "$desc" ]] && continue
+
+            [[ "$desc" != "Proxmox Kernel Image" && "$desc" != "Latest Proxmox Kernel Image" ]] && continue
+
+            if ! filter_kernel_version "$pkg_name" "$min_version"; then
+                continue
+            fi
+
+            echo -e "${gl_huang}内核包${reset}\t${gl_lan}${pkg_name}${reset}\t${gl_bai}${desc}${reset}"
+        done
+}
+
+show_pve_kernel() {
+    local min_version="${1:-}"
     clear
-    echo -e ""
-    echo -e "${gl_zi}>>> 查看可用内核${gl_bai}"
+
+    if ! command -v qm &> /dev/null; then
+        echo -e ""
+        echo -e "${gl_zi}>>> PVE 可用内核包列表${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        log_error "未检测到Proxmox VE环境，请确保脚本在PVE节点上运行"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
+        return 1
+    fi
+
+    local title=">>> PVE 可用内核包列表（排除‑signed签名包）"
+    if [[ -n "$min_version" ]]; then
+        title+=" (仅展示 >= ${min_version})"
+    fi
+    echo -e "${gl_zi}${title}${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    apt-cache search pve-kernel
+
+    {
+        printf "%s%s\t%s\t%s%s\n" "$gl_hui" "类型" "软件包名" "描述" "$reset"
+        printf "%s%s\t%s\t%s%s\n" "$gl_hui" "----" "--------" "----" "$reset"
+        parse_pve_kernel "$min_version"
+    } | column_if_available
+
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -45987,7 +46052,7 @@ modify_grub_params() {
     echo -e "${gl_zi}>>> 修改 GRUB 默认引导参数${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bai}原行：${gl_huang}$(grep ^GRUB_CMDLINE_LINUX_DEFAULT /etc/default/grub)${gl_bai}"
-    echo -e "${gl_bai}新行：${gl_lv}GRUB_CMDLINE_LINUX_DEFAULT=\"quiet iommu=pt i915.enable_guc=3 i915.max_vfs=7\"${gl_bai}"
+    echo -e "${gl_bai}新行：${gl_lv}GRUB_CMDLINE_LINUX_DEFAULT="quiet iommu=pt i915.enable_guc=3 i915.max_vfs=7\"${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确认写入？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
 
@@ -47254,7 +47319,7 @@ linux_pve_menu() {
         3)  pve_restart_selector ;;                                             # 交互重启虚拟机
         4)  pve_instance_management ;;                                          # 手动管理虚拟机
         5)  show_kernel_version || continue ;;                                  # 查看内核版本
-        6)  show_available_kernels || continue ;;                               # 查看可用内核
+        6)  show_pve_kernel 7.0 || continue ;;                               # 查看可用内核
         7)  install_and_pin_kernel || continue ;;                               # 安装内核并固化
         8)  reboot_for_new_kernel || continue ;;                                # 重启应用新内核
         9)  modify_grub_params || continue ;;                                   # 修改GRUB引导参数
