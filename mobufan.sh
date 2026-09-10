@@ -1,16 +1,16 @@
 #!/bin/bash
-sh_v="1.6.5"
+sh_v="1.6.6"
 
 list_color_init() {
-    export gl_hui=$'\033[38;5;59m'   # 灰色
-    export gl_hong=$'\033[38;5;9m'   # 红色
-    export gl_lv=$'\033[38;5;10m'    # 绿色
-    export gl_huang=$'\033[38;5;11m' # 黄色
-    export gl_lan=$'\033[38;5;32m'   # 蓝色
-    export gl_bai=$'\033[38;5;15m'   # 白色
-    export gl_zi=$'\033[38;5;13m'    # 紫色
-    export gl_bufan=$'\033[38;5;14m' # 亮青色
-    export reset=$'\033[0m'          # 重置
+    export gl_hui=$'\033[38;5;59m'
+    export gl_hong=$'\033[38;5;9m'
+    export gl_lv=$'\033[38;5;10m'
+    export gl_huang=$'\033[38;5;11m'
+    export gl_lan=$'\033[38;5;32m'
+    export gl_bai=$'\033[38;5;15m'
+    export gl_zi=$'\033[38;5;13m'
+    export gl_bufan=$'\033[38;5;14m'
+    export reset=$'\033[0m'
 }
 list_color_init
 
@@ -19,6 +19,7 @@ log_ok() { echo -e "${gl_lv}[成功]${gl_bai} $*"; }
 log_warn() { echo -e "${gl_huang}[警告]${gl_bai} $*"; }
 log_error() { echo -e "${gl_hong}[错误]${gl_bai} $*" >&2; }
 
+# 暂停函数
 sleep_fractional() {
     local seconds=$1
     if sleep "$seconds" 2>/dev/null; then return 0; fi
@@ -29,7 +30,7 @@ sleep_fractional() {
     sleep "$int_seconds"
 }
 
-###### 退出动画函数
+# 退出动画函数
 exit_animation() {
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     local dots=(
@@ -57,7 +58,7 @@ exit_animation() {
     clear
 }
 
-###### 按任意键继续...
+# 按任意键继续...
 break_end() {
     echo -e "${gl_lv}操作完成${gl_bai}"
     echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
@@ -66,7 +67,7 @@ break_end() {
     clear
 }
 
-###### 无效的输入,请重新输入!
+# 无效的输入,请重新输入!
 handle_invalid_input() {
     echo -ne "\r${gl_hong}无效的输入，请重新输入 ${gl_zi} 2 ${gl_hong}秒后返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.3
@@ -77,7 +78,7 @@ handle_invalid_input() {
     return 2 # 2 表示“输入非法”
 }
 
-###### 无效的输入,请输入(y或N)。
+# 无效的输入,请输入(y或N)。
 handle_y_n() {
     echo -ne "\r${gl_hong}无效的选择，请输入 ${gl_bai}(${gl_lv}y${gl_bai}或${gl_hong}N${gl_bai}) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.3
@@ -88,6 +89,7 @@ handle_y_n() {
     return 2 # 2 表示“输入非法”
 }
 
+# 退出脚本
 exit_script() {
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     local dots=(
@@ -116,6 +118,7 @@ exit_script() {
     exit 0
 }
 
+# 返回上一级
 cancel_empty() {
     local menu_name="${1:-上一级选单}"
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
@@ -173,9 +176,9 @@ cancel_return() {
     clear
 }
 
-################################### 列表美化 ########################################
+############################## 列表美化 ##############################
 
-###### 列表公用颜色变量
+# 列表公用颜色变量
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
     export gl_hong=$'\033[38;5;9m'
@@ -189,7 +192,7 @@ list_color_init() {
 }
 list_color_init
 
-###### 用于替代 column 命令的函数
+# 用于替代 column 命令的函数
 column_if_available() {
     if command -v column &> /dev/null; then
         column -t -s $'\t'
@@ -198,7 +201,7 @@ column_if_available() {
     fi
 }
 
-###### 美化端口占用状态列表
+# 美化端口占用状态列表
 list_beautify_lsof_listen() {
     {
         printf "%s%-20s\t%-8s\t%-12s\t%-6s\t%-6s\t%-12s\t%-8s\t%-6s\t%-30s%s\n" \
@@ -235,7 +238,7 @@ list_beautify_lsof_listen() {
     } | column_if_available
 }
 
-###### 美化 CPU 详细信息列表
+# 美化 CPU 详细信息列表
 list_beautify_cpu_info() {
     {
         lscpu_output=$(lscpu)
@@ -358,7 +361,7 @@ list_beautify_cpu_info() {
 }
 
 
-###### Docker 镜像列表
+# Docker 镜像列表
 list_beautify_docker_images() {
     {
         printf "%s%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "仓库" "标签" "镜像ID" "创建时间" "大小" "$reset"
@@ -391,7 +394,7 @@ list_beautify_docker_images() {
     } | column_if_available
 }
 
-###### 美化SSH配置列表
+# 美化SSH配置列表
 list_beautify_sshd_config() {
     {
         grep -vE '^#|^$' /etc/ssh/sshd_config | awk -v gray="$gl_hui" -v green="$gl_lv" \
@@ -448,7 +451,7 @@ list_beautify_sshd_config() {
     }
 }
 
-###### 美化Linux最近系统日志
+# 美化Linux最近系统日志
 list_beautify_journal_log() {
     {
         LINE=${1:-50}
@@ -476,7 +479,7 @@ list_beautify_journal_log() {
     }
 }
 
-###### Docker磁盘使用列表
+# Docker磁盘使用列表
 list_beautify_docker_system() {
     {
         docker system df | awk -v gray="$gl_hui" -v green="$gl_lv" -v yellow="$gl_huang" \
@@ -508,7 +511,7 @@ list_beautify_docker_system() {
     }
 }
 
-###### 美化iptables中INPUT链规则列表（最终完美对齐版）
+# 美化iptables中INPUT链规则列表（最终完美对齐版）
 list_beautify_iptables_input() {
     local chain="${1:-INPUT}"
     if ! iptables -L "$chain" -n --line-numbers &>/dev/null; then
@@ -569,7 +572,7 @@ list_beautify_iptables_input() {
     }' | sed 's/|/\t/g' | column_if_available
 }
 
-###### 美化iptables所有规则列表
+# 美化iptables所有规则列表
 list_beautify_iptables_all() {
     {
         if ! iptables -L -n --line-numbers &>/dev/null; then
@@ -724,7 +727,7 @@ list_beautify_iptables_all() {
     } | column_if_available
 }
 
-###### Docker 网络列表（完整）
+# Docker 网络列表（完整）
 list_beautify_docker_network() {
     {
         printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "网络ID" "名称" "驱动" "作用域" "$reset"
@@ -747,7 +750,7 @@ list_beautify_docker_network() {
     } | column_if_available
 }
 
-###### Docker 网络列表（简单）
+# Docker 网络列表（简单）
 list_beautify_docker_network_info() {
     {
         printf "%s%-20s\t%-20s\t%-15s%s\n" "$gl_hui" "容器名称" "网络名称" "IP地址" "$reset"
@@ -779,7 +782,7 @@ list_beautify_docker_network_info() {
     } | column_if_available
 }
 
-###### Docker 容器列表 （完整）
+# Docker 容器列表 （完整）
 list_beautify_docker_ps_full() {
     {
         printf "%s%s\t%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "容器ID" "镜像" "命令" "创建时间" "状态" "端口" "名称" "$reset"
@@ -834,7 +837,7 @@ list_beautify_docker_ps_full() {
     } | column_if_available
 }
 
-###### Docker 卷列表
+# Docker 卷列表
 list_beautify_docker_volume() {
     {
         printf "%s%s\t%s%s\n" "$gl_hui" "驱动" "卷名" "$reset"
@@ -853,7 +856,7 @@ list_beautify_docker_volume() {
     } | column_if_available
 }
 
-###### 美化查看容器占用列表 （中文表头，过滤无用行）
+# 美化查看容器占用列表 （中文表头，过滤无用行）
 list_beautify_docker_stats() {
     {
         data=$(docker stats --no-stream --format "{{.Container}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}" 2>/dev/null)
@@ -888,7 +891,7 @@ list_beautify_docker_stats() {
 }
 
 
-###### 美化 Linux 磁盘列表（简化）
+# 美化 Linux 磁盘列表（简化）
 list_beautify_disk_simple() {
     {
         printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "设备名" "大小" "文件系统" "挂载点" "$reset"
@@ -914,7 +917,7 @@ list_beautify_disk_simple() {
     } | column_if_available
 }
 
-###### 美化Linux网卡信息列表（完整）
+# 美化Linux网卡信息列表（完整）
 list_beautify_nic_info() {
     {
         printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "接口名" "状态" "IPv4地址" "MAC地址" "MTU" "速度" "$reset"
@@ -976,7 +979,7 @@ list_beautify_nic_info() {
     } | column_if_available
 }
 
-###### 美化 Linux 磁盘列表（完整）
+# 美化 Linux 磁盘列表（完整）
 list_beautify_disk_full() {
     {
         printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "文件系统" "容量" "已用" "可用" "使用百分比" "挂载点" "$reset"
@@ -1019,7 +1022,7 @@ list_beautify_disk_full() {
     } | column_if_available
 }
 
-###### Docker 容器列表 （简单）
+# Docker 容器列表 （简单）
 list_beautify_docker_ps() {
     {
         printf "%s%s\t%s\t%s\t%s%s\n" "$gl_hui" "容器ID" "名称" "状态" "端口" "$reset"
@@ -1055,7 +1058,7 @@ list_beautify_docker_ps() {
     } | column_if_available
 }
 
-###### Docker 容器列表 （超极简）
+# Docker 容器列表 （超极简）
 list_beautify_docker_ps_simple() {
     {
         printf "%s%s\t%s%s\n" "$gl_hui" "容器ID" "名称" "$reset"
@@ -1072,7 +1075,7 @@ list_beautify_docker_ps_simple() {
     } | column_if_available
 }
 
-###### 美化Linux用户列表
+# 美化Linux用户列表
 list_beautify_user_info() {
     {
         printf "%s%-24s\t%-34s\t%-20s\t%-10s%s\n" "$gl_hui" "用户名" "用户权限" "用户组" "sudo权限" "$reset"
@@ -1099,7 +1102,7 @@ list_beautify_user_info() {
     } | column_if_available
 }
 
-###### 美化 lspci 命令的函数
+# 美化 lspci 命令的函数
 list_beautify_pci_info() {
     {
         printf "%s%s\t%s\t%s%s\n" "$gl_hui" "总线号" "设备类型" "设备描述" "$reset"
@@ -1196,7 +1199,7 @@ list_beautify_pci_info() {
     } | column_if_available
 }
 
-###### 美化登录日志 last -n 10（中文彩色 + 严格对齐）
+# 美化登录日志 last -n 10（中文彩色 + 严格对齐）
 list_beautify_login_log() {
     {
         printf "%s%-12s\t%-10s\t%-18s\t%-25s\t%-20s%s\n" \
@@ -1233,7 +1236,7 @@ list_beautify_login_log() {
     } | column_if_available
 }
 
-###### 美化安全日志（支持传统 syslog 和 journald/ISO8601 格式）
+# 美化安全日志（支持传统 syslog 和 journald/ISO8601 格式）
 list_beautify_secure_log() {
     local log_file=""
     if [ -f /var/log/secure ]; then
@@ -1260,7 +1263,7 @@ list_beautify_secure_log() {
                 time = $1
                 host = $2
                 proc_field = $3
-                gsub(/:$/, "", proc_field)  # 去掉末尾冒号
+                gsub(/:$/, "", proc_field)
                 msg = ""
                 for (i=4; i<=NF; i++) {
                     if (i>4) msg = msg " "
@@ -1280,7 +1283,7 @@ list_beautify_secure_log() {
                 }
                 gsub(/^[: ]+/, "", msg)
             } else {
-                next  # 无法识别的格式跳过
+                next
             }
 
             proc_name = proc_field
@@ -1410,7 +1413,7 @@ list_beautify_secure_log() {
     } | column_if_available
 }
 
-###### 美化系统内存/交换分区信息（修复兼容版）
+# 美化系统内存/交换分区信息（修复兼容版）
 list_beautify_mem_info() {
     {
         printf "%s%-18s\t%-12s\t%-12s\t%-12s\t%-12s%s\n" \
@@ -1421,7 +1424,7 @@ list_beautify_mem_info() {
         free -m | awk -v green="$gl_lv" -v yellow="$gl_huang" \
             -v blue="$gl_lan" -v red="$gl_hong" -v reset="$reset" '
         function percent(u,t) { return t+0 == 0 ? "0%" : sprintf("%.1f%%", u*100/t) }
-        NR==2 {   # 物理内存行
+        NR==2 {
             total=$2; used=$3; free=$4
             printf "%s%-18s%s\t%s%-12s%s\t%s%-12s%s\t%s%-12s%s\t%s%-12s%s\n",
                 blue, "物理内存", reset,
@@ -1430,7 +1433,7 @@ list_beautify_mem_info() {
                 green, free, reset,
                 red, percent(used, total), reset
         }
-        NR==3 {   # 交换分区行
+        NR==3 {
             total=$2; used=$3; free=$4
             printf "%s%-18s%s\t%s%-12s%s\t%s%-12s%s\t%s%-12s%s\t%s%-12s%s\n",
                 blue, "交换分区", reset,
@@ -1442,7 +1445,7 @@ list_beautify_mem_info() {
     } | column_if_available
 }
 
-###### 美化系统负载/CPU平均负载
+# 美化系统负载/CPU平均负载
 list_beautify_load_avg() {
     {
         printf "%s%-18s\t%-10s\t%-10s\t%-10s\t%-20s%s\n" \
@@ -1473,7 +1476,7 @@ list_beautify_load_avg() {
     } | column_if_available
 }
 
-###### 美化系统开机时间/运行时长
+# 美化系统开机时间/运行时长
 list_beautify_uptime() {
     {
         printf "%s%-18s\t%-30s\t%-20s%s\n" \
@@ -1500,7 +1503,7 @@ list_beautify_uptime() {
     } | column_if_available
 }
 
-###### 美化系统所有服务（systemd）状态
+# 美化系统所有服务（systemd）状态
 list_beautify_systemd_services() {
     {
         printf "%s%-20s\t%-15s\t%-15s\t%-30s%s\n" "$gl_hui" "服务名" "状态" "启动类型" "描述" "$reset"
@@ -1527,7 +1530,7 @@ list_beautify_systemd_services() {
     } | column_if_available
 }
 
-###### 美化系统环境变量（常用）
+# 美化系统环境变量（常用）
 list_beautify_env() {
     {
         printf "%s%-20s\t%-50s%s\n" "$gl_hui" "变量名" "变量值" "$reset"
@@ -1547,7 +1550,7 @@ list_beautify_env() {
 }
 
 
-###### 美化crontab定时任务（当前用户）
+# 美化crontab定时任务（当前用户）
 list_beautify_crontab() {
     {
         printf "%s%-12s\t%-8s\t%-8s\t%-8s\t%-12s\t%-40s%s\n" \
@@ -1586,7 +1589,7 @@ list_beautify_crontab() {
     } | column_if_available
 }
 
-###### 美化打开文件数（系统限制）
+# 美化打开文件数（系统限制）
 list_beautify_file_limit() {
     {
         printf "%s%-22s\t%-20s\t%-20s%s\n" "$gl_hui" "限制类型" "软限制" "硬限制" "$reset"
@@ -1614,7 +1617,7 @@ list_beautify_file_limit() {
     } | column_if_available
 }
 
-###### 美化系统所有挂载点
+# 美化系统所有挂载点
 list_beautify_mounts() {
     {
         printf "%s%-25s\t%-25s\t%-15s\t%-20s%s\n" \
@@ -1641,7 +1644,7 @@ list_beautify_mounts() {
     } | column_if_available
 }
 
-###### 美化系统所有用户组（前30个）
+# 美化系统所有用户组（前30个）
 list_beautify_group_info() {
     {
         printf "%s%-20s\t%-10s\t%-30s%s\n" "$gl_hui" "组名" "GID" "组成员" "$reset"
@@ -1660,7 +1663,7 @@ list_beautify_group_info() {
     } | column_if_available
 }
 
-###### 美化系统所有Shell列表
+# 美化系统所有Shell列表
 list_beautify_shell_list() {
     {
         printf "%s%-40s%s\n" "$gl_hui" "系统可用Shell路径" "$reset"
@@ -1674,7 +1677,7 @@ list_beautify_shell_list() {
     } | column_if_available
 }
 
-###### 一键展示所有系统/容器/网络中文美化信息
+# 一键展示所有系统/容器/网络中文美化信息
 list_beautify_all() {
     clear
     echo -e "${gl_zi}>>> 端口占用情况${gl_bai}"
@@ -2241,12 +2244,12 @@ linux_info() {
 	fi
 }
 
-###### 美化显示存储空间信息的函数
+# 美化显示存储空间信息的函数
 # 调用美化显示函数（显示全部信息：true ，显示基础信息：false）
 # display_storage_info "/mnt" true
 display_storage_info() {
     local path="$1"
-    local show_all="${2:-true}"  # 默认显示全部信息
+    local show_all="${2:-true}"
     
     local df_output=$(df -h "$path" 2>/dev/null | tail -1)
     
@@ -2482,7 +2485,7 @@ display_storage_info() {
     fi
 }
 
-###### 美化显示文件信息的函数
+# 美化显示文件信息的函数
 # 调用美化显示函数（显示全部信息：true ，显示基础信息：false）
 # 显示文件的全部信息
 # display_file_info "/path/to/file.txt" true
@@ -2490,7 +2493,7 @@ display_storage_info() {
 # display_file_info "/path/to/file.txt" false
 display_file_info() {
     local file_path="$1"
-    local show_all="${2:-true}"  # 默认显示全部信息
+    local show_all="${2:-true}"
     
     if [ ! -e "$file_path" ]; then
         echo -e "${gl_hong}✗ 文件/目录不存在: ${file_path}${gl_bai}"
@@ -2720,7 +2723,7 @@ display_file_info() {
         
         local file_count=$(find "$file_path" -maxdepth 1 -type f 2>/dev/null | wc -l)
         local dir_count=$(find "$file_path" -maxdepth 1 -type d 2>/dev/null | wc -l)
-        dir_count=$((dir_count - 1))  # 减去当前目录
+        dir_count=$((dir_count - 1))
         
         echo -e "  📄 文件数量: ${gl_lv}${file_count}${gl_bai}"
         echo -e "  📁 子目录数: ${gl_lan}${dir_count}${gl_bai}"
@@ -2866,7 +2869,7 @@ select_and_display_file_info() {
     return 0
 }
 
-###### 检查当前目录是否是Git仓库
+# 检查当前目录是否是Git仓库
 # 显示提示信息并退出，目录深度2
 # check_git_repository "应用更新" "/var/www/app" "true" 2
 # check_git_repository "推送当前项目更新" "." "true" 2 || return 1
@@ -2874,9 +2877,9 @@ select_and_display_file_info() {
 # check_git_repository "应用更新" "/var/www/app" "false" 2
 check_git_repository() {
     local action_name="$1"
-    local target_dir="${2:-.}"  # 默认为当前目录
+    local target_dir="${2:-.}"
     local exit_on_fail="${3:-true}"
-    local maxdepth="${4:-3}"   # 查找深度，默认为3，避免搜索过深
+    local maxdepth="${4:-3}"
     
     local found_git_dir=""
 
@@ -2951,7 +2954,7 @@ mobufan() {
     mobufan_sh "$@"
 }
 
-###### 根据参数设置全局代理和执行标志的配置函数。
+# 根据参数设置全局代理和执行标志的配置函数。
 quanju_canshu() {
     if [ "$canshu" = "CN" ]; then
         zhushi=0
@@ -2998,7 +3001,7 @@ cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
 # shellcheck source=/dev/null
 # source ~/.bashrc
 
-###### 提示用户同意条款
+# 提示用户同意条款
 CheckUserAgreement() {
     local config="$HOME/.mobufan_license"
 
@@ -3022,7 +3025,7 @@ CheckUserAgreement() {
 }
 CheckUserAgreement
 
-###### 公用函数_检查软件是否安装
+# 公用函数_检查软件是否安装
 check_and_install() {
     [[ $# -eq 0 ]] && { log_error "未提供包名"; return 2; }
 
@@ -3161,7 +3164,7 @@ show_directory_list() {
     return 0
 }
 
-###### 函数_mobufan.sh提示更新
+# 函数_mobufan.sh提示更新
 mobufan_sh_update() {
     timeout 3 bash -c ': </dev/tcp/gitee.com/443' &>/dev/null || {
         return
@@ -3242,7 +3245,7 @@ mobufan_sh_update() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
-###### 智能获取本机IPv4和IPv6地址的网络信息收集函数。
+# 智能获取本机IPv4和IPv6地址的网络信息收集函数。
 ip_address() {
 
 get_public_ip() {
@@ -3271,7 +3274,7 @@ ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
 
 }
 
-###### 跨Linux发行版的通用软件包安装函数
+# 跨Linux发行版的通用软件包安装函数
 install() {
     [[ $# -eq 0 ]] && {
         log_error "未提供软件包参数!"
@@ -3521,7 +3524,6 @@ enable() {
     log_ok "${gl_huang}$SERVICE_NAME ${gl_bai}已设置为开机自启。"
 }
 
-# ============================================================
 # 功能：横向彩色列出目录内容
 # 参数：$1 - 是否显示隐藏文件（1=显示，0或不传=不显示）
 #            $2 - 每行列数（可选，默认自动计算）
@@ -3529,7 +3531,6 @@ enable() {
 #      list_dir_colorful 1           # 显示隐藏文件，自动列数
 #      list_dir_colorful 0 4         # 不显示隐藏文件，每行4列
 #      list_dir_colorful 1 3         # 显示隐藏文件，每行3列
-# ============================================================
 list_dir_colorful() {
     local show_hidden="${1:-0}"
     local user_cols="${2:-0}"
@@ -3698,10 +3699,10 @@ list_dir_colorful() {
     return 0
 }
 
-###### 自定义仓库克隆函数
+# 自定义仓库克隆函数
 clone_custom_repo() {
     local repoUrl cleanUrl repoName overwrite
-    local empty_count=0  # 记录连续空输入次数
+    local empty_count=0
 
     clear
     echo -e ""
@@ -3724,13 +3725,13 @@ clone_custom_repo() {
                 echo -e "${gl_hong}输入不能为空，请重新输入。${gl_bai}"
                 sleep_fractional 1
 
-                tput cuu1  # 光标上移一行
-                tput el    # 清除整行
-                tput cuu1  # 光标再上移一行
-                tput el    # 清除整行
+                tput cuu1
+                tput el
+                tput cuu1
+                tput el
             else
-                tput cuu1  # 光标上移一行
-                tput el    # 清除整行
+                tput cuu1
+                tput el
             fi
 
             continue
@@ -4280,7 +4281,7 @@ manual_file_search_and_process() {
                     echo -e "${gl_huang}已取消安装${gl_bufan}mobufan${gl_huang}脚本${gl_bai}"
                     echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
                     read -r -n 1 -s -r -p ""
-                    continue # 返回菜单
+                    continue
                     ;;
                 0) cancel_return "处理搜索到的文件"; continue ;;
                 *) handle_y_n; continue ;;
@@ -4334,12 +4335,12 @@ manual_file_search_and_process() {
                     echo -e "${gl_huang}已取消安装${gl_bufan}mobufan${gl_huang}脚本${gl_bai}"
                     echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
                     read -r -n 1 -s -r -p ""
-                    continue # 返回菜单
+                    continue
                     ;;
                 *)
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                     handle_y_n
-                    continue # 返回菜单
+                    continue
                     ;;
                 esac
             fi
@@ -4389,12 +4390,12 @@ manual_file_search_and_process() {
                     echo -e "${gl_huang}已取消安装${gl_bufan}mobufan${gl_huang}脚本${gl_bai}"
                     echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
                     read -r -n 1 -s -r -p ""
-                    continue # 返回菜单
+                    continue
                     ;;
                 *)
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                     handle_y_n
-                    continue # 返回菜单
+                    continue
                     ;;
                 esac
             fi
@@ -4458,12 +4459,12 @@ manual_file_search_and_process() {
                     echo -e "${gl_huang}已取消安装${gl_bufan}mobufan${gl_huang}脚本${gl_bai}"
                     echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
                     read -r -n 1 -s -r -p ""
-                    continue # 返回菜单
+                    continue
                     ;;
                 *)
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                     handle_y_n
-                    continue # 返回菜单
+                    continue
                     ;;
                 esac
             fi
@@ -4549,12 +4550,12 @@ manual_file_search_and_process() {
                 echo -e "${gl_huang}已取消安装${gl_bufan}mobufan${gl_huang}脚本${gl_bai}"
                 echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
                 read -r -n 1 -s -r -p ""
-                continue # 返回菜单
+                continue
                 ;;
             *)
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 handle_y_n
-                continue # 返回菜单
+                continue
                 ;;
             esac
             ;;
@@ -4587,18 +4588,18 @@ manual_file_search_and_process() {
                 read -r -n 1 -s -r -p ""
 
                 files=()
-                continue # 返回菜单
+                continue
                 ;;
             [Nn])
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 echo -e "${gl_huang}已取消安装${gl_bufan}mobufan${gl_huang}脚本${gl_bai}"
                 exit_animation
-                continue # 返回菜单
+                continue
                 ;;
             *)
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 handle_y_n
-                continue # 返回菜单
+                continue
                 ;;
             esac
             ;;
@@ -4684,7 +4685,7 @@ manual_file_search_and_process() {
             else
                 echo -e "${gl_bai}${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 handle_y_n
-                continue # 返回菜单
+                continue
             fi
             continue # 查看完成后返回菜单
             ;;
@@ -4856,7 +4857,7 @@ manual_file_search_and_process() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             exit_animation
             list_dir_colorful 0 4
-            continue # 返回菜单
+            continue
             ;;
         12) rz_download_files_to_local; continue ;;             # 下载文件到本地
         13) linux_file "." "处理搜索到的文件" "处理搜索到的文件";; # 文件管理工具
@@ -5570,7 +5571,7 @@ preview_file_content() {
                 local part_len=$((max_display_len / 2 - 2))
                 local part1="${file:0:$part_len}"
                 local part2="${file: -$part_len}"
-                local display_width=$((part_len * 2 + 3))  # 3个彩色点
+                local display_width=$((part_len * 2 + 3))
                 local padding=$((filename_col_width - display_width))
                 [[ $padding -lt 0 ]] && padding=0
                 
@@ -7790,7 +7791,7 @@ format_and_copy_script() {
     return 0
 }
 
-###### 上传文件到服务器
+# 上传文件到服务器
 rz_upload_file() {
     install lrzsz
     clear
@@ -7838,7 +7839,7 @@ rz_upload_file() {
     break_end
 }
 
-###### 上传文件夹
+# 上传文件夹
 # 上传文件夹函数（支持压缩上传）
 rz_upload_compressed_file() {
     clear
@@ -8022,7 +8023,7 @@ rz_upload_compressed_file() {
     break_end
 }
 
-###### 下载文件夹
+# 下载文件夹
 # 下载文件夹函数（压缩下载）
 rz_download_folder() {
     clear
@@ -8208,7 +8209,7 @@ rz_download_folder() {
     break_end
 }
 
-###### 选择文件下载
+# 选择文件下载
 rz_download_files_interactive() {
     clear
     echo -e "${gl_zi}>>> 选择文件下载 (交互式)${gl_bai}"
@@ -8366,7 +8367,7 @@ rz_download_files_interactive() {
     break_end
 }
 
-###### 批量上传多个文件
+# 批量上传多个文件
 rz_upload_files_batch() {
     clear
     echo -e "${gl_zi}>>> 批量上传多个文件${gl_bai}"
@@ -8414,7 +8415,7 @@ rz_upload_files_batch() {
     break_end
 }
 
-###### 检查终端Zmodem支持函数
+# 检查终端Zmodem支持函数
 rz_check_zmodem_support() {
     clear
     echo -e "${gl_zi}>>> 检查终端Zmodem支持${gl_bai}"
@@ -8469,7 +8470,7 @@ rz_check_zmodem_support() {
     break_end
 }
 
-###### 查看传输历史记录函数
+# 查看传输历史记录函数
 rz_view_transfer_history() {
     clear
     echo -e "${gl_zi}>>> 查看传输历史记录${gl_bai}"
@@ -8539,7 +8540,7 @@ rz_view_transfer_history() {
     break_end
 }
 
-###### 清理临时文件
+# 清理临时文件
 rz_clean_temp_files() {
     clear
     echo -e "${gl_zi}>>> 清理临时文件${gl_bai}"
@@ -8607,7 +8608,7 @@ rz_clean_temp_files() {
     break_end
 }
 
-###### 创建测试文件
+# 创建测试文件
 rz_create_test_files() {
     clear
     echo -e "${gl_zi}>>> 创建测试文件${gl_bai}"
@@ -8743,7 +8744,7 @@ file_transfer_manager() {
     done
 }
 
-###### 清空临时目录
+# 清空临时目录
 clear_temp_directory() {
     local default_dir="/mnt/tmp"
     cd "$default_dir"
@@ -8768,7 +8769,7 @@ clear_temp_directory() {
     break_end
 }
 
-###### 返回上一级目录
+# 返回上一级目录
 go_parent_directory() {
     if [[ "$(pwd)" != "/" ]]; then
         local current_path="$(pwd)"
@@ -8781,7 +8782,7 @@ go_parent_directory() {
     fi
 }
 
-###### 临时目录管理菜单
+# 临时目录管理菜单
 temp_dir_menu() {
     root_use
     local default_dir="/mnt/tmp"
@@ -8897,7 +8898,7 @@ temp_dir_menu() {
     done
 }
 
-###### 修改文件权限
+# 修改文件权限
 file_chmod() {
     local return_target="${1:-文件管理器}"
     while :; do
@@ -8991,7 +8992,7 @@ file_chmod() {
     done
 }
 
-###### 文件模糊搜索
+# 文件模糊搜索
 search_file_here() {
     local keyword
     local non_interactive=false
@@ -9151,7 +9152,7 @@ search_file_here() {
     done
 }
 
-###### 文件内容搜索
+# 文件内容搜索
 search_here() {
     local keyword
     local non_interactive=false
@@ -9207,7 +9208,7 @@ search_here() {
     done
 }
 
-###### 增强版安全读取函数（支持默认值、验证、退出功能、和数字范围检查）
+# 增强版安全读取函数（支持默认值、验证、退出功能、和数字范围检查）
 safe_read() {
     local prompt="$1"
     local var_name="$2"
@@ -9426,7 +9427,7 @@ install_docker() {
     fi
 }
 
-###### Docker容器管理函数集合
+# Docker容器管理函数集合
 docker_container_create() {
     echo ""
     echo -e "${gl_zi}>>> 创建新的容器${gl_bai}"
@@ -9802,7 +9803,7 @@ docker_image_cleanup_system() {
     break_end
 }
 
-###### 清理镜像
+# 清理镜像
 show_prune_menu() {
     while true; do
         clear
@@ -10772,7 +10773,7 @@ docker_image() {
     done
 }
 
-###### 检查 crontab 是否已安装，如果未安装则自动安装。
+# 检查 crontab 是否已安装，如果未安装则自动安装。
 check_crontab_installed() {
     if ! command -v crontab >/dev/null 2>&1; then
         install_crontab
@@ -11060,7 +11061,7 @@ enable_ddos_defense() {
     iptables -A INPUT -p udp -j DROP
 }
 
-###### 关闭DDoS防御
+# 关闭DDoS防御
 disable_ddos_defense() {
     iptables -D DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT 2>/dev/null
     iptables -D DOCKER-USER -p tcp --syn -j DROP 2>/dev/null
@@ -11072,7 +11073,7 @@ disable_ddos_defense() {
     iptables -D INPUT -p udp -j DROP 2>/dev/null
 }
 
-###### 管理国家IP规则的函数
+# 管理国家IP规则的函数
 manage_country_rules() {
     local action="$1"
     shift # 去掉第一个参数，剩下的全是国家代码
@@ -11932,7 +11933,7 @@ nginx_gzip() {
     docker exec nginx nginx -s reload
 }
 
-###### 函数_初始化iptables（Docker 兼容版）
+# 函数_初始化iptables（Docker 兼容版）
 iptables_init() {
     echo -e ""
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -12300,7 +12301,7 @@ check_iptables_status_enhanced() {
     return $status
 }
 
-####### iptables 菜单函数
+## iptables 菜单函数
 iptables_manager() {
     while true; do
         root_use
@@ -13120,7 +13121,7 @@ fail2ban_uninstall() {
     esac
 }
 
-###### 安全防御
+# 安全防御
 web_security() {
     while true; do
         root_use
@@ -14430,7 +14431,7 @@ ldnmp_Proxy_backend_stream() {
         proto="udp"
         listen_suffix=" udp"
         ;;
-    0) cancel_return; return ;;      # 取消操作，返回上一级菜单
+    0) cancel_return; return ;;
     *)
         echo "无效选择"
         return 1
@@ -14511,7 +14512,7 @@ ldnmp_web_status() {
             [ -f "$conf" ] || continue
             local domain
             domain=$(grep -m1 -oP 'server_name\s+\K[^;]+' "$conf" | awk '{print $1}')
-            [ -z "$domain" ] && domain=$(basename "$conf" .conf) # 兜底：用文件名
+            [ -z "$domain" ] && domain=$(basename "$conf" .conf)
             local cert_file="/etc/nginx/keyfile/mobufan.eu.org.pem"
             local expire_date="未配置证书"
             if [ -f "$cert_file" ]; then
@@ -15311,7 +15312,7 @@ fix_dpkg() {
 }
 
 linux_update() {
-    exit_if_fnos_system || return 1  # 是FnOS退出
+    exit_if_fnos_system || return 1  # 是 FnOS 退出
     clear
     root_use
     echo ""
@@ -16694,7 +16695,7 @@ linux_trash() {
     done
 }
 
-###### 命令收藏夹
+# 命令收藏夹
 linux_fav() {
     clear
     bash <(curl -l -s ${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh)
@@ -16717,9 +16718,9 @@ create_backup() {
 
     if [[ -z "$input" ]]; then
         BACKUP_PATHS=(
-            "/etc"  # 配置文件和软件包配置
-            "/usr"  # 已安装的软件文件
-            "/home" # 用户数据
+            "/etc"
+            "/usr"
+            "/home"
         )
     else
         IFS=' ' read -r -a BACKUP_PATHS <<<"$input"
@@ -16915,11 +16916,11 @@ add_connection() {
     read -r -e -p "$(echo -e "${gl_bai}请输入用户名 (默认: ${gl_huang}root${gl_bai})(${gl_huang}0${gl_bai}返回): ")" user
     [ "$user" = "0" ] && { cancel_return "SSH 远程连接工具"; return; }
 
-    local user=${user:-root} # 如果用户未输入，则使用默认值 root
+    local user=${user:-root}
     read -r -e -p "$(echo -e "${gl_bai}请输入端口号 (默认: ${gl_huang}22${gl_bai})(${gl_huang}0${gl_bai}返回): ")" port
     [ "$port" = "0" ] && { cancel_return "SSH 远程连接工具"; return; }
 
-    local port=${port:-22} # 如果用户未输入，则使用默认值 22
+    local port=${port:-22}
 
     echo "请选择身份验证方式:"
     echo -e "${gl_bufan}1. ${gl_bai}密码"
@@ -16931,7 +16932,7 @@ add_connection() {
     case $auth_choice in
     1)
         read -r -s -p "请输入密码: " password_or_key
-        echo # 换行
+        echo
         ;;
     2)
         echo "请粘贴密钥内容 (粘贴完成后按两次回车)："
@@ -16960,7 +16961,6 @@ add_connection() {
     break_end
 }
 
-# 删除连接
 delete_connection() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要删除的连接编号(${gl_huang}0${gl_bai}返回): ")" num
     [ "$num" = "0" ] && { cancel_return "SSH 远程连接工具"; return; }
@@ -16983,7 +16983,6 @@ delete_connection() {
     echo "连接已删除!"
 }
 
-# 使用连接
 use_connection() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要使用的连接编号(${gl_huang}0${gl_bai}返回): ")" num
     [ "$num" = "0" ] && { cancel_return "SSH 远程连接工具"; return; }
@@ -18265,7 +18264,7 @@ add_to_fstab() {
             MOUNT_OPTS="defaults"
         fi
         ;;
-    0) cancel_return "硬盘分区管理" ; return 1 ;;   # break 或 continue 或 return ，视上下文而定
+    0) cancel_return "硬盘分区管理" ; return 1 ;;
     *) MOUNT_OPTS="defaults" ;;
     esac
 
@@ -18308,7 +18307,6 @@ add_to_fstab() {
     break_end
 }
 
-# 编辑fstab文件
 disk_edit_fstab() {
     install nano
     root_use
@@ -18357,7 +18355,6 @@ disk_edit_fstab() {
     done
 }
 
-# 主菜单
 linux_disk_manager() {
     local menu_name="${1:-上一级选单}"
     while true; do
@@ -18578,7 +18575,7 @@ remote_run_task() {
     CONFIG_FILE="$HOME/.remote_rsync_tasks"
     CRON_FILE="$HOME/.remote_rsync_cron"
 
-    local direction="push" # 默认是推送到远端
+    local direction="push"
     local num
 
     if [[ "$1" == "push" || "$1" == "pull" ]]; then
@@ -18605,8 +18602,8 @@ remote_run_task() {
         echo -e ""
         echo -e "${gl_zi}>>> 正在拉取同步到本地: ${gl_huang}$remote:$remote_path ${gl_bai}-> ${gl_lv}$local_path ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        source="$remote:$remote_path" # 远程:远程路径
-        destination="$local_path"     # 本地路径
+        source="$remote:$remote_path"
+        destination="$local_path"
     else
         echo -e ""
         echo -e "${gl_zi}>>> 正在推送同步到远端: ${gl_huang}$local_path ${gl_bai}-> ${gl_lv}$remote:$remote_path ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -19261,7 +19258,7 @@ remote_rsync_manager() {
     done
 }
 
-###### 修复nano
+# 修复nano
 fix_nano_config() {
     local nano_version nano_vendor
     local distro_id distro_version
@@ -19715,7 +19712,7 @@ tools_install_nano() {
     echo -e "${gl_zi}>>> 安装 nano文本编辑器 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install nano
-    fix_nano_config # 修复nano
+    fix_nano_config
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -20099,7 +20096,7 @@ tools_remove_custom() {
     fi
 }
 
-###### 基础工具
+# 基础工具
 linux_tools() {
 
     check_color() {
@@ -20766,13 +20763,13 @@ remove_user_from_docker() {
     clear
 }
 
-###### Docker更换源 
+# Docker更换源 
 install_docker_via_mirrors() {
     clear
     bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
 }
 
-###### 编辑daemon.json文件
+# 编辑daemon.json文件
 edit_docker_daemon_json() {
     install nano
     clear
@@ -20797,7 +20794,7 @@ edit_docker_daemon_json() {
     fi
 }
 
-###### 清理镜像容器网络
+# 清理镜像容器网络
 clean_docker_resources() {
     echo -e ""
     echo -e "${gl_zi}>>> 清理镜像容器网络${gl_bai}"
@@ -20815,7 +20812,7 @@ clean_docker_resources() {
     esac
 }
 
-###### Docker磁盘使用
+# Docker磁盘使用
 show_docker_disk_usage() {
     echo -e ""
     echo -e "${gl_zi}>>> 查看Docker磁盘使用${gl_bai}"
@@ -21255,7 +21252,7 @@ fix_phpfpm_conf() {
 
 }
 
-###### 宝塔面板
+# 宝塔面板
 docker_install_baota() {
     local app_id="1"
     local lujing='[ -d "/www/server/panel" ]'
@@ -21279,7 +21276,7 @@ docker_install_baota() {
     install_panel
 }
 
-###### aapanel面板
+# aapanel面板
 docker_install_aapanel() {
     local app_id="2"
     local lujing='[ -d "/www/server/panel" ]'
@@ -21303,7 +21300,7 @@ docker_install_aapanel() {
     install_panel
 }
 
-###### 1Panel面板
+# 1Panel面板
 docker_install_1panel() {
     local app_id="3"
     local lujing="command -v 1pctl"
@@ -21326,7 +21323,7 @@ docker_install_1panel() {
     install_panel
 }
 
-###### Nginx Proxy Manager
+# Nginx Proxy Manager
 docker_install_npm() {
     local app_id="4"
     local docker_name="npm"
@@ -21354,7 +21351,7 @@ docker_install_npm() {
     docker_app
 }
 
-###### OpenList文件列表
+# OpenList文件列表
 docker_install_openlist() {
     local app_id="5"
     local docker_name="openlist"
@@ -21385,7 +21382,7 @@ docker_install_openlist() {
     docker_app
 }
 
-###### webtop-ubuntu
+# webtop-ubuntu
 docker_install_webtop_ubuntu() {
     local app_id="6"
     local docker_name="webtop-ubuntu"
@@ -21422,7 +21419,7 @@ docker_install_webtop_ubuntu() {
     docker_app
 }
 
-###### 哪吒监控
+# 哪吒监控
 docker_install_nezha() {
     local app_id="7"
     local docker_name="nezha-dashboard"
@@ -21468,7 +21465,7 @@ docker_install_nezha() {
     done
 }
 
-###### qBittorrent
+# qBittorrent
 docker_install_qbittorrent() {
     local app_id="8"
     local docker_name="qbittorrent"
@@ -21501,7 +21498,7 @@ docker_install_qbittorrent() {
     docker_app
 }
 
-###### 邮局服务
+# 邮局服务
 docker_install_mailserver() {
     local app_id="9"
     local docker_name="mailserver"
@@ -21624,7 +21621,7 @@ docker_install_mailserver() {
     done
 }
 
-###### 安装Rocket.Chat聊天系统
+# 安装Rocket.Chat聊天系统
 docker_install_rocketchat() {
     local app_id="10"
     local app_name="Rocket.Chat聊天系统"
@@ -21671,7 +21668,7 @@ docker_install_rocketchat() {
     docker_app_plus
 }
 
-###### 安装禅道项目管理软件
+# 安装禅道项目管理软件
 docker_install_zentao() {
     local app_id="11"
     local docker_name="zentao-server"
@@ -21698,7 +21695,7 @@ docker_install_zentao() {
     docker_app
 }
 
-###### 安装青龙面板
+# 安装青龙面板
 docker_install_qinglong() {
     local app_id="12"
     local docker_name="qinglong"
@@ -21724,7 +21721,7 @@ docker_install_qinglong() {
     docker_app
 }
 
-###### 安装cloudreve网盘
+# 安装cloudreve网盘
 docker_install_cloudreve() {
     local app_id="13"
     local app_name="cloudreve网盘"
@@ -21759,7 +21756,7 @@ docker_install_cloudreve() {
     docker_app_plus
 }
 
-###### 安装简单图床
+# 安装简单图床
 docker_install_easyimage() {
     local app_id="14"
     local docker_name="easyimage"
@@ -21788,7 +21785,7 @@ docker_install_easyimage() {
     docker_app
 }
 
-###### 安装emby媒体服务器
+# 安装emby媒体服务器
 docker_install_emby() {
     local app_id="15"
     local docker_name="emby"
@@ -21815,7 +21812,7 @@ docker_install_emby() {
     docker_app
 }
 
-###### 安装Speedtest测速面板
+# 安装Speedtest测速面板
 docker_install_looking_glass() {
     local app_id="16"
     local docker_name="looking-glass"
@@ -21835,7 +21832,7 @@ docker_install_looking_glass() {
     docker_app
 }
 
-###### 安装AdGuardHome
+# 安装AdGuardHome
 docker_install_adguardhome() {
     local app_id="17"
     local docker_name="adguardhome"
@@ -21863,7 +21860,7 @@ docker_install_adguardhome() {
     docker_app
 }
 
-###### 安装onlyoffice
+# 安装onlyoffice
 docker_install_onlyoffice() {
     local app_id="18"
     local docker_name="onlyoffice"
@@ -21888,7 +21885,7 @@ docker_install_onlyoffice() {
     docker_app
 }
 
-###### 安装雷池WAF面板
+# 安装雷池WAF面板
 docker_install_safeline() {
     local app_id="19"
     local docker_name=safeline-mgt
@@ -21954,7 +21951,7 @@ docker_install_safeline() {
     done
 }
 
-###### 安装portainer容器管理面板
+# 安装portainer容器管理面板
 docker_install_portainer() {
     local app_id="20"
     local docker_name="portainer"
@@ -21980,7 +21977,7 @@ docker_install_portainer() {
     docker_app
 }
 
-###### 安装VSCode Web
+# 安装VSCode Web
 docker_install_vscode() {
     local app_id="21"
     local docker_name="vscode-web"
@@ -22000,7 +21997,7 @@ docker_install_vscode() {
     docker_app
 }
 
-###### 安装Uptime Kuma监控工具
+# 安装Uptime Kuma监控工具
 docker_install_uptime_kuma() {
     local app_id="22"
     local docker_name="uptime-kuma"
@@ -22025,7 +22022,7 @@ docker_install_uptime_kuma() {
     docker_app
 }
 
-###### 安装Memos备忘录
+# 安装Memos备忘录
 docker_install_memos() {
     local app_id="23"
     local docker_name="memos"
@@ -22045,7 +22042,7 @@ docker_install_memos() {
     docker_app
 }
 
-###### 安装Webtop中文版
+# 安装Webtop中文版
 docker_install_webtop() {
     local app_id="24"
     local docker_name="webtop"
@@ -22085,7 +22082,7 @@ docker_install_webtop() {
     docker_app
 }
 
-###### 安装Nextcloud
+# 安装Nextcloud
 docker_install_nextcloud() {
     local app_id="25"
     local docker_name="nextcloud"
@@ -22107,7 +22104,7 @@ docker_install_nextcloud() {
     docker_app
 }
 
-###### 安装QD-Today定时任务框架
+# 安装QD-Today定时任务框架
 docker_install_qd() {
     local app_id="26"
     local docker_name="qd"
@@ -22127,7 +22124,7 @@ docker_install_qd() {
     docker_app
 }
 
-###### 安装Dockge容器管理面板
+# 安装Dockge容器管理面板
 docker_install_dockge() {
     local app_id="27"
     local docker_name="dockge"
@@ -22147,7 +22144,7 @@ docker_install_dockge() {
     docker_app
 }
 
-###### 安装LibreSpeed测速工具
+# 安装LibreSpeed测速工具
 docker_install_speedtest() {
     local app_id="28"
     local docker_name="speedtest"
@@ -22167,7 +22164,7 @@ docker_install_speedtest() {
     docker_app
 }
 
-###### 安装SearXNG搜索引擎
+# 安装SearXNG搜索引擎
 docker_install_searxng() {
     local app_id="29"
     local docker_name="searxng"
@@ -22192,7 +22189,7 @@ docker_install_searxng() {
     docker_app
 }
 
-###### 安装PhotoPrism相册系统
+# 安装PhotoPrism相册系统
 docker_install_photoprism() {
     local app_id="30"
     local docker_name="photoprism"
@@ -22223,7 +22220,7 @@ docker_install_photoprism() {
     docker_app
 }
 
-###### 安装Stirling-PDF工具
+# 安装Stirling-PDF工具
 docker_install_s_pdf() {
     local app_id="31"
     local docker_name="s-pdf"
@@ -22251,7 +22248,7 @@ docker_install_s_pdf() {
     docker_app
 }
 
-###### 安装drawio图表绘制工具
+# 安装drawio图表绘制工具
 docker_install_drawio() {
     local app_id="32"
     local docker_name="drawio"
@@ -22271,7 +22268,7 @@ docker_install_drawio() {
     docker_app
 }
 
-###### 安装Sun-Panel NAS导航面板
+# 安装Sun-Panel NAS导航面板
 docker_install_sun_panel() {
     local app_id="33"
     local docker_name="sun-panel"
@@ -22296,7 +22293,7 @@ docker_install_sun_panel() {
     docker_app
 }
 
-###### 安装Pingvin Share文件分享平台
+# 安装Pingvin Share文件分享平台
 docker_install_pingvin_share() {
     local app_id="34"
     local docker_name="pingvin-share"
@@ -22321,7 +22318,7 @@ docker_install_pingvin_share() {
     docker_app
 }
 
-###### 安装Moments朋友圈应用
+# 安装Moments朋友圈应用
 docker_install_moments() {
     local app_id="35"
     local docker_name="moments"
@@ -22347,7 +22344,7 @@ docker_install_moments() {
     docker_app
 }
 
-###### 安装LobeChat AI聊天
+# 安装LobeChat AI聊天
 docker_install_lobe_chat() {
     local app_id="36"
     local docker_name="lobe-chat"
@@ -22370,7 +22367,7 @@ docker_install_lobe_chat() {
     docker_app
 }
 
-###### 安装MyIP IP工具箱
+# 安装MyIP IP工具箱
 docker_install_myip() {
     local app_id="37"
     local docker_name="myip"
@@ -22390,7 +22387,7 @@ docker_install_myip() {
     docker_app
 }
 
-###### 安装小雅Alist
+# 安装小雅Alist
 docker_install_xiaoya() {
     local app_id="38"
     
@@ -22400,7 +22397,7 @@ docker_install_xiaoya() {
     bash -c "$(curl --insecure -fsSL https://ddsrem.com/xiaoya_install.sh)"
 }
 
-###### 安装Bililive-go直播录制工具
+# 安装Bililive-go直播录制工具
 docker_install_bililive() {
     local app_id="39"
     if [ ! -d /home/docker/bililive-go/ ]; then
@@ -22425,7 +22422,7 @@ docker_install_bililive() {
     docker_app
 }
 
-###### 安装webssh在线SSH工具
+# 安装webssh在线SSH工具
 docker_install_webssh() {
     local app_id="40"
     local docker_name="webssh"
@@ -22445,7 +22442,7 @@ docker_install_webssh() {
     docker_app
 }
 
-###### 安装耗子面板 (AcePanel)
+# 安装耗子面板 (AcePanel)
 # 注意：根据链接3，原“耗子面板”已更名为 AcePanel，并发布了3.0版本
 docker_install_haozi_panel() {
     local app_id="41"
@@ -22472,7 +22469,7 @@ docker_install_haozi_panel() {
     install_panel
 }
 
-###### 安装Nexterm服务器管理工具
+# 安装Nexterm服务器管理工具
 docker_install_nexterm() {
     local app_id="42"
     local docker_name="nexterm"
@@ -22497,7 +22494,7 @@ docker_install_nexterm() {
     docker_app
 }
 
-###### 安装RustDesk服务端 (hbbs)
+# 安装RustDesk服务端 (hbbs)
 docker_install_rustdesk_hbbs() {
     local app_id="43"
     local docker_name="hbbs"
@@ -22515,7 +22512,7 @@ docker_install_rustdesk_hbbs() {
     docker_app
 }
 
-###### 安装RustDesk中继端 (hbbr)
+# 安装RustDesk中继端 (hbbr)
 docker_install_rustdesk_hbbr() {
     local app_id="44"
     local docker_name="hbbr"
@@ -22533,7 +22530,7 @@ docker_install_rustdesk_hbbr() {
     docker_app
 }
 
-###### 安装Docker Registry镜像仓库
+# 安装Docker Registry镜像仓库
 docker_install_docker_registry() {
     local app_id="45"
     local docker_name="registry"
@@ -22557,7 +22554,7 @@ docker_install_docker_registry() {
     docker_app
 }
 
-###### 安装GHProxy GitHub加速代理
+# 安装GHProxy GitHub加速代理
 docker_install_ghproxy() {
     local app_id="46"
     local docker_name="ghproxy"
@@ -22575,7 +22572,7 @@ docker_install_ghproxy() {
     docker_app
 }
 
-###### 安装Prometheus+Grafana监控系统
+# 安装Prometheus+Grafana监控系统
 # 注意：此应用结构较复杂，包含多个组件，当前代码中docker_name="grafana"但描述为"普罗米修斯监控"，可能需要进一步优化
 docker_install_prometheus_grafana() {
     local app_id="47"
@@ -22615,7 +22612,7 @@ docker_install_prometheus_grafana() {
     docker_app_plus
 }
 
-###### 安装Node Exporter主机监控采集器
+# 安装Node Exporter主机监控采集器
 docker_install_node_exporter() {
     local app_id="48"
     local docker_name="node-exporter"
@@ -22637,7 +22634,7 @@ docker_install_node_exporter() {
     docker_app
 }
 
-###### 安装cAdvisor容器监控工具
+# 安装cAdvisor容器监控工具
 docker_install_cadvisor() {
     local app_id="49"
     local docker_name="cadvisor"
@@ -22663,7 +22660,7 @@ docker_install_cadvisor() {
     docker_app
 }
 
-###### 安装changedetection.io网站变化监控
+# 安装changedetection.io网站变化监控
 docker_install_changedetection() {
     local app_id="50"
     local docker_name="changedetection"
@@ -22683,14 +22680,14 @@ docker_install_changedetection() {
     docker_app
 }
 
-###### 安装PVE (Proxmox VE) 虚拟机环境
+# 安装PVE (Proxmox VE) 虚拟机环境
 docker_install_pve() {
     clear
     check_disk_space 1
     curl -L ${gh_proxy}raw.githubusercontent.com/oneclickvirt/pve/main/scripts/docker_install_pve.sh -o docker_install_pve.sh && chmod +x docker_install_pve.sh && bash docker_install_pve.sh
 }
 
-###### 安装Dpanel Docker可视化面板
+# 安装Dpanel Docker可视化面板
 docker_install_dpanel() {
     local app_id="52"
     local docker_name="dpanel"
@@ -22712,7 +22709,7 @@ docker_install_dpanel() {
     docker_app
 }
 
-###### 安装Open WebUI + Llama3模型
+# 安装Open WebUI + Llama3模型
 docker_install_llama3() {
     local app_id="53"
     local docker_name="ollama"
@@ -22730,7 +22727,7 @@ docker_install_llama3() {
     docker_app
 }
 
-###### 安装AMH面板
+# 安装AMH面板
 docker_install_amh() {
     local app_id="54"
     local lujing='[ -d "/www/server/panel" ]'
@@ -22753,17 +22750,17 @@ docker_install_amh() {
     install_panel
 }
 
-###### 安装frp服务端面板
+# 安装frp服务端面板
 docker_install_frps() {
     frps_panel
 }
 
-###### 安装frp客户端面板
+# 安装frp客户端面板
 docker_install_frpc() {
     frpc_panel
 }
 
-###### 安装Open WebUI + DeepSeek模型
+# 安装Open WebUI + DeepSeek模型
 docker_install_deepseek() {
     local app_id="57"
     local docker_name="ollama"
@@ -22781,7 +22778,7 @@ docker_install_deepseek() {
     docker_app
 }
 
-###### 安装Dify AI应用开发平台
+# 安装Dify AI应用开发平台
 docker_install_dify() {
     local app_id="58"
     local app_name="Dify知识库"
@@ -22818,7 +22815,7 @@ docker_install_dify() {
     docker_app_plus
 }
 
-###### 安装NewAPI大模型网关
+# 安装NewAPI大模型网关
 docker_install_new_api() {
     local app_id="59"
     local app_name="NewAPI"
@@ -22864,7 +22861,7 @@ docker_install_new_api() {
     docker_app_plus
 }
 
-###### 安装JumpServer堡垒机
+# 安装JumpServer堡垒机
 docker_install_jumpserver() {
     local app_id="60"
     local app_name="JumpServer开源堡垒机"
@@ -22901,7 +22898,7 @@ docker_install_jumpserver() {
     docker_app_plus
 }
 
-###### 安装LibreTranslate翻译服务
+# 安装LibreTranslate翻译服务
 docker_install_libretranslate() {
     local app_id="61"
     local docker_name="libretranslate"
@@ -22923,7 +22920,7 @@ docker_install_libretranslate() {
     docker_app
 }
 
-###### 安装RAGFlow知识库引擎
+# 安装RAGFlow知识库引擎
 docker_install_ragflow() {
     local app_id="62"
     local app_name="RAGFlow知识库"
@@ -22961,7 +22958,7 @@ docker_install_ragflow() {
     docker_app_plus
 }
 
-###### 安装Open WebUI精简版
+# 安装Open WebUI精简版
 docker_install_open_webui() {
     local app_id="63"
     local docker_name="open-webui"
@@ -22979,7 +22976,7 @@ docker_install_open_webui() {
     docker_app
 }
 
-###### 安装IT Tools开发者工具集
+# 安装IT Tools开发者工具集
 docker_install_it_tools() {
     local app_id="64"
     local docker_name="it-tools"
@@ -22997,7 +22994,7 @@ docker_install_it_tools() {
     docker_app
 }
 
-###### 安装n8n自动化工作流平台
+# 安装n8n自动化工作流平台
 docker_install_n8n() {
     local app_id="65"
     local docker_name="n8n"
@@ -23028,12 +23025,12 @@ docker_install_n8n() {
     docker_app
 }
 
-###### 调用yt-dlp专业版菜单
+# 调用yt-dlp专业版菜单
 docker_install_yt_menu_pro() {
     yt_menu_pro
 }
 
-###### 安装DDNS-Go动态域名解析
+# 安装DDNS-Go动态域名解析
 docker_install_ddns_go() {
     local app_id="67"
     local docker_name="ddns-go"
@@ -23056,7 +23053,7 @@ docker_install_ddns_go() {
     docker_app
 }
 
-###### 安装AllinSSL证书管理平台
+# 安装AllinSSL证书管理平台
 docker_install_allinssl() {
     local app_id="68"
     local docker_name="allinssl"
@@ -23074,7 +23071,7 @@ docker_install_allinssl() {
     docker_app
 }
 
-###### 安装SFTPGo文件传输服务
+# 安装SFTPGo文件传输服务
 docker_install_sftpgo() {
     local app_id="69"
     local docker_name="sftpgo"
@@ -23102,7 +23099,7 @@ docker_install_sftpgo() {
     docker_app
 }
 
-###### 安装AstrBot AI聊天机器人框架
+# 安装AstrBot AI聊天机器人框架
 docker_install_astrbot() {
     local app_id="70"
     local docker_name="astrbot"
@@ -23130,7 +23127,7 @@ docker_install_astrbot() {
     docker_app
 }
 
-###### 安装Navidrome音乐流媒体服务器
+# 安装Navidrome音乐流媒体服务器
 docker_install_navidrome() {
     local app_id="71"
     local docker_name="navidrome"
@@ -23156,7 +23153,7 @@ docker_install_navidrome() {
     docker_app
 }
 
-###### 安装Bitwarden密码管理器
+# 安装Bitwarden密码管理器
 docker_install_bitwarden() {
     local app_id="72"
     local docker_name="bitwarden"
@@ -23179,7 +23176,7 @@ docker_install_bitwarden() {
     docker_app
 }
 
-###### 安装LibreTV在线视频平台
+# 安装LibreTV在线视频平台
 docker_install_libretv() {
     local app_id="73"
     local docker_name="libretv"
@@ -23203,7 +23200,7 @@ docker_install_libretv() {
     docker_app
 }
 
-###### 安装MoonTV私有影视
+# 安装MoonTV私有影视
 docker_install_moontv() {
     local app_id="74"
     local app_name="moontv私有影视"
@@ -23246,7 +23243,7 @@ docker_install_moontv() {
     docker_app_plus
 }
 
-###### 安装Melody音乐管理器
+# 安装Melody音乐管理器
 docker_install_melody() {
     local app_id="75"
     local docker_name="melody"
@@ -23269,7 +23266,7 @@ docker_install_melody() {
     docker_app
 }
 
-###### 安装DOS游戏合集网站
+# 安装DOS游戏合集网站
 docker_install_dosgame() {
     local app_id="76"
     local docker_name="dosgame"
@@ -23291,7 +23288,7 @@ docker_install_dosgame() {
     docker_app
 }
 
-###### 安装迅雷Docker版
+# 安装迅雷Docker版
 docker_install_xunlei() {
     local app_id="77"
     local docker_name="xunlei"
@@ -23320,7 +23317,7 @@ docker_install_xunlei() {
     docker_app
 }
 
-###### 安装PandaWiki智能文档系统
+# 安装PandaWiki智能文档系统
 docker_install_pandawiki() {
     local app_id="78"
     local app_name="PandaWiki"
@@ -23345,7 +23342,7 @@ docker_install_pandawiki() {
     docker_app_plus
 }
 
-###### 安装Beszel服务器监控
+# 安装Beszel服务器监控
 docker_install_beszel() {
     local app_id="79"
     local docker_name="beszel"
@@ -23369,7 +23366,7 @@ docker_install_beszel() {
     docker_app
 }
 
-###### 安装Linkwarden书签管理器
+# 安装Linkwarden书签管理器
 docker_install_linkwarden() {
     local app_id="80"
     local app_name="linkwarden书签管理"
@@ -23424,7 +23421,7 @@ docker_install_linkwarden() {
     docker_app_plus
 }
 
-###### 安装Jitsi视频会议系统
+# 安装Jitsi视频会议系统
 docker_install_jitsi() {
     local app_id="81"
     local app_name="JitsiMeet视频会议"
@@ -23467,7 +23464,7 @@ docker_install_jitsi() {
     docker_app_plus
 }
 
-###### 安装GPT-Load AI代理服务
+# 安装GPT-Load AI代理服务
 docker_install_gpt_load() {
     local app_id="82"
     local docker_name="gpt-load"
@@ -23491,7 +23488,7 @@ docker_install_gpt_load() {
     docker_app
 }
 
-###### 安装Komari服务器监控
+# 安装Komari服务器监控
 docker_install_komari() {
     local app_id="83"
     local docker_name="komari"
@@ -23517,7 +23514,7 @@ docker_install_komari() {
     docker_app
 }
 
-###### 安装Wallos订阅追踪器
+# 安装Wallos订阅追踪器
 docker_install_wallos() {
     local app_id="84"
     local docker_name="wallos"
@@ -23542,7 +23539,7 @@ docker_install_wallos() {
     docker_app
 }
 
-###### 安装Immich照片视频管理器
+# 安装Immich照片视频管理器
 docker_install_immich() {
     local app_id="85"
     local app_name="immich图片视频管理器"
@@ -23577,7 +23574,7 @@ docker_install_immich() {
     docker_app_plus
 }
 
-###### 安装Jellyfin媒体服务器
+# 安装Jellyfin媒体服务器
 docker_install_jellyfin() {
     local app_id="86"
     local docker_name="jellyfin"
@@ -23606,7 +23603,7 @@ docker_install_jellyfin() {
     docker_app
 }
 
-###### 安装SyncTV同步观影平台
+# 安装SyncTV同步观影平台
 docker_install_synctv() {
     local app_id="87"
     local docker_name="synctv"
@@ -23629,7 +23626,7 @@ docker_install_synctv() {
     docker_app
 }
 
-###### 安装Owncast直播平台
+# 安装Owncast直播平台
 docker_install_owncast() {
     local app_id="88"
     local docker_name="owncast"
@@ -23653,7 +23650,7 @@ docker_install_owncast() {
     docker_app
 }
 
-###### 安装FileCodeBox文件分享箱
+# 安装FileCodeBox文件分享箱
 docker_install_file_code_box() {
     local app_id="89"
     local docker_name="file-code-box"
@@ -23676,7 +23673,7 @@ docker_install_file_code_box() {
     docker_app
 }
 
-###### 安装Matrix去中心化聊天
+# 安装Matrix去中心化聊天
 docker_install_matrix() {
     local app_id="90"
     local docker_name="matrix"
@@ -23719,7 +23716,7 @@ docker_install_matrix() {
     docker_app
 }
 
-###### 安装Gitea私有代码仓库
+# 安装Gitea私有代码仓库
 docker_install_gitea() {
     local app_id="91"
     local app_name="gitea私有代码仓库"
@@ -23758,7 +23755,7 @@ docker_install_gitea() {
     docker_app_plus
 }
 
-###### 安装FileBrowser文件管理器
+# 安装FileBrowser文件管理器
 docker_install_filebrowser() {
     local app_id="92"
     local docker_name="filebrowser"
@@ -23783,7 +23780,7 @@ docker_install_filebrowser() {
     docker_app
 }
 
-###### 安装Dufs文件服务器
+# 安装Dufs文件服务器
 docker_install_dufs() {
     local app_id="93"
     local docker_name="dufs"
@@ -23806,7 +23803,7 @@ docker_install_dufs() {
     docker_app
 }
 
-###### 安装Gopeed高速下载工具
+# 安装Gopeed高速下载工具
 docker_install_gopeed() {
     local app_id="94"
     local docker_name="gopeed"
@@ -23832,7 +23829,7 @@ docker_install_gopeed() {
     docker_app
 }
 
-###### 安装Paperless-ngx文档管理平台
+# 安装Paperless-ngx文档管理平台
 docker_install_paperless() {
     local app_id="95"
     local app_name="paperless文档管理平台"
@@ -23871,7 +23868,7 @@ docker_install_paperless() {
     docker_app_plus
 }
 
-###### 安装2FAuth两步验证器
+# 安装2FAuth两步验证器
 docker_install_2fauth() {
     local app_id="96"
     local app_name="2FAuth自托管二步验证器"
@@ -23913,7 +23910,7 @@ docker_install_2fauth() {
     docker_app_plus
 }
 
-###### 安装WireGuard VPN服务端
+# 安装WireGuard VPN服务端
 docker_install_wireguard_server() {
     local app_id="97"
     local docker_name="wireguard"
@@ -23978,7 +23975,7 @@ docker_install_wireguard_server() {
     docker_app
 }
 
-###### 安装WireGuard客户端
+# 安装WireGuard客户端
 docker_install_wireguard_client() {
     local app_id="98"
     local docker_name="wireguardc"
@@ -24027,7 +24024,7 @@ docker_install_wireguard_client() {
     docker_app
 }
 
-###### 安装虚拟DSM（群晖）
+# 安装虚拟DSM（群晖）
 docker_install_dsm() {
     local app_id="99"
     local app_name="dsm群晖虚拟机"
@@ -24071,7 +24068,7 @@ docker_install_dsm() {
     docker_app_plus
 }
 
-###### 安装Syncthing文件同步工具
+# 安装Syncthing文件同步工具
 docker_install_syncthing() {
     local app_id="100"
     local docker_name="syncthing"
@@ -24098,7 +24095,7 @@ docker_install_syncthing() {
     docker_app
 }
 
-###### 安装MoneyPrinterTurbo AI视频生成
+# 安装MoneyPrinterTurbo AI视频生成
 docker_install_moneyprinterturbo() {
     local app_id="101"
     local app_name="AI视频生成工具"
@@ -24135,7 +24132,7 @@ docker_install_moneyprinterturbo() {
     docker_app_plus
 }
 
-###### 安装VoceChat聊天服务
+# 安装VoceChat聊天服务
 docker_install_vocechat() {
     local app_id="102"
     local docker_name="vocechat-server"
@@ -24157,7 +24154,7 @@ docker_install_vocechat() {
     docker_app
 }
 
-###### 安装Umami网站统计
+# 安装Umami网站统计
 docker_install_umami() {
     local app_id="103"
     local app_name="Umami网站统计工具"
@@ -24196,12 +24193,12 @@ docker_install_umami() {
     docker_app_plus
 }
 
-###### 调用Nginx流面板
+# 调用Nginx流面板
 docker_install_nginx_stream() {
     stream_panel
 }
 
-###### 安装思源笔记
+# 安装思源笔记
 docker_install_siyuan() {
     local app_id="105"
     local docker_name="siyuan"
@@ -24229,7 +24226,7 @@ docker_install_siyuan() {
     docker_app
 }
 
-###### 安装Drawnix白板工具
+# 安装Drawnix白板工具
 docker_install_drawnix() {
     local app_id="106"
     local docker_name="drawnix"
@@ -24251,7 +24248,7 @@ docker_install_drawnix() {
     docker_app
 }
 
-###### 安装PanSou网盘搜索
+# 安装PanSou网盘搜索
 docker_install_pansou() {
     local app_id="107"
     local docker_name="pansou"
@@ -24276,7 +24273,7 @@ docker_install_pansou() {
     docker_app
 }
 
-###### 安装LangBot聊天机器人平台
+# 安装LangBot聊天机器人平台
 docker_install_langbot() {
     local app_id="108"
     local app_name="LangBot聊天机器人"
@@ -24313,7 +24310,7 @@ docker_install_langbot() {
     docker_app_plus
 }
 
-###### 安装MD云文档
+# 安装MD云文档
 docker_install_md() {
     local app_id="109"
     local docker_name="md"
@@ -24337,7 +24334,7 @@ docker_install_md() {
     docker_app
 }
 
-###### 安装小爱音箱操控面板
+# 安装小爱音箱操控面板
 docker_install_xiaomusic() {
     local app_id="110"
     local docker_name="xiaomusic"
@@ -24377,7 +24374,7 @@ docker_install_xiaomusic() {
     docker_app
 }
 
-###### 安装TaoSync网盘同步工具
+# 安装TaoSync网盘同步工具
 docker_install_taosync() {
     local app_id="111"
     local docker_name="taosync"
@@ -24408,7 +24405,7 @@ docker_install_taosync() {
     docker_app
 }
 
-###### 安装Musicn音乐下载工具
+# 安装Musicn音乐下载工具
 docker_install_musicn() {
     local app_id="112"
     local docker_name="musicn"
@@ -24433,7 +24430,7 @@ docker_install_musicn() {
     docker_app
 }
 
-###### 安装AiPan网盘搜索工具
+# 安装AiPan网盘搜索工具
 docker_install_aipan() {
     local app_id="113"
     local docker_name="aipan"
@@ -24458,7 +24455,7 @@ docker_install_aipan() {
     docker_app
 }
 
-###### 安装VERT文件格式转换器
+# 安装VERT文件格式转换器
 docker_install_vert() {
     local app_id="114"
     local docker_name="vert"
@@ -24489,7 +24486,7 @@ docker_install_vert() {
     docker_app
 }
 
-###### 安装EasyNode网页SSH工具
+# 安装EasyNode网页SSH工具
 docker_install_easynode() {
     local app_id="115"
     local docker_name="easynode"
@@ -24515,7 +24512,7 @@ docker_install_easynode() {
     docker_app
 }
 
-###### 安装MindMap思维导图
+# 安装MindMap思维导图
 docker_install_mind_map() {
     local app_id="116"
     local docker_name="mind-map"
@@ -24539,7 +24536,7 @@ docker_install_mind_map() {
     docker_app
 }
 
-###### 安装Random随机壁纸API
+# 安装Random随机壁纸API
 docker_install_random() {
     local app_id="117"
     local docker_name="random"
@@ -24587,7 +24584,7 @@ docker_install_random() {
     docker_app
 }
 
-###### 安装HD-Icons高清图标库
+# 安装HD-Icons高清图标库
 docker_install_hd_icons() {
     local app_id="118"
     local docker_name="hd-Icons"
@@ -24611,7 +24608,7 @@ docker_install_hd_icons() {
     docker_app
 }
 
-###### 安装MeTube视频下载工具
+# 安装MeTube视频下载工具
 docker_install_metube() {
     local app_id="119"
     local docker_name="metube"
@@ -24634,7 +24631,7 @@ docker_install_metube() {
     docker_app
 }
 
-###### 安装FastNet测速工具
+# 安装FastNet测速工具
 docker_install_fastnet() {
     local app_id="121"
     local docker_name="fastnet"
@@ -24658,7 +24655,7 @@ docker_install_fastnet() {
     docker_app
 }
 
-###### 安装Fndesk飞牛桌面图标管理工具
+# 安装Fndesk飞牛桌面图标管理工具
 docker_install_fndesk() {
     local app_id="120"
     local docker_name="fndesk"
@@ -24685,7 +24682,7 @@ docker_install_fndesk() {
     docker_app
 }
 
-###### 安装Firefox浏览器
+# 安装Firefox浏览器
 docker_install_firefox() {
     local app_id="113"
     local docker_name="firefox"
@@ -24710,7 +24707,7 @@ docker_install_firefox() {
     docker_app
 }
 
-###### 安装convertx多格式文件转换工具
+# 安装convertx多格式文件转换工具
 docker_install_convertx() {
     local app_id="111"
     local docker_name="convertx"
@@ -24732,7 +24729,7 @@ docker_install_convertx() {
     docker_app
 }
 
-###### 安装Lucky大内网穿透及管理工具
+# 安装Lucky大内网穿透及管理工具
 docker_install_lucky() {
     local app_id="112"
     local docker_name="lucky"
@@ -24759,7 +24756,7 @@ docker_install_lucky() {
     docker_app
 }
 
-###### 备份应用数据
+# 备份应用数据
 backup_app_data() {
     clear
     local backup_filename
@@ -24800,7 +24797,7 @@ backup_app_data() {
     done
 }
 
-###### 还原应用数据
+# 还原应用数据
 restore_app_data() {
     root_use
     echo "可用的应用备份"
@@ -25685,7 +25682,7 @@ linux_ldnmp() {
                     local latest_tar=$(ls -t /home/*.tar.gz | head -1)
                     if [ -n "$latest_tar" ]; then
                         ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
-                        sleep_fractional 2 # 添加等待时间
+                        sleep_fractional 2
                         scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
                         echo "文件已传送至远程服务器home目录。"
                     else
@@ -25735,7 +25732,7 @@ linux_ldnmp() {
                 ) | crontab - >/dev/null 2>&1
                 ;;
             *)
-                break # 跳出
+                break
                 ;;
             esac
 
@@ -25928,7 +25925,7 @@ linux_ldnmp() {
     done
 }
 
-###### 公共函数：一键配置中文环境（跨发行版）
+# 公共函数：一键配置中文环境（跨发行版）
 set_locales_zh() {
     clear
     local os_id os_ver
@@ -26407,9 +26404,9 @@ EOF
 }
 
 
-###### Samba挂载管理器
+# Samba挂载管理器
 
-###### 安装Samba服务
+# 安装Samba服务
 install_samba() {
     log_info "正在检查并安装 Samba 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
@@ -26572,7 +26569,7 @@ check_samba_service() {
     return 0
 }
 
-###### 卸载Samba服务
+# 卸载Samba服务
 uninstall_samba() {
     log_info "正在卸载 Samba 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
@@ -26765,7 +26762,7 @@ list_cifs_services() {
 }
 
 # ---------------- 挂载 ----------------
-###### CIFS 开机挂载（修复版，重启自动生效）
+# CIFS 开机挂载（修复版，重启自动生效）
 add_cifs_mount() {
 
     clear
@@ -27223,7 +27220,7 @@ force_clean_all() {
     fi
 }
 
-###### 查看共享信息
+# 查看共享信息
 connect_and_select_share() {
     clear
     echo -e ""
@@ -27234,7 +27231,7 @@ connect_and_select_share() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     while true; do
         read -r -p "$(echo -e "${gl_bai}请输入 Samba 服务器 IP 地址 (${gl_huang}0 ${gl_bai}返回) : ")" server_ip
-        server_ip=$(echo "$server_ip" | xargs) # 去除首尾空格
+        server_ip=$(echo "$server_ip" | xargs)
 
         if [[ -z "$server_ip" ]]; then
             log_error "服务器地址不能为空"
@@ -27242,7 +27239,7 @@ connect_and_select_share() {
         fi
 
         if [ "$server_ip" = "0" ]; then
-            return 0 # 或者 exit 0，取决于上下文
+            return 0
         fi
 
         if [[ ! $server_ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] &&
@@ -27281,10 +27278,10 @@ connect_and_select_share() {
     echo -e "${gl_huang}>>> 输入认证信息${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -p "$(echo -e "${gl_bai}请输入 Samba 用户名 (${gl_huang}0 ${gl_bai}返回) : ")" samba_user
-    samba_user=$(echo "$samba_user" | xargs) # 去除首尾空格
+    samba_user=$(echo "$samba_user" | xargs)
 
     if [ "$samba_user" = "0" ]; then
-        return 0 # 或者 exit 0，取决于上下文
+        return 0
     fi
 
     if [[ -z "$samba_user" ]]; then
@@ -27302,7 +27299,7 @@ connect_and_select_share() {
         echo
 
         if [ "$samba_pass" = "0" ]; then
-            return 0 # 或者 exit 0，取决于上下文
+            return 0
         fi
 
         if [[ -z "$samba_pass" ]]; then
@@ -27407,7 +27404,7 @@ connect_and_select_share() {
     break_end
 }
 
-###### Samba挂载共享
+# Samba挂载共享
 mount_cifs_share() {
     local server_ip share_name samba_user samba_pass mount_dir cred_file
     local continue_anyway continue_mount add_fstab
@@ -27456,7 +27453,7 @@ mount_cifs_share() {
         samba_user=$(echo "$samba_user" | xargs) # 去除首尾空格
 
         if [ "$samba_user" = "0" ]; then
-            return 0 # 或者 exit 0，取决于上下文
+            return 0
         fi
 
         if [[ -z "$samba_user" ]]; then
@@ -27654,7 +27651,7 @@ mount_cifs_share() {
         fi
 
         if [ "$server_ip" = "0" ]; then
-            return 0 # 或者 exit 0，取决于上下文
+            return 0
         fi
 
         if [[ ! $server_ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] &&
@@ -27765,7 +27762,7 @@ mount_cifs_share() {
     default_mount="/mnt/${share_name}"
     read -r -e -p "$(echo -e "${gl_bai}请输入本地挂载目录路径 (默认为 ${gl_huang}$default_mount${gl_bai}): ")" mount_dir
     mount_dir=${mount_dir:-$default_mount}
-    mount_dir=$(realpath -m "$mount_dir") # 规范化路径
+    mount_dir=$(realpath -m "$mount_dir")
 
     echo -e "${gl_huang}步骤 5/5: ${gl_bai}执行挂载${gl_bai}"
     if ! perform_mount; then
@@ -27842,7 +27839,7 @@ mount_cifs_share() {
     break_end
 }
 
-###### 卸载Samba共享
+# 卸载Samba共享
 unmount_samba_shares() {
     local mounted_shares target_mount choice
 
@@ -27979,7 +27976,7 @@ unmount_samba_shares() {
     break_end
 }
 
-###### Samba共享配置
+# Samba共享配置
 config_samba_share() {
     local share_dir samba_user samba_pass share_name
     local ip_address user_created
@@ -28897,7 +28894,7 @@ linux_cifs_mgr_menu() {
     done
 }
 
-###### Linux静态IP配置工具
+# Linux静态IP配置工具
 # 检测网络管理工具
 detect_network_manager() {
     if command -v nmcli &>/dev/null && nmcli -t -f DEVICE device status 2>/dev/null | grep -q "."; then
@@ -31235,7 +31232,7 @@ linux_interactive_ping() {
     done
 }
 
-###### 函数_rsync本地同步工具 - 修复优化版
+# 函数_rsync本地同步工具 - 修复优化版
 # 初始化目录结构和全局变量
 local_init_globals() {
     LOCAL_SYNC_CONFIG="$HOME/.local_rsync_tasks"
@@ -32527,7 +32524,7 @@ local_rsync_manager() {
     done
 }
 
-###### Linux计划任务
+# Linux计划任务
 # 显示cron任务列表（不含标题和边框，用于菜单集成）
 show_crontab_list() {
     if ! command -v crontab &>/dev/null; then
@@ -37120,7 +37117,7 @@ linux_install_bbr3() {
     bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/bbr/install-bbr.sh)
 }
 
-###### 用户信息生成器
+# 用户信息生成器
 linux_random_generator() {
     clear
     echo -e "${gl_zi}>>> 用户信息生成器${gl_bai}"
@@ -37179,7 +37176,7 @@ linux_random_generator() {
     break_end
 }
 
-###### 禁用ROOT创建新账户
+# 禁用ROOT创建新账户
 linux_disable_root_create_user() {
     echo ""
     echo -e "${gl_zi}>>> 禁用ROOT创建新账户${gl_bai}"
@@ -37198,7 +37195,7 @@ linux_disable_root_create_user() {
     break_end
 }
 
-###### PCI设备信息显示
+# PCI设备信息显示
 linux_pci_particulars() {
     clear
     echo -e "${gl_zi}>>> PCI设备信息显示${gl_bai}"
@@ -37208,7 +37205,7 @@ linux_pci_particulars() {
     break_end
 }
 
-###### CPU 详细信息显示
+# CPU 详细信息显示
 linux_cpu_particulars() {
     clear
     echo -e "${gl_zi}>>> CPU 详细信息显示${gl_bai}"
@@ -37218,7 +37215,7 @@ linux_cpu_particulars() {
     break_end
 }
 
-###### 系统工具菜单
+# 系统工具菜单
 linux_Settings() {
     while true; do
         clear
@@ -37414,7 +37411,7 @@ create_file() {
     break_end  # 假设这是一个自定义的暂停函数
 }
 
-###### 函数_目录模糊搜索
+# 函数_目录模糊搜索
 search_dir_here() {
     local keyword
     local non_interactive=false
@@ -38656,7 +38653,7 @@ transfer_file_to_remote() {
     return 0
 }
 
-###### 生成目录树
+# 生成目录树
 show_directory_tree() {
     install tree
     check_directory_empty "." "生成目录树" "true" || return
@@ -38668,7 +38665,7 @@ show_directory_tree() {
     break_end
 }
 
-###### 复制文件/目录
+# 复制文件/目录
 copy_file_or_directory() {
     check_directory_empty "." "复制文件/目录" "true" || return
     clear
@@ -38801,7 +38798,7 @@ copy_file_or_directory() {
     return 0
 }
 
-###### 移动文件或目录（优化版 - 支持通配符）
+# 移动文件或目录（优化版 - 支持通配符）
 move_file_or_directory() {
 
     check_directory_empty "." "移动文件或目录" "true" || return
@@ -39012,7 +39009,7 @@ move_file_or_directory() {
     return 0
 }
 
-###### 批量解压当前目录下的所有压缩文件（修复版）
+# 批量解压当前目录下的所有压缩文件（修复版）
 batch_extract_all() {
     clear
     echo -e "${gl_zi}>>> 批量解压模式${gl_bai}"
@@ -39306,7 +39303,7 @@ batch_extract_all() {
     return 0
 }
 
-###### 解压文件/目录
+# 解压文件/目录
 extract_archive() {
     if ! command -v tar &> /dev/null; then
         install tar
@@ -39367,7 +39364,7 @@ extract_archive() {
     return 0
 }
 
-###### 查找大文件
+# 查找大文件
 find_large_files() {
     check_directory_empty "." "查找当前目录中的大文件" "true" || return
     echo -e ""
@@ -39378,7 +39375,7 @@ find_large_files() {
     break_end
 }
 
-###### 预览文件内容
+# 预览文件内容
 cat_view_file_content() {
     local return_target="${1:-文件管理器}"  # 接收参数，默认值为"文件管理器"
 
@@ -39444,7 +39441,7 @@ cat_view_file_content() {
     break_end
 }
 
-###### 删除文件
+# 删除文件
 delete_files() {
     check_directory_empty "." "删除文件" "true" || return
     clear
@@ -39548,7 +39545,7 @@ delete_files() {
     break_end
 }
 
-###### 重命名文件
+# 重命名文件
 rename_file_or_dir() {
     clear
     echo -e "${gl_huang}>>> 当前目录文件列表：${gl_bai}(${gl_lv}$(pwd)${gl_bai})"
@@ -39653,7 +39650,7 @@ rename_file_or_dir() {
     break_end
 }
 
-###### 编辑文件
+# 编辑文件
 edit_file_with_nano() {
 
     check_directory_empty "." "编辑文件" "true" || return
@@ -39704,7 +39701,7 @@ edit_file_with_nano() {
     nano "$target_file"
 }
 
-###### 创建文件
+# 创建文件
 create_new_file() {
     read -e -p "$(echo -e "${gl_bai}请输入要创建的文件名(${gl_huang}0${gl_bai}返回): ")" filename
     [ -z "$filename" ] && { cancel_empty "上一级选单"; return 1; }
@@ -39712,7 +39709,7 @@ create_new_file() {
     touch "$filename" && echo -e "${gl_lv}文件已创建${gl_bai}" || echo -e "${gl_hong}创建失败${gl_bai}"
 }
 
-###### 列出目录大小
+# 列出目录大小
 list_directory_sizes() {
     local target_path="${1:-$(pwd)}"  # 支持传参，默认当前目录
     
@@ -39735,7 +39732,7 @@ list_directory_sizes() {
     break_end
 }
 
-###### 查找大目录
+# 查找大目录
 find_large_directories() {
     echo -e ""
     echo -e "${gl_zi}>>> 查找当前目录中的大目录${gl_bai}"
@@ -39745,7 +39742,7 @@ find_large_directories() {
     break_end
 }
 
-###### 删除目录
+# 删除目录
 delete_directories() {
     echo -e ""
     echo -e "${gl_zi}>>> 删除目录${gl_bai}"
@@ -39800,7 +39797,7 @@ delete_directories() {
     return 0
 }
 
-###### 重命名目录
+# 重命名目录
 rename_directory() {
     echo -e ""
     echo -e "${gl_zi}>>> 重命名目录${gl_bai}"
@@ -39840,7 +39837,7 @@ rename_directory() {
     return 0
 }
 
-###### 创建目录
+# 创建目录
 create_directory() {
     local return_target="${1:-文件管理器}"  # 接收参数，默认值为"文件管理器"
     read -r -e -p "$(echo -e "${gl_bai}请输入要创建的目录名(${gl_huang}0${gl_bai}返回): ")" dirname
@@ -39850,7 +39847,7 @@ create_directory() {
     return 0
 }
 
-###### 进入指定目录
+# 进入指定目录
 enter_directory() {
     local current_path="$(pwd)"
     local return_target="${1:-文件管理器}"  # 接收参数，默认值为"文件管理器"
@@ -39942,7 +39939,7 @@ enter_directory() {
     return 0
 }
 
-###### 修改目录权限
+# 修改目录权限
 modify_directory_permissions() {
     echo -e ""
     echo -e "${gl_zi}>>> 修改目录权限${gl_bai}"
@@ -40011,7 +40008,7 @@ modify_directory_permissions() {
     return 0
 } 
 
-###### 压缩文件/目录
+# 压缩文件/目录
 compress_file_or_directory() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要压缩的文件/目录名(${gl_huang}0${gl_bai}返回): ")" name
 
@@ -40028,7 +40025,7 @@ compress_file_or_directory() {
     tar -czvf "$name.tar.gz" "$name" && echo -e "${gl_lv}已压缩为 ${gl_huang}$name.tar.gz${gl_bai}" || echo -e "${gl_hong}压缩失败${gl_bai}"
 }
 
-###### 文件管理器
+# 文件管理器
 # linux_file "." "菜单标题" "返回提示"
 linux_file() {
     local initial_dir="${1:-.}"         # 初始目录（仅在第一次进入时使用）
@@ -40155,7 +40152,7 @@ run_commands_on_servers() {
     break_end
 }
 
-###### mobufan.sh 脚本更新
+# mobufan.sh 脚本更新
 mobufan_update() {
     cd ~ || return
     local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
@@ -40308,7 +40305,7 @@ mobufan_update() {
     done
 }
 
-###### PVE 关闭已经开启的实例
+# PVE 关闭已经开启的实例
 pve_shutdown_selector() {
 
     is_pve_system || return 1  # 非PVE系统退出
@@ -40453,7 +40450,7 @@ pve_shutdown_selector() {
     done
 }
 
-###### PVE 开启已经关闭的实例
+# PVE 开启已经关闭的实例
 pve_start_selector() {
 
     is_pve_system || return 1  # 非PVE系统退出
@@ -42640,7 +42637,7 @@ pve_check_locks() {
 
 }
 
-###### 查看系统版本
+# 查看系统版本
 show_system_version() {
     is_pve_system || return 1  # 非PVE系统退出
     echo -e ""
@@ -42651,7 +42648,7 @@ show_system_version() {
     break_end
 }
 
-###### 更新并清理系统
+# 更新并清理系统
 update_and_clean_system() {
     is_pve_system || return 1  # 非PVE系统退出
     clear
@@ -42663,7 +42660,7 @@ update_and_clean_system() {
     break_end
 }
 
-###### 查看内核版本
+# 查看内核版本
 show_kernel_version() {
     is_pve_system || return 1  # 非PVE系统退出
     echo -e ""
@@ -42674,7 +42671,7 @@ show_kernel_version() {
     break_end
 }
 
-###### 查看可用内核
+# 查看可用内核
 filter_kernel_version() {
     local pkg="$1"
     local min_ver="$2"
@@ -42751,7 +42748,7 @@ show_pve_kernel() {
     break_end
 }
 
-###### 安装内核并固化
+# 安装内核并固化
 install_and_pin_kernel() {
     is_pve_system || return 1  # 非PVE系统退出
     clear
@@ -42795,7 +42792,7 @@ install_and_pin_kernel() {
     break_end
 }
 
-###### 重启应用新内核
+# 重启应用新内核
 reboot_for_new_kernel() {
     is_pve_system || return 1  # 非PVE系统退出
 
@@ -42818,7 +42815,7 @@ reboot_for_new_kernel() {
     break_end
 }
 
-###### 修改GRUB引导参数
+# 修改GRUB引导参数
 modify_grub_params() {
     is_pve_system || return 1  # 非PVE系统退出
     echo -e ""
@@ -42854,7 +42851,7 @@ modify_grub_params() {
     break_end
 }
 
-###### 安装i915 SR-IOV驱动
+# 安装i915 SR-IOV驱动
 install_i915_sriov_driver() {
     is_pve_system || return 1  # 非PVE系统退出
 
@@ -42945,7 +42942,7 @@ install_i915_sriov_driver() {
     break_end
 }
 
-###### 更新initramfs并重启
+# 更新initramfs并重启
 update_initramfs_and_reboot() {
     is_pve_system || return 1  # 非PVE系统退出
 
@@ -42973,7 +42970,7 @@ update_initramfs_and_reboot() {
     break_end
 }
 
-###### 检查SR-IOV状态
+# 检查SR-IOV状态
 check_sriov_status() {
     is_pve_system || return 1  # 非PVE系统退出
 
@@ -43006,7 +43003,7 @@ check_sriov_status() {
     break_end
 }
 
-###### 检查是不是 PVE 系统
+# 检查是不是 PVE 系统
 is_pve_system() {
     if [ ! -d "/var/lib/vz/template/iso" ]; then
         echo -e ""
@@ -43017,7 +43014,7 @@ is_pve_system() {
     return 0       # 检测成功，返回0
 }
 
-###### 检查不是 FnOS 系统 退出
+# 检查不是 FnOS 系统 退出
 is_fnos_system() {
     if [ ! -d "/vol1/1000" ]; then
         echo -e ""
@@ -43028,7 +43025,7 @@ is_fnos_system() {
     return 0       # 检测成功，返回0
 }
 
-###### 检查是 FnOS 系统 退出
+# 检查是 FnOS 系统 退出
 exit_if_fnos_system() {
     if [ -d "/vol1/1000" ]; then
         echo -e ""
@@ -43039,7 +43036,7 @@ exit_if_fnos_system() {
     return 0
 }
 
-###### 检查是不是 iStoreOS 系统
+# 检查是不是 iStoreOS 系统
 is_istoreos_system() {
     if [ ! -d "/usr/lib/lua/luci/controller" ]; then
         echo -e ""
@@ -43050,7 +43047,7 @@ is_istoreos_system() {
     return 0       # 检测成功，返回0
 }
 
-###### 显示存储信息
+# 显示存储信息
 show_storage_info() {
     is_pve_system || return 1  # 非PVE系统退出
     echo -e ""
@@ -43067,7 +43064,7 @@ show_storage_info() {
 }
 
 
-###### PVE优化脚本
+# PVE优化脚本
 pve_optimize_script() {
     is_pve_system || return 1  # 非PVE系统退出
     clear
@@ -43075,7 +43072,7 @@ pve_optimize_script() {
     break_end
 }
 
-###### 所有虚拟机状态
+# 所有虚拟机状态
 show_all_vm_status() {
     is_pve_system || return 1  # 非PVE系统退出
     clear
@@ -43083,7 +43080,7 @@ show_all_vm_status() {
     break_end
 }
 
-###### 列出VM/LXC磁盘文件
+# 列出VM/LXC磁盘文件
 list_vm_lxc_disk_files() {
     is_pve_system || return 1  # 非PVE系统退出
     clear
@@ -43100,7 +43097,7 @@ list_vm_lxc_disk_files() {
 }
 
 
-###### 执行FastPVE安装配置脚本
+# 执行FastPVE安装配置脚本
 install_fastpve() {
     is_pve_system || return 1  # 非PVE系统退出
     echo -e ""
@@ -43111,7 +43108,7 @@ install_fastpve() {
     break_end
 }
 
-###### 查看核显使用率
+# 查看核显使用率
 show_gpu_usage() {
     is_pve_system || return 1  # 非PVE系统退出
     check_and_install intel-gpu-tools && intel_gpu_top -d sriov
@@ -43961,7 +43958,7 @@ lxc_change_ctid() {
     return 0
 }
 
-###### 函数_PVE命令
+# 函数_PVE命令
 linux_pve_menu() {
     while true; do
         clear
@@ -44154,7 +44151,7 @@ show_compose_project_menu() {
     done
 }
 
-###### 打印当前目录 docker-compose.yml 里第一个 "HOST:PORT" 映射，
+# 打印当前目录 docker-compose.yml 里第一个 "HOST:PORT" 映射，
 # 并拼接成完整内网访问链接
 show_inner_url() {
     local yml="docker-compose.yml"
@@ -44180,7 +44177,7 @@ show_inner_url() {
     echo -e "${gl_bufan}服务访问链接：${gl_lv}http://${ip}:${port}${gl_bai}"
 }
 
-###### 函数：显示Compose命令菜单
+# 函数：显示Compose命令菜单
 show_compose_commands_menu() {
     local current_dir="$(pwd)"
     while true; do
@@ -44811,7 +44808,7 @@ git_clone_docker_projects() {
     done
 }
 
-###### 检查docker状态
+# 检查docker状态
 docker_status() {
     if ! command -v docker >/dev/null 2>&1; then
         echo -e "${gl_bufan}Docker${gl_bai} 状态：${gl_hong}未安装${gl_bai}"
@@ -44827,7 +44824,7 @@ docker_status() {
     return 2
 }
 
-###### 检查docker版本
+# 检查docker版本
 check_docker_version() {
     if command -v docker &>/dev/null; then
         version=$(docker --version | grep -oP 'version \K[^, ]+' 2>/dev/null || echo "未知")
@@ -44837,7 +44834,7 @@ check_docker_version() {
     fi
 }
 
-###### 检查docker-compose版本
+# 检查docker-compose版本
 check_docker_compose() {
     if command -v docker-compose &>/dev/null; then
         version=$(docker-compose --version | sed -n 's/.*version[[:space:]]*\([^, ]*\).*/\1/p')
@@ -44850,7 +44847,7 @@ check_docker_compose() {
     fi
 }
 
-###### 检查git版本
+# 检查git版本
 check_git_version() {
     if command -v git &>/dev/null; then
         local current_version=$(git --version 2>/dev/null | grep -oP 'version \K[^ ]+' || echo "未知")
@@ -44889,7 +44886,7 @@ check_git_version() {
     fi
 }
 
-###### 检查Git状态
+# 检查Git状态
 git_status() {
     if ! command -v git >/dev/null 2>&1; then
         echo -e "${gl_bufan}Git ${gl_bai}状态：${gl_hong}未安装${gl_bai}"
@@ -44905,7 +44902,7 @@ git_status() {
     fi
 }
 
-###### 个人Docker镜像加速
+# 个人Docker镜像加速
 set_mirrors() {
     local mirrors="$1"
     install jq || return 1
@@ -44933,7 +44930,7 @@ check_mirror() {
     log_info "可执行 ${gl_huang}docker pull nginx${gl_bai} 实测速度"
 }
 
-###### 安装docker-compose
+# 安装docker-compose
 install_docker_compose() {
     local DEFAULT_URL="https://sh.meimolihan.eu.org/compose/download/v5.1.0/docker-compose-linux-x86_64"
 
@@ -45083,7 +45080,7 @@ install_docker_compose() {
     break_end
 }
 
-###### 卸载docker-compose
+# 卸载docker-compose
 uninstall_docker_compose() {
     clear
     echo -e "${gl_zi}>>> Docker Compose 卸载${gl_bai}"
@@ -45263,7 +45260,7 @@ uninstall_docker_compose() {
     break_end
 }
 
-###### 交互子菜单
+# 交互子菜单
 docker_mirror_menu() {
     local menu_name="${1:-上一级选单}"
     while true; do
@@ -45650,7 +45647,7 @@ enter_compose_dir() {
     fi
 }
 
-###### 备份/迁移/还原 docker-compose 项目
+# 备份/迁移/还原 docker-compose 项目
 docker_compose_env_tools() {
 
     list_backups() {
@@ -50491,7 +50488,7 @@ random_wallpaper_menu() {
     done
 }
 
-###### 检查并安装Docker
+# 检查并安装Docker
 check_and_install_docker() {
     if ! command -v docker &>/dev/null; then
         echo -e ""
@@ -50534,7 +50531,7 @@ check_and_install_docker() {
     return 0
 }
 
-###### Docker全局状态
+# Docker全局状态
 show_docker_global_status() {
     check_and_install_docker || return 1
     clear
@@ -50570,7 +50567,7 @@ show_docker_global_status() {
     break_end
 }
 
-###### Docker网络管理
+# Docker网络管理
 docker_network_manager() {
     local menu_name="${1:-上一级选单}"
     while true; do
@@ -50664,7 +50661,7 @@ docker_network_manager() {
     done
 }
 
-###### Docker卷管理
+# Docker卷管理
 docker_volume_manager() {
     local menu_name="${1:-上一级选单}"
     while true; do
@@ -50734,7 +50731,7 @@ docker_volume_manager() {
     done
 }
 
-###### 清理镜像容器网络
+# 清理镜像容器网络
 docker_system_prune() {
     check_and_install_docker || return 1
     clear
@@ -50752,7 +50749,7 @@ docker_system_prune() {
     break_end
 }
 
-###### 克隆Docker项目
+# 克隆Docker项目
 clone_docker_repo() {
     echo -e ""
     echo -e "${gl_zi}>>> Git克隆Docker项目${gl_bai}"
@@ -50804,7 +50801,7 @@ clone_docker_repo() {
     git_clone_docker_projects
 }
 
-###### 配置文件管理器
+# 配置文件管理器
 docker_compose_manager() {
     if ! command -v docker &>/dev/null; then
         echo -e ""
@@ -50864,7 +50861,7 @@ docker_compose_manager() {
     fi
 }
 
-###### 卸载Docker环境
+# 卸载Docker环境
 uninstall_docker_environment() {
     if ! command -v docker &>/dev/null; then
         echo -e ""
@@ -50894,14 +50891,14 @@ uninstall_docker_environment() {
     esac
 }
 
-###### FnOS系统安全工具
+# FnOS系统安全工具
 fnos_security_tool() {
     is_fnos_system || return 1  # 非FnOS退出
     clear
     bash <(curl -sL gitee.com/meimolihan/script/raw/master/fnos/fnos_xxck1.sh)
 }
 
-###### 下载压缩包并解压
+# 下载压缩包并解压
 download_and_extract() {
     local return_target="${1:-文件管理器}"  # 接收参数，默认值为"文件管理器"
     clear
@@ -51027,7 +51024,7 @@ download_and_extract() {
     return 0
 }
 
-###### 下载Docker项目压缩包并自动解压（免交互版）
+# 下载Docker项目压缩包并自动解压（免交互版）
 auto_download_extract() {
     local url="$1"
     local output_dir="${2:-.}"
@@ -51176,7 +51173,7 @@ auto_download_extract() {
     fi
 }
 
-###### 下载Docker项目
+# 下载Docker项目
 download_docker_repo() {
     cd /vol1/1000/compose
     echo -e ""
@@ -51225,7 +51222,7 @@ download_docker_repo() {
     download_docker_projects
 }
 
-###### 下载Docker项目（HTTP模式，替代Git克隆）
+# 下载Docker项目（HTTP模式，替代Git克隆）
 download_docker_projects() {
     DOCKER_PROJECTS_BASE_URL="https://dufs.mobufan.eu.org:666/compose/downloads"
 
@@ -51452,7 +51449,7 @@ download_docker_projects() {
     done
 }
 
-###### 备份 Compose 项目
+# 备份 Compose 项目
 # 日志记录函数（和你主脚本保持一致）
 write_log() {
     local log_file="$1"
@@ -51656,7 +51653,7 @@ backup_compose_project() {
     done
 }
 
-###### 备份单个 Compose 项目
+# 备份单个 Compose 项目
 backup_single_compose_project() {
     local target="$1"
     local format="$2"
@@ -51753,7 +51750,7 @@ backup_single_compose_project() {
     fi
 }
 
-###### 备份全部 Compose 项目
+# 备份全部 Compose 项目
 backup_all_compose_projects() {
     local log_file="$1"
     shift
@@ -51810,7 +51807,7 @@ backup_all_compose_projects() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
-###### 推送Compose项目
+# 推送Compose项目
 git_project_manager() {
     cd /vol1/1000/compose
     local base_path="${1:-$(pwd)}"
@@ -52187,7 +52184,7 @@ fnos_check_bbr() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
-###### 函数_FnOS命令
+# 函数_FnOS命令
 linux_fnos_menu() {
     while true; do
         clear
@@ -52264,7 +52261,7 @@ linux_fnos_menu() {
     done
 }
 
-###### 证书检查公共函数
+# 证书检查公共函数
 cert_check() {
     local cert=${1:-}
     [[ -z $cert ]] && {
@@ -52310,7 +52307,7 @@ cert_check() {
     echo -e "${gl_bai}文件路径：${gl_huang}$cert${gl_bai}"
 }
 
-###### 自动修复日志权限
+# 自动修复日志权限
 ngx_log_auto_perm() {
     clear
     echo -e ""
@@ -52378,7 +52375,7 @@ ngx_log_auto_perm() {
     return 0
 }
 
-###### 查看所有nginx服务
+# 查看所有nginx服务
 extract_nginx_links_simple() {
     local conf_dir="$1"
 
@@ -52457,7 +52454,7 @@ extract_nginx_links_simple() {
     break_end
 }
 
-###### 打印“已启动/已停止/未安装”以及版本号
+# 打印“已启动/已停止/未安装”以及版本号
 view_nginx_status() {
     if ! command -v nginx &>/dev/null; then
         echo -e "${gl_bufan}Nginx${gl_bai}状态：${gl_hong}未安装${gl_bai}"
@@ -52502,7 +52499,7 @@ view_nginx_status() {
     esac
 }
 
-###### 切换网关函数
+# 切换网关函数
 switch_gateway() {
     local gw_id=$1 gateway
     case "$gw_id" in
@@ -52521,7 +52518,7 @@ switch_gateway() {
 }
 
 
-###### 切换网关菜单
+# 切换网关菜单
 gateway_menu() {
     CUR_IP=$(get_internal_ip)
     if [[ "$CUR_IP" != "10.10.10.246" ]]; then
@@ -52588,7 +52585,7 @@ check_linux_distro() {
     echo -e "${gl_bufan}内核 ${gl_bai}版本：${gl_lv}$kernel_version${gl_bai}"
 }
 
-###### 未安装nginx退出
+# 未安装nginx退出
 check_nginx_installed() {
     if ! command -v nginx &>/dev/null; then
         echo -e ""
@@ -52601,7 +52598,7 @@ check_nginx_installed() {
     return 0
 }
 
-###### 停止Nginx
+# 停止Nginx
 stop_nginx_service() {
     check_nginx_installed || return 1
     echo -e "${gl_zi}>>> 正在停止Nginx ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -52615,7 +52612,7 @@ stop_nginx_service() {
     break_end
 }
 
-###### 启动Nginx
+# 启动Nginx
 start_nginx_service() {
     check_nginx_installed || return 1
     echo -e ""
@@ -52627,7 +52624,7 @@ start_nginx_service() {
     break_end
 }
 
-###### 测试Nginx并重启
+# 测试Nginx并重启
 test_and_restart_nginx() {
     check_nginx_installed || return 1
     echo -e "${gl_zi}>>> 测试Nginx并重启 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -52642,7 +52639,7 @@ test_and_restart_nginx() {
     break_end
 }
 
-###### 查看Nginx运行状态
+# 查看Nginx运行状态
 show_nginx_status() {
     check_nginx_installed || return 1
     echo -e ""
@@ -52653,7 +52650,7 @@ show_nginx_status() {
     break_end
 }
 
-###### 查看 80 端口占用
+# 查看 80 端口占用
 check_port_80_usage() {
     echo -e ""
     echo -e "${gl_zi}>>> 当前 ${gl_huang}80${gl_bai} 端口占用情况 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -52669,7 +52666,7 @@ check_port_80_usage() {
     break_end
 }
 
-###### 搜索监听80端口的配置
+# 搜索监听80端口的配置
 search_nginx_port_80_config() {
     clear
     echo -e "${gl_zi}>>> 搜索监听80端口的配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -52688,7 +52685,7 @@ search_nginx_port_80_config() {
     break_end
 }
 
-###### 访问日志实时监控
+# 访问日志实时监控
 monitor_nginx_access_logs() {
     check_directory_empty "/var/log/nginx" "访问日志实时监控" "true" || return 1
     clear
@@ -52698,7 +52695,7 @@ monitor_nginx_access_logs() {
     tail -f /var/log/nginx/access.log
 }
 
-###### 错误日志实时监控
+# 错误日志实时监控
 monitor_nginx_error_logs() {
     check_directory_empty "/var/log/nginx" "错误日志实时监控" "true" || return 1
     clear
@@ -52717,7 +52714,7 @@ show_ssl_certificate_paths() {
     break_end
 }
 
-###### 查看证书过期时间
+# 查看证书过期时间
 check_ssl_certificate_expiry() {
     clear
     echo -e ""
@@ -52731,7 +52728,7 @@ check_ssl_certificate_expiry() {
     break_end
 }
 
-###### 查看nginx监听端口
+# 查看nginx监听端口
 show_nginx_listening_ports() {
     clear
     echo -e "${gl_zi}>>> 当前nginx监听的端口 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -52751,7 +52748,7 @@ show_nginx_listening_ports() {
     break_end
 }
 
-###### 搜索配置文件
+# 搜索配置文件
 search_config_files() {
     echo -e ""
     echo -e "${gl_zi}>>> 搜索配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -52765,7 +52762,7 @@ search_config_files() {
     break_end
 }
 
-###### 配置文件管理器
+# 配置文件管理器
 config_file_manager() {
     clear
     echo -e "${gl_zi}>>> 配置文件管理器${gl_bai}"
@@ -52773,7 +52770,7 @@ config_file_manager() {
     (cd /etc/nginx/conf.d && linux_file "." "Nginx 配置文件管理" "WEB 管理")  # 在子 shell 中执行
 }
 
-###### 查看所有证书过期时间
+# 查看所有证书过期时间
 view_cert_expiry() {
     clear
     echo -e ""
@@ -52793,7 +52790,7 @@ view_cert_expiry() {
     break_end
 }
 
-###### 安装Nginx
+# 安装Nginx
 install_nginx() {
     clear
     install nginx
@@ -52839,7 +52836,7 @@ install_nginx() {
     break_end
 }
 
-###### 卸载Nginx
+# 卸载Nginx
 uninstall_nginx() {
     if ! command -v nginx &>/dev/null; then
         echo -e ""
@@ -52869,7 +52866,7 @@ uninstall_nginx() {
     break_end
 }
 
-###### 函数：显示Nginx命令
+# 函数：显示Nginx命令
 linux_nginx_menu() {
     while true; do
         clear
@@ -52939,7 +52936,7 @@ linux_nginx_menu() {
     done
 }
 
-###### 函数_Git推送更新
+# 函数_Git推送更新
 git_safe_push() {
     local target_dir
     target_dir=$(pwd)
@@ -53081,7 +53078,7 @@ git_safe_push() {
     return 0
 }
 
-###### 函数_Git拉取更新
+# 函数_Git拉取更新
 git_safe_pull() {
     local remote=${1:-origin}
     local branch=${2:-}
@@ -53282,7 +53279,7 @@ git_safe_pull() {
     fi
 }
 
-######  Git 个人 Docker 项目管理
+#  Git 个人 Docker 项目管理
 # show_git_project_menu /vol1/1000/compose "个人Docker项目管理"
 show_git_project_menu() {
     local base_path="${1:-$(pwd)}"
@@ -53334,7 +53331,7 @@ show_git_project_menu() {
     done
 }
 
-###### 更改当前仓库标签
+# 更改当前仓库标签
 update_git_tag() {
     local old_tag=${1:-v1.0.0}
     local new_tag=${2:-$old_tag}
@@ -53375,7 +53372,7 @@ update_git_tag() {
     break_end
 }
 
-###### 推送所有仓库更改
+# 推送所有仓库更改
 push_all_repos() {
     local start_dir="${1:-$(pwd)}"
     local commit_msg="${2:-update}"
@@ -53439,7 +53436,7 @@ push_all_repos() {
     break_end
 }
 
-###### 拉取所有仓库更新
+# 拉取所有仓库更新
 pull_all_repos() {
     local scan_dir="${1:-.}"
     local exclude_file="${2:-}"
@@ -53480,7 +53477,7 @@ pull_all_repos() {
     break_end
 }
 
-###### 修改为ssh连接
+# 修改为ssh连接
 configure_git_ssh() {
     check_git_repository "Git SSH 配置工具" "." "true" 2 || return 1
     check_and_install git || return 1
@@ -53556,7 +53553,7 @@ configure_git_ssh() {
     break_end
 }
 
-###### 修改为https连接
+# 修改为https连接
 configure_git_https() {
     check_git_repository "Git HTTPS 配置工具" "." "true" 2 || return 1
     check_and_install git || return 1
@@ -53891,7 +53888,7 @@ fix_git_safe_directories() {
     return 0
 }
 
-###### 配置Gitee SSH
+# 配置Gitee SSH
 configure_gitee_ssh() {
     check_and_install git || return 1
     clear
@@ -53902,7 +53899,7 @@ configure_gitee_ssh() {
     break_end
 }
 
-###### 配置GitHub SSH
+# 配置GitHub SSH
 configure_github_ssh() {
     check_and_install git || return 1
     clear
@@ -53913,7 +53910,7 @@ configure_github_ssh() {
     break_end
 }
 
-###### 初始化Gitee新仓库
+# 初始化Gitee新仓库
 init_gitee_new_repo() {
     check_and_install git || return 1
     clear
@@ -53924,7 +53921,7 @@ init_gitee_new_repo() {
     break_end
 }
 
-###### 初始化GitHub新仓库
+# 初始化GitHub新仓库
 init_github_new_repo() {
     check_and_install git || return 1
     clear
@@ -53935,7 +53932,7 @@ init_github_new_repo() {
     break_end
 }
 
-###### 克隆仓库
+# 克隆仓库
 clone_repository() {
     check_and_install git || return 1
     clear
@@ -54002,7 +53999,7 @@ clone_repository() {
     cd "$work_dir" && clone_custom_repo
 }
 
-###### 克隆compose仓库
+# 克隆compose仓库
 clone_compose_repositories() {
     check_and_install git || return 1
     echo -e ""
@@ -54046,7 +54043,7 @@ clone_compose_repositories() {
     git_clone_docker_projects
 }
 
-###### 卸载Git
+# 卸载Git
 uninstall_git() {
     if ! command -v git &>/dev/null; then
         echo -e ""
@@ -54072,7 +54069,7 @@ uninstall_git() {
 }
 
 
-###### Git 历史彻底清理工具
+# Git 历史彻底清理工具
 # 功能：删除所有历史提交，清理仓库垃圾，同步远程
 git_nuke_history() {
     echo -e ""
@@ -54325,7 +54322,7 @@ git_clean_cache() {
     return 0
 }
 
-###### 函数：显示 Git脚本
+# 函数：显示 Git脚本
 linux_git_menu() {
     local fast_jump="$1" # 接收第一个参数
     while true; do
@@ -54403,7 +54400,7 @@ linux_git_menu() {
     done
 }
 
-####### 回收站功能
+## 回收站功能
 check_rm_redirect_silent() {
     local user_shell=$(basename "$SHELL")
     local config_file=""
@@ -54427,7 +54424,7 @@ check_rm_redirect_silent() {
     fi
 }
 
-###### 显示回收站内容和统计信息
+# 显示回收站内容和统计信息
 show_trash_contents_and_stats() {
     if [[ -z "$TRASH_CMD" ]]; then
         echo -e "${gl_huang}回收站未启用${gl_bai}"
@@ -54642,7 +54639,7 @@ show_trash_contents_and_stats() {
 
 }
 
-####### 回收站配置文件
+## 回收站配置文件
 TRASH_CONFIG_FILE="$HOME/.trash_config"
 
 # 保存回收站配置到文件
@@ -54693,7 +54690,7 @@ load_trash_config() {
     fi
 }
 
-####### 安装回收站功能
+## 安装回收站功能
 # 安装回收站功能
 install_trash() {
     local trash_cmd=""
@@ -54818,7 +54815,7 @@ auto_setup_trash() {
     fi
 }
 
-###### 删除文件函数（使用回收站）
+# 删除文件函数（使用回收站）
 delete_file_with_trash() {
     local file="$1"
 
@@ -54884,7 +54881,7 @@ delete_file_with_trash() {
     fi
 }
 
-###### 获取回收站内容列表
+# 获取回收站内容列表
 get_trash_list() {
     local trash_items=()
 
@@ -54938,7 +54935,7 @@ get_trash_list() {
     fi
 }
 
-###### 启用回收站
+# 启用回收站
 enable_trash() {
     echo
     echo -e "${gl_zi}>>> 启用回收站${gl_bai}"
@@ -54961,7 +54958,7 @@ enable_trash() {
     return 1
 }
 
-###### 关闭回收站
+# 关闭回收站
 disable_trash() {
     echo
     echo -e "${gl_zi}>>> 关闭回收站${gl_bai}"
@@ -55019,7 +55016,7 @@ empty_trash() {
     return 1
 }
 
-###### 恢复回收站文件
+# 恢复回收站文件
 restore_trash_interactive() {
     echo
     echo -e "${gl_zi}>>> 恢复回收站文件${gl_bai}"
@@ -55229,7 +55226,7 @@ refresh_trash() {
     return 1
 }
 
-###### 测试回收站功能
+# 测试回收站功能
 test_trash_function() {
     echo
     echo -e "${gl_zi}>>> 测试回收站功能${gl_bai}"
@@ -55280,7 +55277,7 @@ test_trash_function() {
     break_end
 }
 
-###### 配置rm命令重定向到回收站
+# 配置rm命令重定向到回收站
 setup_rm_redirect() {
     echo
     echo -e "${gl_zi}=== 配置 rm 命令重定向到回收站 ===${gl_bai}"
@@ -55664,7 +55661,7 @@ one_click_auto_setup() {
     read -r -n1 -s
 }
 
-###### 回收站管理菜单
+# 回收站管理菜单
 manage_trash_menu() {
     load_trash_config
 
@@ -55748,7 +55745,7 @@ manage_trash_menu() {
     done
 }
 
-######## 压缩文件/目录 - 独立函数
+### 压缩文件/目录 - 独立函数
 compress_file() {
     local target="$1"
     local format="$2"
@@ -55828,7 +55825,7 @@ compress_file() {
     fi
 }
 
-######## 交互式删除文件/目录
+### 交互式删除文件/目录
 interactive_delete() {
     echo -e ""
 
@@ -56018,7 +56015,7 @@ interactive_delete() {
     done
 }
 
-###### 解压文件 - 独立函数
+# 解压文件 - 独立函数
 extract_file() {
     local archive="$1" output_dir="${2:-.}" auto_yes="${3:-false}"
 
@@ -56231,7 +56228,7 @@ extract_file() {
     return $result
 }
 
-###### 交互式压缩 - 优化版本
+# 交互式压缩 - 优化版本
 # 横向排列显示优化函数
 display_horizontal_list() {
     local list=("${@}")                       # 获取数组参数
@@ -56418,7 +56415,7 @@ interactive_compress() {
     done
 }
 
-###### 交互式解压 - 优化版本
+# 交互式解压 - 优化版本
 interactive_extract() {
     clear
     echo -e "${gl_zi}>>> 解压模式${gl_bai}"
@@ -56670,7 +56667,7 @@ extract_specific() {
     break_end
 }
 
-###### 函数_解压压缩工具
+# 函数_解压压缩工具
 compress_tool() {
 
     local install_only=false compress_file="" extract_file="" compress_format=""
@@ -56876,7 +56873,7 @@ compress_tool() {
     interactive_menu
 }
 
-######## 函数_打包Docker镜像
+### 函数_打包Docker镜像
 docker_image_pack() {
     set -euo pipefail # 严格错误处理
     clear
@@ -56981,7 +56978,7 @@ docker_image_pack() {
     break_end
 }
 
-###### 文件下载（中文文件名+原生断点续传+耗时统计）
+# 文件下载（中文文件名+原生断点续传+耗时统计）
 download_single() {
     local url="$1"
     [[ -z "$url" ]] && return 1 # 保险
@@ -57292,7 +57289,7 @@ linux_work() {
 
 
 
-###### iStoreOS管理工具
+# iStoreOS管理工具
 # 检查iStoreOS风格化函数
 istoreos_check_style_installed() {
     local CHECK_FILES="/usr/lib/lua/luci/controller/filetransfer.lua
@@ -58013,7 +58010,7 @@ istoreos_system_reset() {
     fi
 }
 
-###### iStoreOS网络模式
+# iStoreOS网络模式
 istoreos_network_mode() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     echo ""
@@ -58704,7 +58701,7 @@ wukongdaily_backup_restore_menu() {
             5) cd "$backup_dir" && rz_upload_file; continue ;;                      # 上传备份文件
             6) cd "$backup_dir" && rz_download_files_to_local; continue ;;          # 下载备份文件
             0) cancel_return "iStoreOS 管理"; return 0 ;;
-            00|000|0000) exit_script ;;                                             # 退出脚本
+            00|000|0000) exit_script ;;
             *) handle_invalid_input ;;
         esac
     done
@@ -59501,8 +59498,6 @@ istoreos_restore_from_url() {
     esac
 }
 
-# 菜单显示函数
-# 用法: istoreos_backup_restore_menu
 istoreos_backup_restore_menu() {
     while true; do
         is_istoreos_system || return 1  # 非iStoreOS系统退出
@@ -59554,19 +59549,19 @@ istoreos_backup_restore_menu() {
             5) cd "$backup_dir" && rz_upload_file; continue ;;                      # 上传备份文件
             6) cd "$backup_dir" && rz_download_files_to_local; continue ;;          # 下载备份文件
             0) cancel_return "iStoreOS 管理"; return 0 ;;
-            00|000|0000) exit_script ;;                                             # 退出脚本
+            00|000|0000) exit_script ;;
             *) handle_invalid_input ;;
         esac
     done
 }
 
-###### 手动升级 iStoreOS 系统固件
+# 手动升级 iStoreOS 系统固件
 # 传参：istoreos_system_update /mnt/backup
 istoreos_system_update() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     local firmware_url
     local firmware_path
-    local download_path="/tmp"  # 默认下载路径
+    local download_path="/tmp"
     
     if [ -n "$1" ] && [ -d "$1" ]; then
         download_path="$1"
@@ -59647,7 +59642,7 @@ istoreos_system_update() {
             fi
         fi
         
-        cd "$current_dir"  # 返回到原始目录
+        cd "$current_dir"
         
         echo ""
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -59795,7 +59790,7 @@ istoreos_system_update() {
     done
 }
 
-###### 编辑计划任务
+# 编辑计划任务
 istoreos_configure_editor() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     if ! grep -q "EDITOR=nano" ~/.bashrc; then
@@ -59805,7 +59800,7 @@ istoreos_configure_editor() {
     crontab -e
 }
 
-###### 删除计划任务
+# 删除计划任务
 remove_crontab_confirm() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     echo -e ""
@@ -59835,7 +59830,7 @@ remove_crontab_confirm() {
     break_end
 }
 
-###### 显示crontab快速帮助信息
+# 显示crontab快速帮助信息
 show_crontab_help() {
     clear
     echo -e ""
@@ -59871,7 +59866,7 @@ ${gl_zi}└────────────────── ${gl_zi}分钟
 }
 
 
-###### iStoreOS网络接口
+# iStoreOS网络接口
 istoreos_show_network() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     clear
@@ -59882,7 +59877,7 @@ istoreos_show_network() {
     break_end
 }
 
-###### iStoreOS系统日志
+# iStoreOS系统日志
 istoreos_show_logread() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     clear
@@ -59893,7 +59888,7 @@ istoreos_show_logread() {
     break_end
 }
 
-###### iStoreOS查看端口
+# iStoreOS查看端口
 istoreos_show_port() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     clear
@@ -59904,7 +59899,7 @@ istoreos_show_port() {
     break_end
 }
 
-###### iStoreOS查看PCI设备
+# iStoreOS查看PCI设备
 istoreos_show_lspci() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     clear
@@ -59915,7 +59910,7 @@ istoreos_show_lspci() {
     break_end
 }
 
-###### 查看计划任务
+# 查看计划任务
 istoreos_show_crontab() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     echo -e ""
@@ -59926,7 +59921,7 @@ istoreos_show_crontab() {
     break_end
 }
 
-###### iStoreOS重启网络
+# iStoreOS重启网络
 istoreos_restart_network() {
     is_istoreos_system || return 1  # 非iStoreOS系统退出
     echo -e ""
@@ -59942,7 +59937,7 @@ istoreos_restart_network() {
     break_end
 }
 
-###### iStoreOS 管理
+# iStoreOS 管理
 linux_istoreos_menu() {
     while true; do
         clear
