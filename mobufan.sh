@@ -4004,7 +4004,7 @@ clone_custom_repo() {
             return 3
         elif [[ ${overwrite,,} != "y" ]]; then
             echo -e "${gl_lv}已跳过克隆${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 2
         fi
         rm -rf "$repoName"
@@ -4055,7 +4055,7 @@ safe_rm() {
     # 检查目录是否存在
     if [[ ! -d "$target_dir" ]]; then
         echo -e "${gl_huang}错误: 目录 ${gl_lv}'$target_dir' ${gl_huang}不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -4068,7 +4068,7 @@ safe_rm() {
         echo -e "${gl_huang}当前目录 ${gl_lv}$(pwd) ${gl_huang}为空，无需删除${gl_bai}"
         # echo -e "${gl_huang}目录 ${gl_hong}$target_dir ${gl_huang}为空，无需删除${gl_bai}"
         popd >/dev/null
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -4107,7 +4107,7 @@ safe_rm() {
         rm -rf ./..* 2>/dev/null # 尝试删除隐藏文件，忽略错误
         popd >/dev/null
         echo -e "${gl_lv}删除完成${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -4169,14 +4169,14 @@ rz_download_files_to_local() {
     if [[ ! -d "$target_dir" ]]; then
         log_error "目录不存在: $target_dir"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 进入目标目录
     cd "$target_dir" || {
         log_error "无法进入目录: $target_dir"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     
@@ -4184,7 +4184,7 @@ rz_download_files_to_local() {
     # 显示文件列表
     if ! list_files "." "0" 2; then
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -4201,7 +4201,7 @@ rz_download_files_to_local() {
     if [[ -z "$user_input" ]]; then
         log_error "请输入有效的选择"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -4619,7 +4619,7 @@ manual_file_search_and_process() {
                     ;;
                 *)
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                    handle_y_n        # 无效的输入,请输入(y或N)。
+                    handle_y_n
                     continue # 返回菜单
                     ;;
                 esac
@@ -4674,7 +4674,7 @@ manual_file_search_and_process() {
                     ;;
                 *)
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                    handle_y_n        # 无效的输入,请输入(y或N)。
+                    handle_y_n
                     continue # 返回菜单
                     ;;
                 esac
@@ -4707,7 +4707,7 @@ manual_file_search_and_process() {
             # 检查是否还有文件剩余
             if [[ ${#files[@]} -eq 0 ]]; then
                 log_warn "所有文件已移动，返回上级菜单"
-                exit_animation    # 即将退出动画
+                exit_animation
                 break
             fi
 
@@ -4746,7 +4746,7 @@ manual_file_search_and_process() {
                     ;;
                 *)
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                    handle_y_n        # 无效的输入,请输入(y或N)。
+                    handle_y_n
                     continue # 返回菜单
                     ;;
                 esac
@@ -4841,7 +4841,7 @@ manual_file_search_and_process() {
                 ;;
             *)
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                handle_y_n        # 无效的输入,请输入(y或N)。
+                handle_y_n
                 continue # 返回菜单
                 ;;
             esac
@@ -4881,12 +4881,12 @@ manual_file_search_and_process() {
             [Nn])
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 echo -e "${gl_huang}已取消安装${gl_bufan}mobufan${gl_huang}脚本${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue # 返回菜单
                 ;;
             *)
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                handle_y_n        # 无效的输入,请输入(y或N)。
+                handle_y_n
                 continue # 返回菜单
                 ;;
             esac
@@ -4977,7 +4977,7 @@ manual_file_search_and_process() {
                 read -r -n 1 -s -r -p ""
             else
                 echo -e "${gl_bai}${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                handle_y_n        # 无效的输入,请输入(y或N)。
+                handle_y_n
                 continue # 返回菜单
             fi
             continue # 查看完成后返回菜单
@@ -5150,7 +5150,7 @@ manual_file_search_and_process() {
                 log_error "无效的文件编号！"
             fi
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             list_dir_colorful 0 4
             continue # 返回菜单
             ;;
@@ -5227,11 +5227,11 @@ scan_duplicate_files() {
     # 检查必要的命令
     if [[ "$method" == "md5" ]] && ! command -v md5sum &>/dev/null; then
         log_error "md5sum 命令未找到，请安装 coreutils 或使用其他去重方法"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     elif [[ "$method" == "sha1" ]] && ! command -v sha1sum &>/dev/null; then
         log_error "sha1sum 命令未找到，请安装 coreutils 或使用其他去重方法"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -5310,7 +5310,7 @@ interactive_remove_duplicates() {
 
     if [[ ${#duplicate_groups[@]} -eq 0 ]]; then
         log_ok "未发现重复文件！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -5480,7 +5480,7 @@ interactive_remove_duplicates() {
                         log_warn "操作已取消"
                         ;;
                     *)
-                        handle_y_n        # 无效的输入,请输入(y或N)。
+                        handle_y_n
                         ;;
                     esac
                     echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
@@ -5528,7 +5528,7 @@ auto_remove_duplicates() {
     [Yy]) ;;
     [Nn])
         log_warn "操作已取消"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
         ;;
     *) handle_y_n; return ;;      # 无效的输入,请输入(y或N)。
@@ -5830,7 +5830,7 @@ preview_file_content() {
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录为空${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     clear
@@ -5967,7 +5967,7 @@ preview_file_content() {
         # 检查是否为数字
         if [[ ! "$input" =~ ^[0-9]+$ ]]; then
             log_error "请输入有效的数字！"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
 
@@ -6013,7 +6013,7 @@ preview_file_content() {
                 echo -e "${gl_bai}${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 echo -e "${gl_huang}[提示] 这是图片文件，无法在终端直接预览${gl_bai}"
                 echo -e "${gl_bai}${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue
             elif [[ "$preview_file" =~ \.(zip|tar|gz|bz2|xz|7z|rar)$ ]]; then
                 # 压缩文件
@@ -6028,7 +6028,7 @@ preview_file_content() {
                     file "$preview_file" 2>/dev/null
                 fi
                 echo -e "${gl_bai}${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue
             fi
 
@@ -6051,7 +6051,7 @@ preview_file_content() {
 
                 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
                     log_ok "操作已取消"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     continue
                 fi
             fi
@@ -6104,7 +6104,7 @@ preview_file_content() {
                             ((content_page++))
                         else
                             log_warn "已经是最后一页"
-                            exit_animation    # 即将退出动画
+                            exit_animation
                         fi
                         ;;
                     p | P)
@@ -6232,7 +6232,7 @@ linux_script_manager() {
 
         if [ -z "$url" ]; then
             log_error "无效的脚本编号"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -6245,7 +6245,7 @@ linux_script_manager() {
         else
             log_error "下载失败: $script_name"
             rm -f "$target_path" 2>/dev/null
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     }
@@ -6294,7 +6294,7 @@ linux_script_manager() {
 
         if [ ${#scripts[@]} -eq 0 ]; then
             log_warn "没有可添加到定时任务的脚本"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -6383,7 +6383,7 @@ linux_script_manager() {
                 log_info "已取消操作"
                 ;;
             *)
-                handle_y_n        # 无效的输入,请输入(y或N)。
+                handle_y_n
                 ;;
             esac
         fi
@@ -6394,7 +6394,7 @@ linux_script_manager() {
         # 检查脚本目录是否存在
         if [ ! -d "$SCRIPT_DIR" ] || [ -z "$(ls -A "$SCRIPT_DIR"/*.sh 2>/dev/null)" ]; then
             log_warn "脚本目录 ${gl_huang}$SCRIPT_DIR${gl_bai} 为空或不存在"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -6720,427 +6720,6 @@ linux_script_manager() {
 
 # 函数_电视剧集重命名
 tv_rename_ultimate() {
-
-    # 快速重命名功能（增强版）
-    quick_rename() {
-        clear
-        echo -e "${gl_zi}>>> 快速重命名（智能识别版）${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        # 支持的视频文件扩展名
-        local VIDEO_EXTS=("mp4" "mkv" "avi" "mov" "wmv" "flv" "webm" "m4v" "mpg" "mpeg" "kvm")
-        
-        # 生成扩展名匹配字符串
-        local ext_pattern=""
-        for ext in "${VIDEO_EXTS[@]}"; do
-            if [ -z "$ext_pattern" ]; then
-                ext_pattern="-name \"*.$ext\""
-            else
-                ext_pattern="$ext_pattern -o -name \"*.$ext\""
-            fi
-        done
-        
-        # 收集文件
-        log_info "扫描当前目录视频文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        local files=()
-        while IFS= read -r file; do
-            if [ -f "$file" ]; then
-                files+=("$file")
-            fi
-        done < <(eval "find . -maxdepth 1 -type f \( $ext_pattern \) 2>/dev/null" | sort -V)
-        
-        if [ ${#files[@]} -eq 0 ]; then
-            log_error "未找到视频文件！"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
-            return
-        fi
-        
-        echo -e "${gl_bai}找到 ${#files[@]} 个视频文件:${gl_bai}"
-        for ((i = 0; i < ${#files[@]}; i++)); do
-            local filename=$(basename -- "${files[$i]}")
-            echo -e "  ${gl_bufan}$(safe_printf "%02d" $((i + 1))).${gl_bai} $filename"
-        done
-        
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        # ========== 自动识别电视剧信息 ==========
-        echo -e "${gl_huang}正在智能识别剧集信息 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        # 1. 自动识别剧集前缀
-        local prefix=""
-        local season="01"
-        local start_ep="1"
-        local detected_info=0
-        
-        # 从文件名中提取前缀候选
-        local candidates=()
-        local counts=()
-        local total_files=${#files[@]}
-        
-        for file in "${files[@]}"; do
-            local filename=$(basename -- "$file")
-            # 使用已有的 extract_prefix_candidate 函数
-            if command -v extract_prefix_candidate >/dev/null 2>&1; then
-                local candidate=$(extract_prefix_candidate "$filename")
-            else
-                # 简化版前缀提取
-                local basename="${filename%.*}"
-                # 移除常见的剧集标识符
-                local candidate=$(echo "$basename" | sed -E 's/[._ -]*[Ss][0-9]{1,2}[Ee][0-9]{1,3}[._ -]*//g')
-                candidate=$(echo "$candidate" | sed -E 's/[._ -]*[Ee][Pp][0-9]{1,3}[._ -]*//g')
-                candidate=$(echo "$candidate" | sed -E 's/[._ -]*第[0-9]{1,3}[集話话][._ -]*//g')
-                candidate=$(echo "$candidate" | sed 's/^[._ -]*//;s/[._ -]*$//')
-            fi
-            
-            if [ -n "$candidate" ] && [ ${#candidate} -ge 2 ]; then
-                # 检查是否已存在
-                local found=-1
-                for idx in "${!candidates[@]}"; do
-                    if [ "${candidates[$idx]}" = "$candidate" ]; then
-                        found=$idx
-                        break
-                    fi
-                done
-                if [ $found -ge 0 ]; then
-                    counts[$found]=$((counts[$found] + 1))
-                else
-                    candidates+=("$candidate")
-                    counts+=(1)
-                fi
-            fi
-        done
-        
-        # 选择出现频率最高的前缀
-        if [ ${#candidates[@]} -gt 0 ]; then
-            local best_idx=0
-            for i in "${!candidates[@]}"; do
-                if [ ${counts[$i]} -gt ${counts[$best_idx]} ]; then
-                    best_idx=$i
-                fi
-            done
-            prefix="${candidates[$best_idx]}"
-            detected_info=1
-            log_ok "自动识别剧集前缀: ${gl_lv}$prefix${gl_bai}"
-        else
-            prefix="电视剧"
-            log_warn "无法识别剧集前缀，使用默认值: ${gl_lv}电视剧${gl_bai}"
-        fi
-        
-        # 2. 自动识别季号
-        local season_array=()
-        local season_count_array=()
-        
-        for file in "${files[@]}"; do
-            local filename=$(basename -- "$file")
-            # 尝试匹配 S01E26 格式
-            if [[ "$filename" =~ [Ss]([0-9]{1,2})[Ee] ]]; then
-                local s="${BASH_REMATCH[1]}"
-                local found=0
-                for i in "${!season_array[@]}"; do
-                    if [ "${season_array[i]}" = "$s" ]; then
-                        season_count_array[i]=$((season_count_array[i] + 1))
-                        found=1
-                        break
-                    fi
-                done
-                if [ $found -eq 0 ]; then
-                    season_array+=("$s")
-                    season_count_array+=(1)
-                fi
-            fi
-        done
-        
-        if [ ${#season_array[@]} -gt 0 ]; then
-            local best_idx=0
-            for i in "${!season_array[@]}"; do
-                if [ ${season_count_array[i]} -gt ${season_count_array[$best_idx]} ]; then
-                    best_idx=$i
-                fi
-            done
-            season=$(safe_printf "%02d" "${season_array[$best_idx]}")
-            detected_info=1
-            log_ok "自动识别季号: ${gl_lv}S$season${gl_bai}"
-        else
-            log_info "使用默认季号: ${gl_lv}S$season${gl_bai}"
-        fi
-        
-        # 3. 自动识别起始集数
-        # 扫描所有文件，找到最小的集数
-        local min_episode=999
-        for file in "${files[@]}"; do
-            local filename=$(basename -- "$file")
-            # 尝试多种格式匹配
-            if [[ "$filename" =~ [Ss][0-9]{1,2}[Ee]([0-9]{1,3}) ]]; then
-                local ep="${BASH_REMATCH[1]}"
-                ep=$(echo "$ep" | sed 's/^0*//')
-                [ -z "$ep" ] && ep=0
-                if [ "$ep" -lt "$min_episode" ] && [ "$ep" -gt 0 ]; then
-                    min_episode="$ep"
-                fi
-            elif [[ "$filename" =~ [Ee][Pp]([0-9]{1,3}) ]]; then
-                local ep="${BASH_REMATCH[1]}"
-                ep=$(echo "$ep" | sed 's/^0*//')
-                [ -z "$ep" ] && ep=0
-                if [ "$ep" -lt "$min_episode" ] && [ "$ep" -gt 0 ]; then
-                    min_episode="$ep"
-                fi
-            elif [[ "$filename" =~ 第([0-9]{1,3})[集話话] ]]; then
-                local ep="${BASH_REMATCH[1]}"
-                ep=$(echo "$ep" | sed 's/^0*//')
-                [ -z "$ep" ] && ep=0
-                if [ "$ep" -lt "$min_episode" ] && [ "$ep" -gt 0 ]; then
-                    min_episode="$ep"
-                fi
-            fi
-        done
-        
-        if [ "$min_episode" -ne 999 ]; then
-            start_ep="$min_episode"
-            detected_info=1
-            log_ok "自动识别起始集数: ${gl_lv}E$(safe_printf "%02d" "$start_ep")${gl_bai}"
-        else
-            log_info "使用默认起始集数: ${gl_lv}E$(safe_printf "%02d" "$start_ep")${gl_bai}"
-        fi
-        
-        if [ $detected_info -eq 1 ]; then
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_lv}✓ 智能识别完成${gl_bai}"
-        fi
-        
-        # ========== 直接预览重命名结果 ==========
-        clear
-        echo -e "${gl_zi}>>> 预览重命名结果${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        echo -e "${gl_bai}自动识别设置:${gl_bai}"
-        echo -e "  ${gl_bufan}剧集前缀:${gl_bai} $prefix"
-        echo -e "  ${gl_bufan}季号:${gl_bai} S$season"
-        echo -e "  ${gl_bufan}起始集数:${gl_bai} E$(safe_printf "%02d" "$start_ep")"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        echo -e "${gl_bai}重命名预览 (共 ${#files[@]} 个文件):${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        local preview_files=()
-        for ((i = 0; i < ${#files[@]}; i++)); do
-            local file="${files[$i]}"
-            local filename=$(basename -- "$file")
-            local extension="${filename##*.}"
-            local episode=$((start_ep + i))
-            local formatted_ep=$(safe_printf "%02d" "$episode")
-            local new_name="${prefix}-S${season}E${formatted_ep}.${extension}"
-            
-            preview_files+=("$file:$new_name")
-            
-            echo -e "  ${gl_bufan}[$(safe_printf "%02d" $((i + 1)))]${gl_bai}"
-            echo -e "    原文件: ${gl_hui}$filename${gl_bai}"
-            echo -e "    新文件: ${gl_lv}$new_name${gl_bai}"
-            echo ""
-        done
-        
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        # ========== 提示用户是否修改 ==========
-        echo -e "${gl_bai}是否修改设置?${gl_bai}"
-        echo -e "  ${gl_bufan}1.${gl_bai} 直接重命名 (使用当前设置)"
-        echo -e "  ${gl_bufan}2.${gl_bai} 修改剧集前缀"
-        echo -e "  ${gl_bufan}3.${gl_bai} 修改季号"
-        echo -e "  ${gl_bufan}4.${gl_bai} 修改起始集数"
-        echo -e "  ${gl_bufan}5.${gl_bai} 进入详细设置"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_huang}0.  ${gl_bai}返回"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        read -r -e -p "$(echo -e "${gl_bai}请输入你的选择: ")" choice
-        
-        case $choice in
-        1)
-            # 直接重命名
-            log_info "开始重命名 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            local success_count=0
-            
-            for item in "${preview_files[@]}"; do
-                IFS=':' read -r old_file new_name <<<"$item"
-                local old_filename=$(basename -- "$old_file")
-                
-                if mv -- "$old_file" "./$new_name" 2>/dev/null; then
-                    echo -e "  ${gl_lv}✓ $old_filename → $new_name${gl_bai}"
-                    ((success_count++))
-                else
-                    echo -e "  ${gl_hong}✗ 重命名失败: $old_filename${gl_bai}"
-                fi
-            done
-            
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            log_ok "重命名完成！成功 $success_count 个文件"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            break_end
-            ;;
-        
-        2)
-            # 修改剧集前缀
-            clear
-            echo -e "${gl_zi}>>> 修改剧集前缀${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            
-            echo -e "${gl_bai}当前前缀: ${gl_lv}$prefix${gl_bai}"
-            echo -e "${gl_bai}示例: ${gl_bufan}庆余年${gl_bai} → ${gl_bufan}庆余年-S${season}E01.mkv${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            
-            read -r -e -p "$(echo -e "${gl_bai}请输入新的剧集前缀 (回车保持原值): ")" new_prefix
-            
-            if [ -n "$new_prefix" ]; then
-                prefix="$new_prefix"
-                log_ok "剧集前缀已修改为: $prefix"
-            else
-                log_info "保持原剧集前缀: $prefix"
-            fi
-            
-            # 重新显示预览
-            quick_rename_preview "${files[@]}" "$prefix" "$season" "$start_ep"
-            ;;
-        
-        3)
-            # 修改季号
-            clear
-            echo -e "${gl_zi}>>> 修改季号${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            
-            echo -e "${gl_bai}当前季号: ${gl_lv}S$season${gl_bai}"
-            echo -e "${gl_bai}示例: ${gl_bufan}01${gl_bai} 表示第 ${gl_bufan}1${gl_bai} 季 (将显示为 S01)"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            
-            read -r -e -p "$(echo -e "${gl_bai}请输入新的季号 (回车保持原值): ")" new_season
-            
-            if [ -n "$new_season" ]; then
-                if [[ "$new_season" =~ ^[0-9]{1,2}$ ]]; then
-                    season=$(safe_printf "%02d" "$new_season")
-                    log_ok "季号已修改为: S$season"
-                else
-                    log_error "请输入有效的数字 (1-99)！"
-                fi
-            else
-                log_info "保持原季号: S$season"
-            fi
-            
-            # 重新显示预览
-            quick_rename_preview "${files[@]}" "$prefix" "$season" "$start_ep"
-            ;;
-        
-        4)
-            # 修改起始集数
-            clear
-            echo -e "${gl_zi}>>> 修改起始集数${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            
-            echo -e "${gl_bai}当前起始集数: ${gl_lv}E$(safe_printf "%02d" "$start_ep")${gl_bai}"
-            echo -e "${gl_bai}示例: ${gl_bufan}26${gl_bai} 表示从第 ${gl_bufan}26${gl_bai} 集开始编号"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            
-            read -r -e -p "$(echo -e "${gl_bai}请输入新的起始集数 (回车保持原值): ")" new_start
-            
-            if [ -n "$new_start" ]; then
-                if [[ "$new_start" =~ ^[0-9]{1,3}$ ]] && [ "$new_start" -ge 1 ]; then
-                    start_ep="$new_start"
-                    log_ok "起始集数已修改为: E$(safe_printf "%02d" "$start_ep")"
-                else
-                    log_error "请输入有效的集数 (1-999)！"
-                fi
-            else
-                log_info "保持原起始集数: E$(safe_printf "%02d" "$start_ep")"
-            fi
-            
-            # 重新显示预览
-            quick_rename_preview "${files[@]}" "$prefix" "$season" "$start_ep"
-            ;;
-        
-        5)
-            # 进入详细设置（调用原有的详细重命名函数）
-            rename_tv_files_ultimate
-            ;;
-        0) cancel_return; return ;;     # 返回到上一级菜单
-        *) handle_invalid_input ;;      # 无效的输入,请重新输入!
-        esac
-    }
-
-    # 辅助函数：显示预览
-    quick_rename_preview() {
-        local files=("${@:1:${#@}-3}")
-        local prefix="${@: -3:1}"
-        local season="${@: -2:1}"
-        local start_ep="${@: -1}"
-        
-        clear
-        echo -e "${gl_zi}>>> 预览重命名结果${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        echo -e "${gl_bai}当前设置:${gl_bai}"
-        echo -e "  ${gl_bufan}剧集前缀:${gl_bai} $prefix"
-        echo -e "  ${gl_bufan}季号:${gl_bai} S$season"
-        echo -e "  ${gl_bufan}起始集数:${gl_bai} E$(safe_printf "%02d" "$start_ep")"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        echo -e "${gl_bai}重命名预览:${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        for ((i = 0; i < ${#files[@]}; i++)); do
-            local file="${files[$i]}"
-            local filename=$(basename -- "$file")
-            local extension="${filename##*.}"
-            local episode=$((start_ep + i))
-            local formatted_ep=$(safe_printf "%02d" "$episode")
-            local new_name="${prefix}-S${season}E${formatted_ep}.${extension}"
-            
-            echo -e "  ${gl_bufan}[$(safe_printf "%02d" $((i + 1)))]${gl_bai}"
-            echo -e "    原文件: ${gl_hui}$filename${gl_bai}"
-            echo -e "    新文件: ${gl_lv}$new_name${gl_bai}"
-            echo ""
-        done
-        
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        
-        read -r -e -p "$(echo -e "${gl_bai}是否执行重命名? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        
-        case "$confirm" in
-        [Yy])
-            log_info "开始重命名 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            local success_count=0
-            
-            for ((i = 0; i < ${#files[@]}; i++)); do
-                local file="${files[$i]}"
-                local filename=$(basename -- "$file")
-                local extension="${filename##*.}"
-                local episode=$((start_ep + i))
-                local formatted_ep=$(safe_printf "%02d" "$episode")
-                local new_name="${prefix}-S${season}E${formatted_ep}.${extension}"
-                
-                if mv -- "$file" "./$new_name" 2>/dev/null; then
-                    echo -e "  ${gl_lv}✓ $filename → $new_name${gl_bai}"
-                    ((success_count++))
-                else
-                    echo -e "  ${gl_hong}✗ 重命名失败: $filename${gl_bai}"
-                fi
-            done
-            
-            log_ok "重命名完成！成功 $success_count 个文件"
-            ;;
-        
-        [Nn])
-            log_info "已取消重命名操作"
-            ;;
-        
-        *)
-            log_error "无效的选择！"
-            ;;
-        esac
-        
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        break_end
-    }
-
-    # 安全的 printf 函数，处理以0开头的数字
     safe_printf() {
         local format="$1"
         local number="$2"
@@ -7157,68 +6736,56 @@ tv_rename_ultimate() {
         printf "$format" "$number"
     }
 
-    # 增强的智能提取集数函数 - 返回所有可能的识别结果
     enhanced_extract_episode_info() {
         local filename="$1"
         local results=()
 
-        # 1. 尝试匹配 S01E26 格式
         if [[ "$filename" =~ [Ss]([0-9]{1,2})[Ee]([0-9]{1,3}) ]]; then
             local season="${BASH_REMATCH[1]}"
             local episode="${BASH_REMATCH[2]}"
             results+=("S${season}E${episode}:${season}:${episode}:SxE格式")
         fi
 
-        # 2. 匹配 EP26 或 EP26- 格式
         if [[ "$filename" =~ [Ee][Pp]([0-9]{1,3})[^0-9] ]]; then
             local episode="${BASH_REMATCH[1]}"
             results+=("EP${episode}:01:${episode}:EP格式")
         fi
 
-        # 3. 匹配 第26集 格式
         if [[ "$filename" =~ 第([0-9]{1,3})[集話话] ]]; then
             local episode="${BASH_REMATCH[1]}"
             results+=("第${episode}集:01:${episode}:中文第X集")
         fi
 
-        # 4. 匹配 -26- 或 .26. 格式
         if [[ "$filename" =~ [^0-9]([0-9]{1,3})[^0-9] ]]; then
             local num="${BASH_REMATCH[1]}"
-            # 排除年份（通常是4位数）
             if [ "$num" -lt 1000 ] || [ "$num" -gt 2100 ]; then
                 results+=("${num}:01:${num}:数字格式")
             fi
         fi
 
-        # 5. 匹配文件名开头的数字
         if [[ "$filename" =~ ^([0-9]{1,3}) ]]; then
             local episode="${BASH_REMATCH[1]}"
             results+=("${episode}:01:${episode}:开头数字")
         fi
 
-        # 6. 匹配文件名结尾的数字
         if [[ "$filename" =~ ([0-9]{1,3})\.[^.]*$ ]]; then
             local episode="${BASH_REMATCH[1]}"
             results+=("${episode}:01:${episode}:结尾数字")
         fi
 
-        # 如果没有识别结果，返回默认
         if [ ${#results[@]} -eq 0 ]; then
             results+=("0:01:1:未识别")
         fi
 
-        # 返回所有结果
         printf "%s\n" "${results[@]}"
     }
 
-    # 分析文件名模式
     analyze_filename_patterns() {
         local files=("$@")
 
         echo -e "${gl_zi}>>> 智能模式分析${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        # 使用普通数组统计模式
         local pattern_array=()
         local example_array=()
         local count_array=()
@@ -7230,7 +6797,6 @@ tv_rename_ultimate() {
             for result in "${results[@]}"; do
                 IFS=':' read -r pattern season episode type <<<"$result"
                 if [ "$type" != "未识别" ]; then
-                    # 查找是否已存在该类型
                     local found=0
                     for i in "${!pattern_array[@]}"; do
                         if [ "${pattern_array[i]}" = "$type" ]; then
@@ -7250,7 +6816,6 @@ tv_rename_ultimate() {
             done
         done
 
-        # 显示模式统计
         if [ ${#pattern_array[@]} -eq 0 ]; then
             echo -e "${gl_huang}未检测到有效的剧集编号模式${gl_bai}"
         else
@@ -7277,7 +6842,6 @@ tv_rename_ultimate() {
         return 0
     }
 
-    # 自动检测最佳重命名方案
     auto_detect_rename_plan() {
         local files=("$@")
         local plans=()
@@ -7285,7 +6849,6 @@ tv_rename_ultimate() {
         echo -e "${gl_zi}>>> 自动检测重命名方案${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        # 方案1: 保持原季号（如果检测到）
         local season_array=()
         local season_count_array=()
 
@@ -7326,11 +6889,9 @@ tv_rename_ultimate() {
             fi
         fi
 
-        # 方案2: 从文件名提取前缀
         if [ ${#files[@]} -gt 0 ]; then
             local sample_file=$(basename -- "${files[0]}")
 
-            # 尝试提取中文剧名
             if [[ "$sample_file" =~ ^([^0-9.-[:space:]]+)[^0-9]* ]]; then
                 local chinese_name="${BASH_REMATCH[1]}"
                 chinese_name=$(echo "$chinese_name" | sed 's/^[[:space:][:punct:]]*//;s/[[:space:][:punct:]]*$//')
@@ -7339,7 +6900,6 @@ tv_rename_ultimate() {
                 fi
             fi
 
-            # 尝试提取英文剧名
             if [[ "$sample_file" =~ \.([A-Za-z][A-Za-z. ]+?)[^A-Za-z] ]]; then
                 local english_name="${BASH_REMATCH[1]}"
                 english_name=$(echo "$english_name" | sed 's/\./ /g;s/ $//')
@@ -7349,7 +6909,6 @@ tv_rename_ultimate() {
             fi
         fi
 
-        # 显示检测到的方案
         if [ ${#plans[@]} -eq 0 ]; then
             echo -e "${gl_huang}未检测到有效的重命名方案${gl_bai}"
             return 1
@@ -7379,9 +6938,7 @@ tv_rename_ultimate() {
         return 0
     }
 
-    # 电视剧文件重命名函数（终极版）
     rename_tv_files_ultimate() {
-        # 支持的视频文件扩展名
         local VIDEO_EXTS=("mp4" "mkv" "avi" "mov" "wmv" "flv" "webm" "m4v" "mpg" "mpeg" "kvm")
         local PREFIX=""
         local SEASON="01"
@@ -7391,13 +6948,195 @@ tv_rename_ultimate() {
         local auto_detected=0
         local detection_results=()
 
-        # 扫描文件函数
+        local prefix_set=0
+        local preview_done=0
+
+        safe_printf() {
+            local format="$1"
+            local number="$2"
+            if [[ "$format" == "%d" ]] || [[ "$format" == "%02d" ]] || [[ "$format" == "%03d" ]]; then
+                number=$(echo "$number" | sed 's/^0*//')
+                if [ -z "$number" ]; then
+                    number=0
+                fi
+            fi
+            printf "$format" "$number"
+        }
+
+        enhanced_extract_episode_info() {
+            local filename="$1"
+            local results=()
+            if [[ "$filename" =~ [Ss]([0-9]{1,2})[Ee]([0-9]{1,3}) ]]; then
+                local season="${BASH_REMATCH[1]}"
+                local episode="${BASH_REMATCH[2]}"
+                results+=("S${season}E${episode}:${season}:${episode}:SxE格式")
+            fi
+            if [[ "$filename" =~ [Ee][Pp]([0-9]{1,3})[^0-9] ]]; then
+                local episode="${BASH_REMATCH[1]}"
+                results+=("EP${episode}:01:${episode}:EP格式")
+            fi
+            if [[ "$filename" =~ 第([0-9]{1,3})[集話话] ]]; then
+                local episode="${BASH_REMATCH[1]}"
+                results+=("第${episode}集:01:${episode}:中文第X集")
+            fi
+            if [[ "$filename" =~ [^0-9]([0-9]{1,3})[^0-9] ]]; then
+                local num="${BASH_REMATCH[1]}"
+                if [ "$num" -lt 1000 ] || [ "$num" -gt 2100 ]; then
+                    results+=("${num}:01:${num}:数字格式")
+                fi
+            fi
+            if [[ "$filename" =~ ^([0-9]{1,3}) ]]; then
+                local episode="${BASH_REMATCH[1]}"
+                results+=("${episode}:01:${episode}:开头数字")
+            fi
+            if [[ "$filename" =~ ([0-9]{1,3})\.[^.]*$ ]]; then
+                local episode="${BASH_REMATCH[1]}"
+                results+=("${episode}:01:${episode}:结尾数字")
+            fi
+            if [ ${#results[@]} -eq 0 ]; then
+                results+=("0:01:1:未识别")
+            fi
+            printf "%s\n" "${results[@]}"
+        }
+
+        analyze_filename_patterns() {
+            local files=("$@")
+            echo -e "${gl_zi}>>> 智能模式分析${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            local pattern_array=()
+            local example_array=()
+            local count_array=()
+            for file in "${files[@]}"; do
+                local filename=$(basename -- "$file")
+                local results=($(enhanced_extract_episode_info "$filename"))
+                for result in "${results[@]}"; do
+                    IFS=':' read -r pattern season episode type <<<"$result"
+                    if [ "$type" != "未识别" ]; then
+                        local found=0
+                        for i in "${!pattern_array[@]}"; do
+                            if [ "${pattern_array[i]}" = "$type" ]; then
+                                count_array[i]=$((count_array[i] + 1))
+                                found=1
+                                break
+                            fi
+                        done
+                        if [ $found -eq 0 ]; then
+                            pattern_array+=("$type")
+                            example_array+=("$filename")
+                            count_array+=(1)
+                        fi
+                        break
+                    fi
+                done
+            done
+            if [ ${#pattern_array[@]} -eq 0 ]; then
+                echo -e "${gl_huang}未检测到有效的剧集编号模式${gl_bai}"
+            else
+                echo -e "${gl_bai}检测到的剧集编号模式:${gl_bai}"
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+                for ((i = 0; i < ${#pattern_array[@]}; i++)); do
+                    local type="${pattern_array[i]}"
+                    local count="${count_array[i]}"
+                    local example="${example_array[i]}"
+                    local percentage=$((count * 100 / ${#files[@]}))
+                    local index=$((i + 1))
+                    if [ $percentage -ge 50 ]; then
+                        echo -e "  ${gl_lv}${index}.${gl_bai} ${gl_bufan}${type}${gl_bai} (${percentage}% 文件)${gl_bai}"
+                    else
+                        echo -e "  ${gl_huang}${index}.${gl_bai} ${gl_bufan}${type}${gl_bai} (${percentage}% 文件)${gl_bai}"
+                    fi
+                    echo -e "     示例: ${gl_hui}${example}${gl_bai}"
+                done
+            fi
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            return 0
+        }
+
+        auto_detect_rename_plan() {
+            local files=("$@")
+            local plans=()
+            clear
+            echo -e "${gl_zi}>>> 自动检测重命名方案${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            local season_array=()
+            local season_count_array=()
+            for file in "${files[@]}"; do
+                local filename=$(basename -- "$file")
+                if [[ "$filename" =~ [Ss]([0-9]{1,2})[Ee] ]]; then
+                    local season="${BASH_REMATCH[1]}"
+                    local found=0
+                    for i in "${!season_array[@]}"; do
+                        if [ "${season_array[i]}" = "$season" ]; then
+                            season_count_array[i]=$((season_count_array[i] + 1))
+                            found=1
+                            break
+                        fi
+                    done
+                    if [ $found -eq 0 ]; then
+                        season_array+=("$season")
+                        season_count_array+=(1)
+                    fi
+                fi
+            done
+            if [ ${#season_array[@]} -gt 0 ]; then
+                local best_season=""
+                local best_count=0
+                for i in "${!season_array[@]}"; do
+                    if [ ${season_count_array[i]} -gt $best_count ]; then
+                        best_count=${season_count_array[i]}
+                        best_season="${season_array[i]}"
+                    fi
+                done
+                if [ -n "$best_season" ]; then
+                    local formatted_season=$(safe_printf "%02d" "$best_season")
+                    plans+=("保持原季号|S${formatted_season}|检测到S${formatted_season}格式|高")
+                fi
+            fi
+            if [ ${#files[@]} -gt 0 ]; then
+                local sample_file=$(basename -- "${files[0]}")
+                if [[ "$sample_file" =~ ^([^0-9.-[:space:]]+)[^0-9]* ]]; then
+                    local chinese_name="${BASH_REMATCH[1]}"
+                    chinese_name=$(echo "$chinese_name" | sed 's/^[[:space:][:punct:]]*//;s/[[:space:][:punct:]]*$//')
+                    if [ -n "$chinese_name" ] && [ ${#chinese_name} -ge 2 ]; then
+                        plans+=("中文剧名|${chinese_name}|从文件名提取中文名|中")
+                    fi
+                fi
+                if [[ "$sample_file" =~ \.([A-Za-z][A-Za-z. ]+?)[^A-Za-z] ]]; then
+                    local english_name="${BASH_REMATCH[1]}"
+                    english_name=$(echo "$english_name" | sed 's/\./ /g;s/ $//')
+                    if [ -n "$english_name" ]; then
+                        plans+=("英文剧名|${english_name}|从文件名提取英文名|中")
+                    fi
+                fi
+            fi
+            if [ ${#plans[@]} -eq 0 ]; then
+                echo -e "${gl_huang}未检测到有效的重命名方案${gl_bai}"
+                return 1
+            fi
+            echo -e "${gl_bai}检测到的重命名方案:${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            for ((i = 0; i < ${#plans[@]}; i++)); do
+                IFS='|' read -r type value description confidence <<<"${plans[$i]}"
+                local index=$((i + 1))
+                case $confidence in
+                高) color="${gl_lv}" ;;
+                中) color="${gl_huang}" ;;
+                *) color="${gl_hong}" ;;
+                esac
+                echo -e "  ${gl_bufan}${index}.${gl_bai} ${color}${type}${gl_bai}"
+                echo -e "     值: ${gl_bufan}${value}${gl_bai}"
+                echo -e "     说明: ${gl_hui}${description}${gl_bai}"
+                echo -e "     置信度: ${color}${confidence}${gl_bai}"
+                echo ""
+            done
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            return 0
+        }
+
         scan_video_files() {
             local -n files_ref=$1
             local -n episode_info_ref=$2
             local -n pattern_types_ref=$3
-
-            # 生成扩展名匹配字符串
             local ext_pattern=""
             for ext in "${VIDEO_EXTS[@]}"; do
                 if [ -z "$ext_pattern" ]; then
@@ -7406,17 +7145,12 @@ tv_rename_ultimate() {
                     ext_pattern="$ext_pattern -o -name \"*.$ext\""
                 fi
             done
-
-            # 收集文件
             while IFS= read -r file; do
                 if [ -f "$file" ]; then
                     local filename=$(basename -- "$file")
                     local extension="${filename##*.}"
-
-                    # 获取所有可能的识别结果
                     local results=($(enhanced_extract_episode_info "$filename"))
                     local found=0
-
                     for result in "${results[@]}"; do
                         IFS=':' read -r pattern season episode type <<<"$result"
                         if [ "$episode" != "0" ] && { [ "$episode" != "1" ] || [ "$type" != "未识别" ]; }; then
@@ -7427,9 +7161,7 @@ tv_rename_ultimate() {
                             break
                         fi
                     done
-
                     if [ $found -eq 0 ]; then
-                        # 无法识别集数的文件
                         log_warn "无法识别集数: $filename"
                     fi
                 fi
@@ -7438,46 +7170,24 @@ tv_rename_ultimate() {
 
         while true; do
             clear
-            echo -e "${gl_zi}>>> 电视剧文件重命名（终极版）${gl_bai}"
+            echo -e "${gl_zi}>>> 电视剧文件重命名${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-            # 显示当前设置
-            if [ -n "$PREFIX" ]; then
-                echo -e "${gl_bufan}当前设置:${gl_bai}"
-                echo -e "  ${gl_bufan}剧集前缀:${gl_bai} $PREFIX"
-                echo -e "  ${gl_bufan}季号:${gl_bai} S$SEASON"
-                echo -e "  ${gl_bufan}起始集数:${gl_bai} E$(safe_printf "%02d" $START_EP)"
-                if [ $auto_detected -eq 1 ]; then
-                    echo -e "  ${gl_lv}✓ 智能检测已应用${gl_bai}"
-                fi
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            fi
-
-            # 扫描文件
-            log_info "扫描当前目录视频文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             local files=()
             local episode_info=()
             local pattern_types=()
-
             scan_video_files files episode_info pattern_types
-
             if [ ${#files[@]} -eq 0 ]; then
                 log_error "未找到可识别的视频文件！"
                 echo -e "${gl_bai}支持格式: ${gl_bufan}${VIDEO_EXTS[*]}${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
+                echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} ")" -n 1
                 return
             fi
-
-            # 按集数排序文件
             if [ ${#files[@]} -gt 0 ]; then
-                # 创建临时数组用于排序
                 local sorted_files=()
                 local sorted_episodes=()
-
-                # 按集数排序
                 while IFS= read -r line; do
                     IFS=':' read -r episode season type <<<"$line"
                     for i in "${!files[@]}"; do
@@ -7488,28 +7198,21 @@ tv_rename_ultimate() {
                         fi
                     done
                 done < <(printf "%s\n" "${episode_info[@]}" | sort -t: -k1,1n)
-
                 files=("${sorted_files[@]}")
                 episode_info=("${sorted_episodes[@]}")
             fi
-
-            # 显示找到的文件
-            echo -e "${gl_bufan}找到 ${#files[@]} 个可识别文件:${gl_bai}"
+            echo -e "${gl_huang}找到 ${gl_lv}${#files[@]} ${gl_huang}个可识别文件:${gl_bai}"
+            echo -e ""
             for ((i = 0; i < ${#files[@]}; i++)); do
                 local filename=$(basename -- "${files[$i]}")
                 IFS=':' read -r episode season type <<<"${episode_info[$i]}"
-                echo -e "  ${gl_bufan}$(safe_printf "%02d" $((i + 1))).${gl_bai} E$(safe_printf "%02d" "$episode") [${type}] - $filename"
+                echo -e "  ${gl_bufan}$(safe_printf "%02d" $((i + 1))).${gl_bai} E$(safe_printf "%02d" "$episode") [${type}] - $filename${gl_bai}"
             done
-
-            # 分析文件模式
             if [ $auto_detected -eq 0 ] && [ ${#files[@]} -gt 0 ]; then
                 echo -e ""
                 echo -e "${gl_bai}检测到的模式分布:${gl_bai}"
-
-                # 使用普通数组统计
                 local pattern_array=()
                 local count_array=()
-
                 for pattern in "${pattern_types[@]}"; do
                     local found=0
                     for i in "${!pattern_array[@]}"; do
@@ -7519,158 +7222,68 @@ tv_rename_ultimate() {
                             break
                         fi
                     done
-
                     if [ $found -eq 0 ]; then
                         pattern_array+=("$pattern")
                         count_array+=(1)
                     fi
                 done
-
                 for i in "${!pattern_array[@]}"; do
                     local pattern="${pattern_array[i]}"
                     local count="${count_array[i]}"
                     local percentage=$((count * 100 / ${#files[@]}))
-                    echo -e "  ${gl_bufan}${pattern}:${gl_bai} ${count} 文件 (${percentage}%)"
+                    echo -e "  ${gl_bufan}${pattern}:${gl_lv} ${count} ${gl_bai}文件 (${percentage}%)${gl_bai}"
                 done
             fi
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-            # 菜单选项
-            echo -e "${gl_bufan}1.  ${gl_bai}智能检测最佳方案"
-            echo -e "${gl_bufan}2.  ${gl_bai}设置剧集前缀"
-            echo -e "${gl_bufan}3.  ${gl_bai}设置季号"
-            echo -e "${gl_bufan}4.  ${gl_bai}设置起始集数"
-            echo -e "${gl_bufan}5.  ${gl_bai}详细模式分析"
-            echo -e "${gl_bufan}6.  ${gl_bai}预览重命名结果"
-
-            if [ $preview_mode -eq 1 ] && [ -n "$PREFIX" ]; then
-                echo -e "${gl_bufan}7.  ${gl_lv}执行重命名${gl_bai}"
-            else
-                echo -e "${gl_bufan}7.  ${gl_bai}执行重命名"
+            if [ -n "$PREFIX" ]; then
+                echo -e "${gl_bufan}当前设置:${gl_bai}"
+                echo -e "  ${gl_bufan}剧集前缀:${gl_bai} $PREFIX${gl_bai}"
+                echo -e "  ${gl_bufan}起始季号:${gl_bai} S$SEASON${gl_bai}"
+                echo -e "  ${gl_bufan}起始集数:${gl_bai} E$(safe_printf "%02d" $START_EP)${gl_bai}"
+                if [ $auto_detected -eq 1 ]; then
+                    echo -e "  ${gl_lv}✓ 智能检测已应用${gl_bai}"
+                fi
+                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             fi
 
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
-            echo -e "${gl_hong}00. ${gl_bai}退出脚本"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            if [[ $prefix_set -eq 1 ]]; then
+                echo -e "${gl_bufan}1.  ${gl_bai}设置剧集前缀 ${gl_lv}★ 已设置${gl_bai}"
+            else
+                echo -e "${gl_bufan}1.  ${gl_bai}设置剧集前缀 ${gl_hong}★ 必须设置${gl_bai}"
+            fi
+            echo -e "${gl_bufan}2.  ${gl_bai}设置起始季号 ${gl_huang}★ 默认S01（非必选）${gl_bai}"
+            echo -e "${gl_bufan}3.  ${gl_bai}设置起始集数 ${gl_huang}★ 默认E01（非必选）${gl_bai}"
+            if [[ $preview_done -eq 1 ]]; then
+                echo -e "${gl_bufan}4.  ${gl_bai}预览命名结果 ${gl_lv}★ 已预览${gl_bai}"
+            else
+                echo -e "${gl_bufan}4.  ${gl_bai}预览命名结果 ${gl_hong}★ 强制预览${gl_bai}"
+            fi
 
+            if [ $preview_mode -eq 1 ] && [ -n "$PREFIX" ]; then
+                echo -e "${gl_bufan}5.  ${gl_lv}执行重命名   ✓ 可执行${gl_bai}"
+            else
+                echo -e "${gl_bufan}5.  ${gl_bai}执行重命名   ${gl_hong}✗ 不可执行${gl_bai}"
+            fi
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_hong}0.  ${gl_bai}退出脚本${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入你的选择: ")" choice
-
             case $choice in
             1)
                 clear
-                echo -e "${gl_zi}>>> 智能检测最佳方案${gl_bai}"
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-                # 运行自动检测
-                auto_detect_rename_plan "${files[@]}"
-
-                if [ $? -eq 0 ]; then
-                    echo -e ""
-                    echo -e "${gl_bai}是否应用检测到的方案?${gl_bai}"
-                    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-                    read -r -e -p "$(echo -e "${gl_bai}应用检测结果? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" apply_choice
-
-                    case "$apply_choice" in
-                    [Yy])
-                        auto_detected=1
-
-                        # 尝试自动提取剧名前缀
-                        if [ ${#files[@]} -gt 0 ]; then
-                            local sample_file=$(basename -- "${files[0]}")
-
-                            # 尝试提取中文名
-                            if [[ "$sample_file" =~ ^([^0-9.-[:space:]]+)[^0-9]* ]]; then
-                                local extracted_prefix="${BASH_REMATCH[1]}"
-                                extracted_prefix=$(echo "$extracted_prefix" | sed 's/[[:space:][:punct:]]*$//')
-                                if [ ${#extracted_prefix} -ge 2 ]; then
-                                    PREFIX="$extracted_prefix"
-                                    log_ok "自动设置剧集前缀: $PREFIX"
-                                fi
-                            fi
-
-                            # 自动检测季号
-                            local season_array=()
-                            local season_count_array=()
-
-                            for info in "${episode_info[@]}"; do
-                                IFS=':' read -r episode season type <<<"$info"
-                                if [ "$season" != "01" ]; then
-                                    local found=0
-                                    for i in "${!season_array[@]}"; do
-                                        if [ "${season_array[i]}" = "$season" ]; then
-                                            season_count_array[i]=$((season_count_array[i] + 1))
-                                            found=1
-                                            break
-                                        fi
-                                    done
-
-                                    if [ $found -eq 0 ]; then
-                                        season_array+=("$season")
-                                        season_count_array+=(1)
-                                    fi
-                                fi
-                            done
-
-                            if [ ${#season_array[@]} -gt 0 ]; then
-                                local best_season=""
-                                local best_count=0
-                                for i in "${!season_array[@]}"; do
-                                    if [ ${season_count_array[i]} -gt $best_count ]; then
-                                        best_count=${season_count_array[i]}
-                                        best_season="${season_array[i]}"
-                                    fi
-                                done
-
-                                if [ -n "$best_season" ]; then
-                                    SEASON=$(safe_printf "%02d" "$best_season")
-                                    log_ok "自动设置季号: S$SEASON"
-                                fi
-                            fi
-                        fi
-
-                        log_ok "智能检测已应用！"
-                        preview_mode=0
-                        ;;
-
-                    [Nn])
-                        log_info "已取消应用检测结果"
-                        ;;
-
-                    *) handle_y_n ;;        # 无效的输入,请输入(y或N)。
-                    esac
-                fi
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                break_end
-                ;;
-
-            2)
-                clear
                 echo -e "${gl_zi}>>> 设置剧集前缀${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-                # ========== 新增：从所有文件中提取前缀候选并统计频率 ==========
-                # 定义提取前缀候选的函数
                 extract_prefix_candidate() {
                     local filename="$1"
-                    local basename="${filename%.*}" # 去掉扩展名
-                    # 获取第一个识别的集数模式（如果有）
+                    local basename="${filename%.*}"
                     local results=($(enhanced_extract_episode_info "$filename"))
                     if [ ${#results[@]} -gt 0 ]; then
                         IFS=':' read -r pattern season episode type <<<"${results[0]}"
                         if [ "$type" != "未识别" ] && [ -n "$pattern" ]; then
-                            # 将模式中的特殊字符转义，用于sed
-                            # 简单处理：直接移除匹配到的模式及其前后的常见分隔符
-                            # 使用sed替换，注意模式中可能包含点、括号等
-                            # 这里简化：将pattern作为普通字符串移除，并去掉前后的分隔符
                             local cleaned=$(echo "$basename" | sed -E "s/[._ -]*${pattern}[._ -]*//g")
-                            # 如果清理后为空，则回退到basename
                             if [ -n "$cleaned" ]; then
-                                # 去除首尾多余分隔符
                                 cleaned=$(echo "$cleaned" | sed 's/^[._ -]*//;s/[._ -]*$//')
-                                # 去除可能残留的分辨率标签（如1080p、2160p等），但为了简单，不做了
                                 if [ -n "$cleaned" ] && [ ${#cleaned} -ge 2 ]; then
                                     echo "$cleaned"
                                     return
@@ -7678,28 +7291,22 @@ tv_rename_ultimate() {
                             fi
                         fi
                     fi
-                    # 如果没有识别到集数或清理后为空，则直接返回basename（但去掉开头结尾的杂音）
                     local fallback=$(echo "$basename" | sed 's/^[._ -]*//;s/[._ -]*$//')
                     if [ -n "$fallback" ] && [ ${#fallback} -ge 2 ]; then
                         echo "$fallback"
                     else
-                        # 极短或无，返回空
                         echo ""
                     fi
                 }
-
-                # 收集所有候选
                 local candidates=()
                 local counts=()
                 local total_files=${#files[@]}
-
                 for file in "${files[@]}"; do
                     local filename=$(basename -- "$file")
                     local candidate=$(extract_prefix_candidate "$filename")
                     if [ -z "$candidate" ]; then
                         continue
                     fi
-                    # 检查是否已存在
                     local found=-1
                     for idx in "${!candidates[@]}"; do
                         if [ "${candidates[$idx]}" = "$candidate" ]; then
@@ -7714,20 +7321,14 @@ tv_rename_ultimate() {
                         counts+=(1)
                     fi
                 done
-
-                # 如果没有提取到任何候选，使用默认值
                 if [ ${#candidates[@]} -eq 0 ]; then
                     candidates=("电视剧")
                     counts=($total_files)
                     log_warn "无法自动识别前缀，使用默认值: 电视剧"
                 fi
-
-                # 按计数降序排序（简单冒泡，候选不多）
-                # 同时保持关联
                 for ((i = 0; i < ${#candidates[@]} - 1; i++)); do
                     for ((j = i + 1; j < ${#candidates[@]}; j++)); do
                         if [ ${counts[$j]} -gt ${counts[$i]} ]; then
-                            # 交换
                             tmp_c="${candidates[$i]}"
                             tmp_n="${counts[$i]}"
                             candidates[$i]="${candidates[$j]}"
@@ -7737,60 +7338,46 @@ tv_rename_ultimate() {
                         fi
                     done
                 done
-
-                # 限制显示前10个（太多用户不好选）
                 local display_limit=10
                 if [ ${#candidates[@]} -gt $display_limit ]; then
                     candidates=("${candidates[@]:0:$display_limit}")
                     counts=("${counts[@]:0:$display_limit}")
                 fi
-
-                # 显示候选列表
                 echo -e "${gl_bai}从文件名中提取到的剧名前缀:${gl_bai}"
                 for i in "${!candidates[@]}"; do
                     local idx=$((i + 1))
                     local percentage=$((counts[i] * 100 / total_files))
-                    echo -e "  ${gl_bufan}${idx}.${gl_bai} ${gl_lv}${candidates[$i]}${gl_bai} (出现 ${counts[$i]} 次, ${percentage}%)"
+                    echo -e "  ${gl_bufan}${idx}.${gl_bai} ${gl_lv}${candidates[$i]}${gl_bai} (出现 ${counts[$i]} 次, ${percentage}%)${gl_bai}"
                 done
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                echo -e "${gl_bai}推荐: ${gl_lv}${candidates[0]}${gl_bai} (${gl_huang}回车直接使用推荐${gl_bai})"
+                echo -e "${gl_bai}推荐: ${gl_lv}${candidates[0]}${gl_bai} (${gl_huang}回车直接使用推荐${gl_bai})${gl_bai}"
                 echo -e "${gl_bai}示例: ${gl_bufan}${candidates[0]}-S${SEASON}E01.扩展名${gl_bai}"
-                echo -e "${gl_bai}指定: ${gl_bai}手动输入自定义前缀"
+                echo -e "${gl_bai}指定: ${gl_bai}手动输入自定义前缀${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
                 read -r -e -p "$(echo -e "${gl_bai}请输入序号或自定义前缀 (${gl_huang}0${gl_bai}返回): ")" input_prefix
-
-                [[ "$input_prefix" == "0" ]] && { cancel_return "上一级选单"; continue; }    # break 或 continue 或 return ，视上下文而定
-
-                # 检查输入是否为数字（序号）
+                [[ "$input_prefix" == "0" ]] && { cancel_return "上一级选单"; continue; }
                 if [[ "$input_prefix" =~ ^[0-9]+$ ]] && [ "$input_prefix" -ge 1 ] && [ "$input_prefix" -le ${#candidates[@]} ]; then
-                    # 选择序号
                     PREFIX="${candidates[$((input_prefix - 1))]}"
                     log_ok "剧集前缀已设置为: $PREFIX (通过序号选择)"
                 elif [ -z "$input_prefix" ]; then
-                    # 回车使用推荐
                     PREFIX="${candidates[0]}"
                     log_ok "剧集前缀已设置为: $PREFIX (使用推荐)"
                 else
-                    # 手动输入
                     PREFIX="$input_prefix"
                     log_ok "剧集前缀已设置为: $PREFIX (手动输入)"
                 fi
-
                 preview_mode=0
+                prefix_set=1
+                preview_done=0
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
                 ;;
-
-            3)
+            2)
                 echo -e ""
                 echo -e "${gl_zi}>>> 设置季号${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-                # 显示检测到的季号统计
                 local season_array=()
                 local season_count_array=()
-
                 for info in "${episode_info[@]}"; do
                     IFS=':' read -r episode season type <<<"$info"
                     if [ "$season" != "01" ]; then
@@ -7802,42 +7389,36 @@ tv_rename_ultimate() {
                                 break
                             fi
                         done
-
                         if [ $found -eq 0 ]; then
                             season_array+=("$season")
                             season_count_array+=(1)
                         fi
                     fi
                 done
-
                 if [ ${#season_array[@]} -gt 0 ]; then
                     echo -e "${gl_bai}从文件名检测到季号:${gl_bai}"
                     for i in "${!season_array[@]}"; do
                         local season="${season_array[i]}"
                         local count="${season_count_array[i]}"
                         local percentage=$((count * 100 / ${#files[@]}))
-                        echo -e "  ${gl_bufan}S${season}:${gl_bai} ${count} 文件 (${percentage}%)"
+                        echo -e "  ${gl_bufan}S${season}:${gl_bai} ${count} 文件 (${percentage}%)${gl_bai}"
                     done
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 fi
-
                 echo -e "${gl_bai}当前季号: ${gl_bufan}S${SEASON}${gl_bai}"
-                echo -e "${gl_bai}示例: ${gl_bufan}01${gl_bai} 表示第 ${gl_bufan}1${gl_bai} 季 (将显示为 S01)"
+                echo -e "${gl_bai}示例: ${gl_bufan}01${gl_bai} 表示第 ${gl_bufan}1${gl_bai} 季 (将显示为 S01)${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请输入季号 (当前: ${gl_lv}S${SEASON}${gl_bai}，回车保持，${gl_huang}0${gl_bai}返回): ")" input_season
-
-                [[ "$input_season" == "0" ]] && { cancel_return "上一级选单"; continue; }    # break 或 continue 或 return ，视上下文而定
-
+                [[ "$input_season" == "0" ]] && { cancel_return "上一级选单"; continue; }
                 if [ -z "$input_season" ]; then
-                    # 回车保持
                     echo -e "${gl_bai}保持当前季号: S${SEASON}${gl_bai}"
                     continue
                 fi
-
                 if [[ "$input_season" =~ ^[0-9]{1,2}$ ]]; then
                     SEASON=$(safe_printf "%02d" "$input_season")
                     log_ok "季号已设置为: S$SEASON"
                     preview_mode=0
+                    preview_done=0
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                     break_end
                 else
@@ -7846,43 +7427,35 @@ tv_rename_ultimate() {
                     break_end
                 fi
                 ;;
-
-            4)
+            3)
                 echo -e ""
                 echo -e "${gl_zi}>>> 设置起始集数${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-                # 显示识别的集数范围
                 if [ ${#episode_info[@]} -gt 0 ]; then
                     local first_info="${episode_info[0]}"
                     local last_info="${episode_info[-1]}"
                     IFS=':' read -r first_ep first_season first_type <<<"$first_info"
                     IFS=':' read -r last_ep last_season last_type <<<"$last_info"
-
                     echo -e "${gl_bai}识别的集数范围:${gl_bai}"
-                    echo -e "  ${gl_bufan}最小:${gl_bai} E$(safe_printf "%02d" "$first_ep") (${first_type})"
-                    echo -e "  ${gl_bufan}最大:${gl_bai} E$(safe_printf "%02d" "$last_ep") (${last_type})"
-                    echo -e "  ${gl_bufan}建议:${gl_bai} 从 E$(safe_printf "%02d" "$first_ep") 开始"
+                    echo -e "  ${gl_bufan}最小:${gl_bai} E$(safe_printf "%02d" "$first_ep") (${first_type})${gl_bai}"
+                    echo -e "  ${gl_bufan}最大:${gl_bai} E$(safe_printf "%02d" "$last_ep") (${last_type})${gl_bai}"
+                    echo -e "  ${gl_bufan}建议:${gl_bai} 从 E$(safe_printf "%02d" "$first_ep") 开始${gl_bai}"
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 fi
-
                 echo -e "${gl_bai}当前起始集数: ${gl_bufan}E$(safe_printf "%02d" "$START_EP")${gl_bai}"
-                echo -e "${gl_bai}示例: ${gl_bufan}26${gl_bai} 表示从第 ${gl_bufan}26${gl_bai} 集开始编号"
+                echo -e "${gl_bai}示例: ${gl_bufan}26${gl_bai} 表示从第 ${gl_bufan}26${gl_bai} 集开始编号${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请输入起始集数 (当前: ${gl_lv}E$(safe_printf "%02d" "$START_EP")${gl_bai}，回车保持，${gl_huang}0${gl_bai}返回): ")" input_start
-
-                [[ "$input_start" == "0" ]] && { cancel_return "上一级选单"; continue; } # break 或 continue 或 return ，视上下文而定
-
+                [[ "$input_start" == "0" ]] && { cancel_return "上一级选单"; continue; }
                 if [ -z "$input_start" ]; then
-                    # 回车保持
                     echo -e "${gl_bai}保持当前起始集数: E$(safe_printf "%02d" "$START_EP")${gl_bai}"
                     continue
                 fi
-
                 if [[ "$input_start" =~ ^[0-9]{1,3}$ ]] && [ "$input_start" -ge 1 ]; then
                     START_EP="$input_start"
                     log_ok "起始集数已设置为: E$(safe_printf "%02d" "$START_EP")"
                     preview_mode=0
+                    preview_done=0
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                     break_end
                 else
@@ -7891,63 +7464,30 @@ tv_rename_ultimate() {
                     break_end
                 fi
                 ;;
-
-            5)
-                clear
-                analyze_filename_patterns "${files[@]}"
-
-                # 显示详细的文件分析
-                echo -e ""
-                echo -e "${gl_zi}>>> 详细文件分析${gl_bai}"
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-                echo -e "${gl_bai}文件分析详情:${gl_bai}"
-                for ((i = 0; i < ${#files[@]} && i < 10; i++)); do
-                    local filename=$(basename -- "${files[$i]}")
-                    IFS=':' read -r episode season type <<<"${episode_info[$i]}"
-                    echo -e "  ${gl_bufan}$(safe_printf "%02d" $((i + 1))).${gl_bai} $filename"
-                    echo -e "      识别为: ${type}"
-                    echo -e "      季号: S${season}"
-                    echo -e "      集数: E$(safe_printf "%02d" "$episode")"
-                    echo ""
-                done
-
-                if [ ${#files[@]} -gt 10 ]; then
-                    echo -e " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} 还有 $((${#files[@]} - 10)) 个文件未显示${gl_bai}"
-                fi
-
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                break_end
-                ;;
-
-            6)
+            4)
                 if [ -z "$PREFIX" ]; then
                     log_error "请先设置剧集前缀！"
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     continue
                 fi
-
                 clear
                 echo -e "${gl_zi}>>> 预览重命名结果${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 echo -e "${gl_bufan}当前设置:${gl_bai}"
-                echo -e "  ${gl_bufan}剧集前缀:${gl_bai} $PREFIX"
-                echo -e "  ${gl_bufan}季号:${gl_bai} S$SEASON"
-                echo -e "  ${gl_bufan}起始集数:${gl_bai} E$(safe_printf "%02d" "$START_EP")"
+                echo -e "  ${gl_bufan}剧集前缀:${gl_bai} $PREFIX${gl_bai}"
+                echo -e "  ${gl_bufan}起始季号:${gl_bai} S$SEASON${gl_bai}"
+                echo -e "  ${gl_bufan}起始集数:${gl_bai} E$(safe_printf "%02d" "$START_EP")${gl_bai}"
                 if [ $auto_detected -eq 1 ]; then
                     echo -e "  ${gl_lv}✓ 智能检测已应用${gl_bai}"
                 fi
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
                 local current_ep=$START_EP
                 detection_results=()
                 local summary_array=()
                 local summary_count_array=()
-
                 echo -e "${gl_bai}重命名预览:${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
                 for ((i = 0; i < ${#files[@]}; i++)); do
                     local file="${files[$i]}"
                     local filename=$(basename -- "$file")
@@ -7955,8 +7495,6 @@ tv_rename_ultimate() {
                     IFS=':' read -r original_ep original_season type <<<"${episode_info[$i]}"
                     local formatted_ep=$(safe_printf "%02d" "$current_ep")
                     local new_name="${PREFIX}-S${SEASON}E${formatted_ep}.${extension}"
-
-                    # 记录统计信息
                     local found=0
                     for j in "${!summary_array[@]}"; do
                         if [ "${summary_array[j]}" = "$type" ]; then
@@ -7965,37 +7503,30 @@ tv_rename_ultimate() {
                             break
                         fi
                     done
-
                     if [ $found -eq 0 ]; then
                         summary_array+=("$type")
                         summary_count_array+=(1)
                     fi
-
                     echo -e "  ${gl_bufan}[$(safe_printf "%02d" $((i + 1)))]${gl_bai}"
                     echo -e "    原文件: ${gl_hui}$filename${gl_bai}"
-                    echo -e "    识别为: ${type} (E$(safe_printf "%02d" "$original_ep"))"
+                    echo -e "    识别为: ${type} (E$(safe_printf "%02d" "$original_ep"))${gl_bai}"
                     echo -e "    新文件: ${gl_lv}$new_name${gl_bai}"
                     echo ""
-
                     detection_results+=("$file:$new_name:$type:$original_ep")
                     ((current_ep++))
                 done
-
-                # 显示统计信息
                 if [ ${#summary_array[@]} -gt 0 ]; then
                     echo -e "${gl_bai}识别模式统计:${gl_bai}"
                     for i in "${!summary_array[@]}"; do
                         local type="${summary_array[i]}"
                         local count="${summary_count_array[i]}"
                         local percentage=$((count * 100 / ${#files[@]}))
-                        echo -e "  ${gl_bufan}${type}:${gl_bai} ${count} 文件 (${percentage}%)"
+                        echo -e "  ${gl_bufan}${type}:${gl_bai} ${count} 文件 (${percentage}%)${gl_bai}"
                     done
                 fi
-
                 preview_mode=1
+                preview_done=1
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-                # 计算识别准确率
                 local accurate_count=0
                 for i in "${!summary_array[@]}"; do
                     local type="${summary_array[i]}"
@@ -8003,46 +7534,39 @@ tv_rename_ultimate() {
                         accurate_count=$((accurate_count + summary_count_array[i]))
                     fi
                 done
-
                 local accuracy=0
                 if [ ${#files[@]} -gt 0 ]; then
                     accuracy=$((accurate_count * 100 / ${#files[@]}))
                 fi
-
-                log_info "预览完成，共 ${#detection_results[@]} 个文件"
+                log_info "预览完成，共 ${gl_lv}${#detection_results[@]} ${gl_bai}个文件"
                 if [ ${#files[@]} -gt 0 ]; then
-                    log_info "识别准确率: ${accuracy}%"
+                    log_info "识别准确率: ${gl_lv}${accuracy}${gl_bai}%"
                 fi
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
                 ;;
-
-            7)
+            5)
                 if [ $preview_mode -eq 0 ]; then
+                    echo -e ""
                     log_error "请先预览重命名结果！"
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     continue
                 fi
-
                 if [ ${#detection_results[@]} -eq 0 ]; then
-                    log_error "没有可重命名的文件！"
+                    echo -e ""
+                    log_error "请先设置剧集前缀，或没有可重命名的文件！"
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     continue
                 fi
-
                 clear
                 echo -e "${gl_zi}>>> 确认重命名${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-                # 显示重命名统计
                 local type_array=()
                 local type_count_array=()
-
                 for item in "${detection_results[@]}"; do
                     IFS=':' read -r old_file new_name type original_ep <<<"$item"
-
                     local found=0
                     for i in "${!type_array[@]}"; do
                         if [ "${type_array[i]}" = "$type" ]; then
@@ -8051,38 +7575,31 @@ tv_rename_ultimate() {
                             break
                         fi
                     done
-
                     if [ $found -eq 0 ]; then
                         type_array+=("$type")
                         type_count_array+=(1)
                     fi
                 done
-
                 echo -e "${gl_bai}重命名统计:${gl_bai}"
-                echo -e "  ${gl_bufan}总文件数:${gl_bai} ${#detection_results[@]}"
+                echo -e "  ${gl_bufan}总文件数:${gl_bai} ${#detection_results[@]}${gl_bai}"
                 for i in "${!type_array[@]}"; do
                     local type="${type_array[i]}"
                     local count="${type_count_array[i]}"
-                    echo -e "  ${gl_bufan}${type}:${gl_bai} ${count} 文件"
+                    echo -e "  ${gl_bufan}${type}:${gl_bai} ${count} 文件${gl_bai}"
                 done
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
                 read -r -e -p "$(echo -e "${gl_bai}确定要执行重命名吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-
                 case "$confirm" in
                 [Yy])
                     log_info "开始重命名 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
                     rename_count=0
                     local success_count=0
                     local fail_count=0
-
                     for item in "${detection_results[@]}"; do
                         IFS=':' read -r old_file new_name type original_ep <<<"$item"
-
                         if [ -f "$old_file" ]; then
                             echo -e "${gl_bai}处理: ${gl_hui}$(basename "$old_file")${gl_bai}"
-                            echo -e "  识别: ${type} (E$(safe_printf "%02d" "$original_ep"))"
-
+                            echo -e "  识别: ${type} (E$(safe_printf "%02d" "$original_ep"))${gl_bai}"
                             if mv -- "$old_file" "./$new_name" 2>/dev/null; then
                                 echo -e "  ${gl_lv}✓ 重命名为: $new_name${gl_bai}"
                                 ((success_count++))
@@ -8096,20 +7613,20 @@ tv_rename_ultimate() {
                         fi
                         echo ""
                     done
-
                     rename_count=$success_count
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                    echo -e "${gl_lv}成功:${gl_bai} $success_count 个文件"
-                    echo -e "${gl_hong}失败:${gl_bai} $fail_count 个文件"
+                    echo -e "${gl_lv}成功:${gl_bai} $success_count 个文件${gl_bai}"
+                    echo -e "${gl_hong}失败:${gl_bai} $fail_count 个文件${gl_bai}"
                     log_ok "重命名完成！"
-
                     preview_mode=0
                     auto_detected=0
                     detection_results=()
+                    prefix_set=0
+                    preview_done=0
+                    PREFIX=""
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                     break_end
                     ;;
-
                 [Nn])
                     log_info "已取消重命名操作"
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -8117,25 +7634,23 @@ tv_rename_ultimate() {
                     ;;
 
                 *)
-                    handle_y_n        # 无效的输入,请输入(y或N)。
+                    handle_y_n
                     ;;
                 esac
                 ;;
-
-            0)
-                if [ $rename_count -gt 0 ]; then
-                    log_ok "操作完成，已重命名 $rename_count 个文件"
-                fi
-                cancel_return
-                return
-                ;;
-            00 | 000 | 0000) exit_script ;; # 感谢使用，再见！
-            *) handle_invalid_input ;;      # 无效的输入,请重新输入!
+                0)
+                    if [ $rename_count -gt 0 ]; then
+                        log_ok "操作完成，已重命名 $rename_count 个文件"
+                    fi
+                    cancel_return
+                    return
+                    ;;
+                00 | 000 | 0000) exit_script ;; # 感谢使用，再见！
+                *) handle_invalid_input ;;      # 无效的输入,请重新输入!
             esac
         done
     }
 
-    # 批量测试不同识别模式
     test_all_recognition_modes() {
         clear
         echo -e "${gl_zi}>>> 批量测试识别模式${gl_bai}"
@@ -8182,7 +7697,6 @@ tv_rename_ultimate() {
                 echo -e "  ${gl_hong}✗ 识别错误: ${type} (预期: ${expected_type})${gl_bai}"
             fi
 
-            # 显示所有可能的识别结果
             if [ ${#results[@]} -gt 1 ]; then
                 echo -e "  ${gl_bai}所有可能的识别:${gl_bai}"
                 for result in "${results[@]}"; do
@@ -8213,7 +7727,6 @@ tv_rename_ultimate() {
         break_end
     }
 
-    # 创建多种格式测试文件
     create_mixed_test_files() {
         echo -e ""
         echo -e "${gl_zi}>>> 创建多种格式测试文件${gl_bai}"
@@ -8223,7 +7736,6 @@ tv_rename_ultimate() {
 
         [[ "$file_count" == "0" ]] && { cancel_return "上一级选单"; return 1; }    # break 或 continue 或 return ，视上下文而定
 
-        # 处理空输入，使用默认值16
         if [ -z "$file_count" ]; then
             file_count=16
             log_info "使用默认值: ${gl_lv}16${gl_bai} 个文件"
@@ -8232,7 +7744,7 @@ tv_rename_ultimate() {
         if ! [[ "$file_count" =~ ^[0-9]+$ ]] || [ "$file_count" -lt 1 ]; then
             log_error "请输入有效的数字！"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -8258,10 +7770,8 @@ tv_rename_ultimate() {
         break_end
     }
 
-    # 查看当前文件函数
     show_current_files() {
 
-        # echo -e "${gl_bufan}视频文件:${gl_bai}"
         local video_count=0
 
         for ext in mp4 mkv avi mov wmv flv webm m4v mpg mpeg kvm; do
@@ -8282,7 +7792,6 @@ tv_rename_ultimate() {
         echo -e "  ${gl_bai}视频文件:${gl_lv} $video_count ${gl_bai}个"
     }
 
-    # 删除测试文件函数
     delete_test_files() {
         echo -e ""
         echo -e "${gl_zi}>>> 删除测试文件${gl_bai}"
@@ -8320,149 +7829,8 @@ tv_rename_ultimate() {
         break_end
     }
 
-    # 快速重命名功能
-    quick_rename() {
-        clear
-        echo -e "${gl_zi}>>> 快速重命名${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-        # 支持的视频文件扩展名
-        local VIDEO_EXTS=("mp4" "mkv" "avi" "mov" "wmv" "flv" "webm" "m4v" "mpg" "mpeg" "kvm")
-
-        # 生成扩展名匹配字符串
-        local ext_pattern=""
-        for ext in "${VIDEO_EXTS[@]}"; do
-            if [ -z "$ext_pattern" ]; then
-                ext_pattern="-name \"*.$ext\""
-            else
-                ext_pattern="$ext_pattern -o -name \"*.$ext\""
-            fi
-        done
-
-        # 收集文件
-        log_info "扫描当前目录视频文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        local files=()
-        while IFS= read -r file; do
-            if [ -f "$file" ]; then
-                files+=("$file")
-            fi
-        done < <(eval "find . -maxdepth 1 -type f \( $ext_pattern \) 2>/dev/null" | sort -V)
-
-        if [ ${#files[@]} -eq 0 ]; then
-            log_error "未找到视频文件！"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
-            return
-        fi
-
-        echo -e "${gl_bai}找到 ${#files[@]} 个视频文件:${gl_bai}"
-        for ((i = 0; i < ${#files[@]}; i++)); do
-            local filename=$(basename -- "${files[$i]}")
-            echo -e "  ${gl_bufan}$(safe_printf "%02d" $((i + 1))).${gl_bai} $filename"
-        done
-
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-        # 询问重命名格式
-        echo -e "${gl_bai}请选择重命名方式:${gl_bai}"
-        echo -e "  ${gl_bufan}1.${gl_bai} 自动识别剧集编号并重命名"
-        echo -e "  ${gl_bufan}2.${gl_bai} 手动输入前缀和起始集数"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-        read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}返回): ")" rename_method
-
-        [[ "$rename_method" == "0" ]] && { cancel_return; return 1; }
-
-        case $rename_method in
-        1)
-            # 自动识别模式
-            rename_tv_files_ultimate
-            ;;
-        2)
-            # 手动模式
-            clear
-            echo -e "${gl_zi}>>> 手动重命名设置${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-            read -r -e -p "$(echo -e "${gl_bai}请输入剧集前缀: ")" prefix
-            if [ -z "$prefix" ]; then
-                log_error "剧集前缀不能为空！"
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                exit_animation    # 即将退出动画
-                return
-            fi
-
-            read -r -e -p "$(echo -e "${gl_bai}请输入季号 (默认 ${gl_lv}01${gl_bai}): ")" season
-            season="${season:-01}"
-
-            read -r -e -p "$(echo -e "${gl_bai}请输入起始集数 (默认 ${gl_lv}1${gl_bai}): ")" start_ep
-            start_ep="${start_ep:-1}"
-
-            # 预览
-            clear
-            echo -e "${gl_zi}>>> 预览重命名结果${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bai}将重命名 ${#files[@]} 个文件:${gl_bai}"
-
-            for ((i = 0; i < ${#files[@]}; i++)); do
-                local file="${files[$i]}"
-                local filename=$(basename -- "$file")
-                local extension="${filename##*.}"
-                local episode=$((start_ep + i))
-                local formatted_ep=$(safe_printf "%02d" "$episode")
-                local new_name="${prefix}-S${season}E${formatted_ep}.${extension}"
-
-                echo -e "  ${gl_hui}$filename${gl_bai}"
-                echo -e "  ${gl_lv}→ $new_name${gl_bai}"
-                echo ""
-            done
-
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            read -r -e -p "$(echo -e "${gl_bai}确定要执行重命名吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-
-            case "$confirm" in
-            [Yy])
-                log_info "开始重命名 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                local success_count=0
-
-                for ((i = 0; i < ${#files[@]}; i++)); do
-                    local file="${files[$i]}"
-                    local filename=$(basename -- "$file")
-                    local extension="${filename##*.}"
-                    local episode=$((start_ep + i))
-                    local formatted_ep=$(safe_printf "%02d" "$episode")
-                    local new_name="${prefix}-S${season}E${formatted_ep}.${extension}"
-
-                    if mv -- "$file" "./$new_name" 2>/dev/null; then
-                        echo -e "  ${gl_lv}✓ $filename → $new_name${gl_bai}"
-                        ((success_count++))
-                    else
-                        echo -e "  ${gl_hong}✗ 重命名失败: $filename${gl_bai}"
-                    fi
-                done
-
-                log_ok "重命名完成！成功 $success_count 个文件"
-                ;;
-
-            [Nn])
-                log_info "已取消重命名操作"
-                ;;
-
-            *) handle_y_n ;;       # 无效的输入,请重新输入!
-            esac
-
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            break_end
-            ;;
-
-        *) handle_y_n; return ;;       # 无效的输入,请重新输入!
-        esac
-    }
-
-    # 交互式移动视频文件函数
     move_videos_interactive() {
         clear
-        # 检查当前目录是否为空，如果为空则显示提示并返回错误
         check_directory_empty "." "移动视频文件" "true" || return
 
         local source_dir="$(pwd)"
@@ -8477,14 +7845,11 @@ tv_rename_ultimate() {
         echo -e "${gl_lv}/vol2/1000/media/电视剧集/国产剧/xxx/Season 1${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        # 2. 询问目标目录
         while true; do
             read -r -e -p "$(echo -e "${gl_bai}请输入目标目录 (${gl_huang}0${gl_bai}返回): ")" target_dir
 
-            # 检查是否返回
             [[ "$target_dir" == "0" ]] && { cancel_return; return 1; }
 
-            # 检查输入是否为空
             if [ -z "$target_dir" ]; then
                 log_error "目标目录不能为空, 请重新输入"
                 continue
@@ -8492,7 +7857,6 @@ tv_rename_ultimate() {
             break
         done
 
-        # 检查是否需要创建目录
         if [ ! -d "$target_dir" ]; then
             read -r -e -p "$(echo -e "${gl_bai}目录不存在, 是否创建? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" create_dir
             case "$create_dir" in
@@ -8500,18 +7864,18 @@ tv_rename_ultimate() {
                 mkdir -p "$target_dir"
                 if [ $? -ne 0 ]; then
                     log_error "创建目录失败！"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
                 log_ok "目录已创建: ${target_dir}"
                 ;;
             [Nn] | "")
                 log_error "操作取消: 目录不存在"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
                 ;;
             *)
-                handle_y_n        # 无效的输入,请输入(y或N)。
+                handle_y_n
                 return 1
                 ;;
             esac
@@ -8523,10 +7887,8 @@ tv_rename_ultimate() {
         echo -e "${gl_huang}>>> 将移动${gl_lv}${source_dir}${gl_huang}目录下的所有视频文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        # 3. 扫描视频文件
         log_info "正在扫描视频文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
-        # 视频文件扩展名数组
         local video_extensions=("mp4" "avi" "mkv" "mov" "wmv" "flv" "webm"
             "m4v" "mpg" "mpeg" "3gp" "mts" "m2ts"
             "ts" "vob" "ogg" "ogv" "divx" "f4v")
@@ -8534,7 +7896,6 @@ tv_rename_ultimate() {
         local found_files=()
         local found_count=0
 
-        # 查找视频文件
         for ext in "${video_extensions[@]}"; do
             while IFS= read -r -d '' file; do
                 if [ -f "$file" ]; then
@@ -8549,7 +7910,6 @@ tv_rename_ultimate() {
             return 0
         fi
 
-        # 显示找到的文件
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}找到的文件${gl_bai}"
 
@@ -8562,7 +7922,6 @@ tv_rename_ultimate() {
         echo -e "${gl_lv}共找到 ${gl_huang}${found_count} ${gl_lv}个视频文件${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        # 4. 确认移动
         read -r -e -p "$(echo -e "${gl_bai}确认移动到 '${gl_huang}${target_dir}${gl_bai}'目录吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm_move
         case "$confirm_move" in
         [Yy])
@@ -8570,16 +7929,15 @@ tv_rename_ultimate() {
             ;;
         [Nn] | "")
             log_info "操作已取消"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 0
             ;;
         *)
-            handle_y_n        # 无效的输入,请输入(y或N)。
+            handle_y_n
             return 1
             ;;
         esac
 
-        # 5. 执行移动操作
         local moved_count=0
         local failed_count=0
 
@@ -8587,14 +7945,12 @@ tv_rename_ultimate() {
             if [ -f "$file" ]; then
                 filename=$(basename "$file")
 
-                # 检查目标文件是否已存在
                 if [ -f "$target_dir/$filename" ]; then
                     log_warn "目标文件已存在, 跳过: ${filename}"
                     ((failed_count++))
                     continue
                 fi
 
-                # 移动文件
                 if mv "$file" "$target_dir/" 2>/dev/null; then
                     ((moved_count++))
                     echo -e "  ${gl_lv}✓${gl_bai} 移动: ${filename}"
@@ -8607,7 +7963,6 @@ tv_rename_ultimate() {
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        # 6. 显示结果
         if [ $moved_count -gt 0 ]; then
             log_ok "移动完成!"
             echo -e "${gl_lv}移动成功: ${moved_count} 个文件${gl_bai}"
@@ -8617,7 +7972,6 @@ tv_rename_ultimate() {
                 echo -e "${gl_huang}移动失败: ${failed_count} 个文件${gl_bai}"
             fi
 
-            # 询问是否打开目录
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}是否切换到目标目录? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" open_dir
             case "$open_dir" in
@@ -8638,7 +7992,6 @@ tv_rename_ultimate() {
         break_end
     }
 
-    # 主菜单
     main_menu() {
         while true; do
             clear
@@ -8664,28 +8017,24 @@ tv_rename_ultimate() {
             echo -e ""
             echo -e "${gl_zi}>>> 电视剧文件重命名${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}1.  ${gl_bai}进入指定目录         ${gl_bufan}2.  ${gl_bai}返回上一级目录"
-            echo -e "${gl_bufan}3.  ${gl_bai}快速重命名           ${gl_bufan}4.  ${gl_bai}详细重命名"
+            echo -e "${gl_bufan}1.  ${gl_bai}进入电视剧所在目录   ${gl_bufan}2.  ${gl_bai}返回上一级目录"
+            echo -e "${gl_bufan}3.  ${gl_bai}电视剧智能重命名     ${gl_bufan}4.  ${gl_bai}批量命名工具"
             echo -e "${gl_bufan}5.  ${gl_bai}创建测试文件         ${gl_bufan}6.  ${gl_bai}删除测试文件"
             echo -e "${gl_bufan}7.  ${gl_bai}移动视频文件         ${gl_bufan}8.  ${gl_bai}测试识别模式"
-            echo -e "${gl_bufan}9.  ${gl_bai}常用目录管理         ${gl_bufan}10. ${gl_bai}批量重命名"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单       ${gl_hong}00. ${gl_bai}退出脚本"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
             read -r -e -p "$(echo -e "${gl_bai}请输入你的选择: ")" choice
 
             case $choice in
-            1)  enter_directory "电视剧文件重命名" ;;                  # 进入指定目录
+            1)  enter_directory "电视剧文件重命名" ;;                  # 进入电视剧所在目录
             2)  go_parent_directory ;;                               # 返回上一级目录
-            3)  quick_rename ;;                                      # 快速重命名
-            4)  rename_tv_files_ultimate ;;                          # 详细重命名
+            3)  rename_tv_files_ultimate ;;                          # 详细重命名
+            4)  batch_rename_files ;;                                # 批量重命名
             5)  create_mixed_test_files ;;                           # 创建测试文件
             6)  delete_test_files ;;                                 # 删除测试文件
             7)  move_videos_interactive ;;                           # 移动视频文件
             8)  test_all_recognition_modes ;;                        # 测试识别模式
-            9)  manage_backup_files_simple "tv_rename_ultimate" ;;   # 常用目录管理
-            10) batch_rename_files ;;                                # 批量重命名
             0)  cancel_return; break ;;                              # 返回到上一级菜单
             00 | 000 | 0000) exit_script ;;                          # 感谢使用，再见！
             *) handle_invalid_input ;;                               # 无效的输入,请重新输入!
@@ -8705,7 +8054,7 @@ format_and_copy_script() {
     # 检查脚本文件是否存在
     if [[ ! -f "$script_path" ]]; then
         echo -e "${gl_hong}错误: 脚本文件 $script_path 不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -8716,7 +8065,7 @@ format_and_copy_script() {
             echo -e "${gl_lv}✓ 目标目录已创建${gl_bai}"
         else
             echo -e "${gl_hong}错误: 无法创建目标目录 $target_dir${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -8925,7 +8274,7 @@ rz_upload_compressed_file() {
     if ! command -v rz >/dev/null 2>&1; then
         log_error "rz命令不可用，请先安装 lrzsz"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -8940,7 +8289,7 @@ rz_upload_compressed_file() {
             log_warn "文件上传失败，请检查终端是否支持Zmodem"
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -8963,7 +8312,7 @@ rz_upload_compressed_file() {
     if [[ ${#new_files[@]} -eq 0 ]]; then
         log_warn "未检测到新上传的文件"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -8984,7 +8333,7 @@ rz_upload_compressed_file() {
             zip_file="${new_files[$((choice-1))]}"
         else
             log_error "无效选择"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -9123,7 +8472,7 @@ rz_download_folder() {
     if [[ ${#dir_array[@]} -eq 0 ]]; then
         echo -e "${gl_huang}当前目录没有可下载的文件夹"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -9151,7 +8500,7 @@ rz_download_folder() {
        [[ "$dir_choice" -gt ${#dir_array[@]} ]]; then
         log_error "无效的文件夹序号"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -9306,7 +8655,7 @@ rz_download_files_interactive() {
     if [[ ${#file_list[@]} -eq 0 ]]; then
         log_warn "未找到匹配的文件: ${gl_huang}${search_pattern}${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -9348,7 +8697,7 @@ rz_download_files_interactive() {
     if [[ -z "$file_choices" ]]; then
         log_error "请输入有效的文件序号"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -9362,7 +8711,7 @@ rz_download_files_interactive() {
         else
             log_error "无效的文件序号: $file_choices"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     elif [[ "$file_choices" =~ ^[0-9]+-[0-9]+$ ]]; then
@@ -9379,7 +8728,7 @@ rz_download_files_interactive() {
         else
             log_error "无效的文件范围: $file_choices"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -9397,7 +8746,7 @@ rz_download_files_interactive() {
     if [[ ${#selected_files[@]} -eq 0 ]]; then
         log_error "没有选择有效的文件"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -9873,10 +9222,10 @@ go_parent_directory() {
         local current_path="$(pwd)"
         cd ..
         echo -e "${gl_lv}已返回上级目录: ${gl_huang}$(pwd) ${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
     else
         echo -e "${gl_huang}已经在根目录: ${gl_hong}/ ${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
     fi
 }
 
@@ -9902,7 +9251,7 @@ temp_dir_menu() {
         mkdir -p "$target_dir"
         if [ $? -ne 0 ]; then
             echo -e "${gl_hong}错误：无法创建目录 $target_dir${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -9916,7 +9265,7 @@ temp_dir_menu() {
     # 进入目标目录
     cd "$target_dir" 2>/dev/null || {
         log_error "无法进入目录: $target_dir"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
 
@@ -10018,13 +9367,13 @@ file_chmod() {
         
         # 使用list_files替代list_dir_colorful，保持风格统一
         if ! list_files "." 0 4; then
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         
         # 检查数组是否为空
         if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         
@@ -10058,7 +9407,7 @@ file_chmod() {
         # 文件存在性检查
         if [[ ! -e "$filename" ]]; then
             log_error "文件或目录不存在: $filename"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
         
@@ -10494,7 +9843,7 @@ install_add_docker() {
 	[ -z "$confirm" ] && { cancel_empty "上一级选单"; return 1; }        # break 或 continue 或 return ，视上下文而定
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -11126,7 +10475,7 @@ docker_download_load() {
         if [[ "$auto_confirm" != true ]]; then
             if ! _ddl_confirm "是否继续下载" "N"; then
                 echo -e "${gl_huang}已取消操作${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 0
             fi
         fi
@@ -11136,7 +10485,7 @@ docker_download_load() {
     temp_dir=$(mktemp -d /tmp/docker_dl.XXXXXX)
     if [[ $? -ne 0 ]]; then
         echo -e "${gl_hong}✗ 错误: 无法创建临时目录${gl_bai}" >&2
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -11174,7 +10523,7 @@ docker_download_load() {
     if ! _ddl_confirm "确认开始下载"; then
         echo -e "${gl_huang}已取消下载${gl_bai}"
         rm -rf "$temp_dir"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -11209,7 +10558,7 @@ docker_download_load() {
     if [[ ! -f "$downloaded_file" ]]; then
         echo -e "${gl_hong}✗ 错误: 下载文件未找到${gl_bai}" >&2
         rm -rf "$temp_dir"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 2
     fi
 
@@ -11223,7 +10572,7 @@ docker_download_load() {
             if ! _ddl_confirm "文件可能已损坏，是否继续尝试加载" "N"; then
                 echo -e "${gl_huang}已取消操作${gl_bai}"
                 rm -rf "$temp_dir"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         fi
@@ -11536,7 +10885,7 @@ docker_image() {
             if [[ ${#backup_files[@]} -eq 0 ]]; then
                 echo -e "${gl_huang}在当前目录中没有找到备份文件${gl_bai}"
                 echo -e "${gl_bai}支持的格式: .tar, .tar.gz, .tgz${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue
             fi
 
@@ -11572,7 +10921,7 @@ docker_image() {
 
             if [[ ! "$file_num" =~ ^[0-9]+$ ]] || [[ $file_num -lt 1 ]] || [[ $file_num -gt ${#backup_files[@]} ]]; then
                 echo -e "${gl_hong}✗ 无效的编号${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue
             fi
 
@@ -11590,7 +10939,7 @@ docker_image() {
             read -r -e -p "$(echo -e "确认加载此镜像? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm_load
             if [[ ! "$confirm_load" =~ ^[Yy]$ ]]; then
                 echo -e "${gl_huang}已取消加载${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue
             fi
 
@@ -12073,7 +11422,7 @@ docker_ipv6_on() {
 	[ -z "$confirm" ] && { cancel_empty "上一级选单"; return 1; }        # break 或 continue 或 return ，视上下文而定
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -12122,7 +11471,7 @@ docker_ipv6_off() {
 	[ -z "$confirm" ] && { cancel_empty "上一级选单"; return 1; }        # break 或 continue 或 return ，视上下文而定
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -12131,7 +11480,7 @@ docker_ipv6_off() {
     # 检查配置文件是否存在
     if [ ! -f "$CONFIG_FILE" ]; then
         echo -e "${gl_hong}配置文件不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -12188,7 +11537,7 @@ open_port() {
     local ports=("$@") # 将传入的参数转换为数组
     if [ ${#ports[@]} -eq 0 ]; then
         echo "请提供至少一个端口号"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -12216,7 +11565,7 @@ close_port() {
     local ports=("$@") # 将传入的参数转换为数组
     if [ ${#ports[@]} -eq 0 ]; then
         echo "请提供至少一个端口号"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -12253,7 +11602,7 @@ allow_ip() {
     local ips=("$@") # 将传入的参数转换为数组
     if [ ${#ips[@]} -eq 0 ]; then
         echo "请提供至少一个IP地址或IP段"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -12277,7 +11626,7 @@ block_ip() {
     local ips=("$@") # 将传入的参数转换为数组
     if [ ${#ips[@]} -eq 0 ]; then
         echo "请提供至少一个IP地址或IP段"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -12340,7 +11689,7 @@ manage_country_rules() {
 
             if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
                 echo "错误：下载 $country_code 的 IP 区域文件失败"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
 
@@ -12361,7 +11710,7 @@ manage_country_rules() {
 
             if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
                 echo "错误：下载 $country_code 的 IP 区域文件失败"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
 
@@ -13249,7 +12598,7 @@ iptables_init() {
     [ "$REPLY" = "0" ] && { cancel_return "上一级选单"; return 1; }    # break 或 continue 或 return ，视上下文而定
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -13703,7 +13052,7 @@ iptables_manager() {
                 echo -e ""
                 log_warn "端口号非法，请输入 ${gl_hong}1-65535${gl_bai} 之间的数字"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue
             fi
 
@@ -13800,7 +13149,7 @@ iptables_manager() {
                 if iptables -C INPUT -p tcp --dport "$port" -j DROP 2>/dev/null; then
                     echo -e ""
                     log_warn "端口 $port 已存在封禁规则，无需重复添加"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     continue
                 fi
 
@@ -14132,11 +13481,11 @@ fail2ban_edit_blacklist() {
         f2b_status
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_lv}防御程序已重启${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         clear
     else
         echo -e "${gl_huang}已取消重启防御程序${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         clear
     fi
 }
@@ -14245,11 +13594,11 @@ fail2ban_edit_whitelist() {
         f2b_status
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_lv}防御程序已重启${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         clear
     else
         echo -e "${gl_huang}已取消重启防御程序${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         clear
     fi
 }
@@ -14954,7 +14303,7 @@ block_host_port() {
     if [[ -z "$port" || -z "$allowed_ip" ]]; then
         echo "错误：请提供端口号和允许访问的 IP。"
         echo "用法: block_host_port <端口号> <允许的IP>"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -15006,7 +14355,7 @@ clear_host_port_rules() {
     if [[ -z "$port" || -z "$allowed_ip" ]]; then
         echo "错误：请提供端口号和允许访问的 IP。"
         echo "用法: clear_host_port_rules <端口号> <允许的IP>"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -15510,7 +14859,7 @@ update_fail2ban() {
     echo -e "${gl_bai}停止 fail2ban 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}" | sudo tee -a "$LOG_FILE"
     sudo systemctl stop fail2ban || {
         echo -e "${gl_huang}错误：无法停止 fail2ban 服务${gl_bai}" | sudo tee -a "$LOG_FILE"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
 
@@ -15518,7 +14867,7 @@ update_fail2ban() {
     if ! update_via_package_manager; then
         echo -e "${gl_huang}错误：包管理器更新失败${gl_bai}" | sudo tee -a "$LOG_FILE"
         sudo systemctl start fail2ban
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -15574,7 +14923,7 @@ server_reboot() {
     *)
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}已取消操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         ;;
     esac
 }
@@ -15910,7 +15259,7 @@ ldnmp_Proxy_backend_stream() {
     read -r -rp "请输入代理转发名称 (如 mysql_proxy): " proxy_name
     if [ -z "$proxy_name" ]; then
         echo "名称不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -15918,7 +15267,7 @@ ldnmp_Proxy_backend_stream() {
     read -r -rp "请输入本机监听端口 (如 3306): " listen_port
     if ! [[ "$listen_port" =~ ^[0-9]+$ ]]; then
         echo "端口必须是数字"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -17168,7 +16517,7 @@ fetch_github_ssh_keys() {
 
     if [[ -z "${username}" ]]; then
         echo "错误：GitHub 用户名不能为空" >&2
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -17204,20 +16553,20 @@ fetch_remote_ssh_keys() {
         curl -fsSL --connect-timeout 10 "${keys_url}" -o "${temp_file}" || {
             echo "错误：无法从 URL 下载公钥（网络问题或地址无效）" >&2
             rm -f "${temp_file}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
     elif command -v wget >/dev/null 2>&1; then
         wget -q --timeout=10 -O "${temp_file}" "${keys_url}" || {
             echo "错误：无法从 URL 下载公钥（网络问题或地址无效）" >&2
             rm -f "${temp_file}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
     else
         echo "错误：系统中未找到 curl 或 wget，无法下载公钥" >&2
         rm -f "${temp_file}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -17228,7 +16577,7 @@ fetch_remote_ssh_keys() {
     if [[ ! -s "${temp_file}" ]]; then
         echo "错误：下载到的文件为空，URL 可能不包含任何公钥" >&2
         rm -f "${temp_file}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -17281,19 +16630,19 @@ import_sshkey() {
 
     if [[ -z "$public_key" ]]; then
         echo -e "${gl_hong}错误：未输入公钥内容。${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
     if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
         echo -e "${gl_hong}错误：看起来不像合法的 SSH 公钥。${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
     if grep -Fxq "$public_key" ~/.ssh/authorized_keys 2>/dev/null; then
         echo "该公钥已存在，无需重复添加"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -17740,7 +17089,7 @@ clamav_freshclam() {
 clamav_scan() {
     if [ $# -eq 0 ]; then
         echo "请指定要扫描的目录。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -18233,7 +17582,7 @@ linux_trash() {
             echo "alias rm='trash-put'" >>"$bashrc_profile"
             source "$bashrc_profile"
             echo "回收站已启用，删除的文件将移至回收站。"
-            exit_animation    # 即将退出动画
+            exit_animation
             ;;
         2)
             remove trash-cli
@@ -18241,7 +17590,7 @@ linux_trash() {
             echo "alias rm='rm -i'" >>"$bashrc_profile"
             source "$bashrc_profile"
             echo "回收站已关闭，文件将直接删除。"
-            exit_animation    # 即将退出动画
+            exit_animation
             ;;
         3)
             read -r -e -p "输入要还原的文件名: " file_to_restore
@@ -18355,7 +17704,7 @@ restore_backup() {
     # 检查备份文件是否存在
     if [[ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]]; then
         log_error "备份文件不存在！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -18369,7 +17718,7 @@ restore_backup() {
             log_ok "备份恢复成功！"
         else
             log_error "备份恢复失败！"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         ;;
@@ -18414,7 +17763,7 @@ delete_backup() {
     # 检查备份文件是否存在
     if [[ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]]; then
         log_error "备份文件不存在！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -18428,14 +17777,14 @@ delete_backup() {
             log_ok "备份删除成功！"
         else
             log_error "备份删除失败！"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         ;;
     0) cancel_return; return;;    # 返回到上一级菜单
     *)
         log_info "已取消删除操作"
-        exit_animation    # 即将退出动画
+        exit_animation
         ;;
     esac
 
@@ -18560,7 +17909,7 @@ delete_connection() {
     connection=$(sed -n "${num}p" "$CONFIG_FILE")
     if [[ -z "$connection" ]]; then
         echo "错误：未找到对应的连接。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -18584,7 +17933,7 @@ use_connection() {
     connection=$(sed -n "${num}p" "$CONFIG_FILE")
     if [[ -z "$connection" ]]; then
         echo "错误：未找到对应的连接。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -18701,7 +18050,7 @@ mount_partition() {
     if [ ${#PARTITIONS[@]} -eq 0 ]; then
         log_error "没有找到未挂载的可用分区！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -18774,14 +18123,14 @@ mount_partition() {
             else
                 log_error "分区 '$SELECTION' 不存在！"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
         fi
     else
         log_error "未输入任何内容！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -18791,7 +18140,7 @@ mount_partition() {
         echo -e "${gl_bai}当前挂载信息：${gl_bai}"
         mount | grep "/dev/$PARTITION"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -18810,7 +18159,7 @@ mount_partition() {
     if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
         log_info "操作已取消"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -18830,7 +18179,7 @@ mount_partition() {
         if [[ ! "$MOUNT_POINT" =~ ^/ ]]; then
             log_error "挂载点必须是绝对路径！"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -18838,7 +18187,7 @@ mount_partition() {
         if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
             log_error "挂载点已被占用！"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
     fi
@@ -19025,7 +18374,7 @@ check_partition() {
     if [ ${#PARTITION_NAMES[@]} -eq 0 ]; then
         log_warn "未找到可用分区！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -19041,7 +18390,7 @@ check_partition() {
     else
         log_error "未输入任何内容！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -19049,7 +18398,7 @@ check_partition() {
     if ! lsblk -o NAME | grep -w "$PARTITION" >/dev/null; then
         log_warn "分区不存在！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19090,7 +18439,7 @@ mount_fnos_partition() {
     if [ ${#PARTITIONS[@]} -eq 0 ]; then
         log_error "没有找到未挂载的可用分区！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19155,7 +18504,7 @@ mount_fnos_partition() {
     if ! lsblk -o NAME | grep -w "$PARTITION" >/dev/null; then
         log_error "分区不存在！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19163,7 +18512,7 @@ mount_fnos_partition() {
     if lsblk -o NAME,MOUNTPOINT | grep -w "$PARTITION" | grep -q "/"; then
         log_warn "分区已经挂载！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19172,7 +18521,7 @@ mount_fnos_partition() {
     if [[ ! "$fstype" =~ ^(ext[234]|xfs|btrfs|ntfs|vfat|exfat)$ ]]; then
         log_error "分区文件系统类型不支持挂载！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19281,7 +18630,7 @@ mount_usb_partition() {
     if ! lsblk -o NAME | grep -w "$PARTITION" >/dev/null; then
         log_error "分区不存在！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19289,7 +18638,7 @@ mount_usb_partition() {
     if lsblk -o NAME,MOUNTPOINT | grep -w "$PARTITION" | grep -q "/"; then
         log_warn "分区已经挂载！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19298,7 +18647,7 @@ mount_usb_partition() {
     if [[ ! "$fstype" =~ ^(ext[234]|xfs|btrfs|ntfs|vfat|exfat)$ ]]; then
         log_error "分区文件系统类型不支持挂载！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19339,7 +18688,7 @@ unmount_by_path() {
     if [ ! -d "$MOUNT_POINT" ]; then
         log_warn "目录不存在: $MOUNT_POINT"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19347,7 +18696,7 @@ unmount_by_path() {
     if ! mountpoint -q "$MOUNT_POINT"; then
         log_warn "目录未挂载: $MOUNT_POINT"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19389,7 +18738,7 @@ format_partition() {
     if ! lsblk -o NAME | grep -w "$PARTITION" >/dev/null; then
         log_error "分区不存在！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19397,7 +18746,7 @@ format_partition() {
     if lsblk -o MOUNTPOINT | grep -w "$PARTITION" >/dev/null; then
         log_warn "分区已经挂载，请先卸载！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19416,7 +18765,7 @@ format_partition() {
     4) FS_TYPE="vfat" ;;
     *)
         log_error "无效的选择！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
         ;;
     esac
@@ -19428,7 +18777,7 @@ format_partition() {
     if [ "$CONFIRM" != "y" ]; then
         log_info "操作已取消。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19463,7 +18812,7 @@ format_disk() {
     if [ ! -b "/dev/$DISK" ]; then
         log_error "硬盘 /dev/$DISK 不存在！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19472,7 +18821,7 @@ format_disk() {
     if [ "$DISK_TYPE" != "disk" ]; then
         log_error "/dev/$DISK 不是一个硬盘，请输入硬盘名称（如 sde）！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19558,7 +18907,7 @@ format_disk() {
     2) TABLE_TYPE="msdos" ;;
     *)
         log_error "无效的选择！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
         ;;
     esac
@@ -19581,7 +18930,7 @@ format_disk() {
     [ "$CONFIRM1" = "0" ] && { cancel_return "上一级选单"; return 1; }      # break 或 continue 或 return ，视上下文而定
     if [ "$CONFIRM1" != "y" ] && [ "$CONFIRM1" != "Y" ]; then
         log_info "操作已取消。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19589,7 +18938,7 @@ format_disk() {
      [ "$CONFIRM2" = "0" ] && { cancel_return "上一级选单"; return 1; }      # break 或 continue 或 return ，视上下文而定
     if [ "$CONFIRM2" != "YES" ]; then
         log_info "操作已取消。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19625,7 +18974,7 @@ format_disk() {
                                 umount "/dev/$part" 2>/dev/null
                             else
                                 log_error "无法卸载分区，操作终止。"
-                                exit_animation    # 即将退出动画
+                                exit_animation
                                 return
                             fi
                         fi
@@ -19653,7 +19002,7 @@ format_disk() {
     echo -e "正在创建 $TABLE_TYPE 分区表 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     if ! parted -s "/dev/$DISK" mklabel $TABLE_TYPE 2>/dev/null; then
         log_error "创建分区表失败！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19662,14 +19011,14 @@ format_disk() {
         # 对于GPT，创建单个分区
         if ! parted -s "/dev/$DISK" mkpart primary 0% 100% 2>/dev/null; then
             log_error "创建分区失败！"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
     else
         # 对于MBR，创建主分区
         if ! parted -s "/dev/$DISK" mkpart primary 0% 100% 2>/dev/null; then
             log_error "创建分区失败！"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         # 设置分区为可启动（可选）
@@ -19711,7 +19060,7 @@ format_disk() {
                 log_error "无法找到新分区，请手动检查！"
                 echo -e "${gl_bai}当前硬盘分区状态："
                 fdisk -l "/dev/$DISK" 2>/dev/null
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
         fi
@@ -19787,7 +19136,7 @@ format_disk() {
             echo -e "${gl_bai}可以运行以下命令安装："
             echo -e "  Ubuntu/Debian: sudo apt-get install ntfs-3g"
             echo -e "  RHEL/CentOS: sudo yum install ntfs-3g"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         ;;
@@ -19932,7 +19281,7 @@ add_to_fstab() {
     if [ ! -b "/dev/$PARTITION" ]; then
         log_error "分区 /dev/$PARTITION 不存在！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -19943,7 +19292,7 @@ add_to_fstab() {
         if [ -z "$MOUNT_POINT" ]; then
             log_error "挂载点不能为空！"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -19956,7 +19305,7 @@ add_to_fstab() {
         if [ $? -ne 0 ]; then
             log_error "挂载失败，请检查分区状态！"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
     fi
@@ -19968,7 +19317,7 @@ add_to_fstab() {
     if [ -z "$UUID" ] || [ -z "$FSTYPE" ]; then
         log_error "无法获取分区UUID或文件系统类型！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20016,7 +19365,7 @@ add_to_fstab() {
     if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
         log_info "操作已取消。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20087,7 +19436,7 @@ disk_edit_fstab() {
             echo -e ""
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_lv}已跳过应用更改。${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             break
             ;;
         *)
@@ -20248,13 +19597,13 @@ remote_add_task() {
             auth_method="key"
         else
             echo -e "${gl_hong}无效的密钥内容！${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         ;;
     *)
         echo -e "${gl_hong}无效的选择！${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
         ;;
     esac
@@ -20273,7 +19622,7 @@ remote_add_task() {
     2) options="-avz --progress --delete-delay" ;;
     *)
         echo "无效选择，使用默认 -avz"
-        exit_animation    # 即将退出动画
+        exit_animation
         options="-avz"
         ;;
     esac
@@ -20300,7 +19649,7 @@ remote_delete_task() {
     if [[ -z "$task" ]]; then
         echo -e "${gl_hong}错误：未找到对应的任务。${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20374,7 +19723,7 @@ remote_run_task() {
             echo "安装方法："
             echo -e "  - ${gl_haung}Ubuntu/Debian: ${gl_lv}apt install sshpass${gl_bai}"
             echo -e "  - ${gl_haung}CentOS/RHEL: ${gl_lv}yum install sshpass${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         sshpass -p "$password_or_key" rsync $options -e "ssh $ssh_options" "$source" "$destination"
@@ -20382,7 +19731,7 @@ remote_run_task() {
         # 检查密钥文件是否存在和权限是否正确
         if [[ ! -f "$password_or_key" ]]; then
             echo -e "${gl_hong}错误：密钥文件不存在：${gl_huang}$password_or_key${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -20423,7 +19772,7 @@ remote_schedule_task() {
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo "错误: 请输入有效的任务编号！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20435,7 +19784,7 @@ remote_schedule_task() {
     
     if [[ -z "$task_name" ]]; then
         echo -e "${gl_hong}错误: 未找到编号为 ${gl_huang}$num ${gl_hong}的任务！${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20459,7 +19808,7 @@ remote_schedule_task() {
     4) cron_time="$random_minute 4 1 * *" ;; # 每月1号凌晨4点，随机分钟执行
     *)
         echo "错误: 请输入有效的选项！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
         ;;
     esac
@@ -20469,7 +19818,7 @@ remote_schedule_task() {
     # 检查是否已存在相同任务
     if crontab -l | grep -q "m remote_rsync_run $num"; then
         echo -e "${gl_hong}错误: 该任务的定时同步已存在！${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20576,7 +19925,7 @@ remote_delete_task_schedule() {
     if [[ $? -ne 0 ]] || [[ -z "$crontab_content" ]]; then
         echo -e "${gl_huang}当前用户暂无定时任务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
     
@@ -20592,7 +19941,7 @@ remote_delete_task_schedule() {
     if [[ $remote_task_count -eq 0 ]]; then
         echo -e "${gl_huang}暂无远程同步定时任务，无需删除。${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
     
@@ -20605,14 +19954,14 @@ remote_delete_task_schedule() {
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo "错误: 请输入有效的任务编号！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
     # 步骤4：验证输入的任务编号是否在有效范围内
     if [[ "$num" -lt 1 ]] || [[ "$num" -gt "$remote_task_count" ]]; then
         echo -e "${gl_hong}错误: 请输入有效的任务编号 (1~${remote_task_count})！${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20646,7 +19995,7 @@ remote_delete_task_schedule() {
 
     if [[ -z "$target_line" ]]; then
         echo -e "${gl_hong}错误: 无法找到对应的定时任务${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20664,7 +20013,7 @@ remote_delete_task_schedule() {
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
         echo -e "${gl_huang}取消删除操作${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -20700,14 +20049,14 @@ remote_show_task_details() {
     if [[ ! -f "$CONFIG_FILE" ]]; then
         echo -e "${gl_huang}配置文件不存在，暂无同步任务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
     
     if [[ ! -s "$CONFIG_FILE" ]]; then
         echo -e "${gl_huang}暂无同步任务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
     
@@ -20770,7 +20119,7 @@ remote_show_task_details() {
         local task=$(sed -n "${num}p" "$CONFIG_FILE" 2>/dev/null)
         if [[ -z "$task" ]]; then
             echo -e "${gl_hong}错误: 未找到任务 #$num${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         
@@ -20888,14 +20237,14 @@ remote_run_all_tasks_push() {
     if [[ ! -f "$CONFIG_FILE" ]]; then
         echo -e "${gl_huang}配置文件不存在，暂无同步任务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
     
     if [[ ! -s "$CONFIG_FILE" ]]; then
         echo -e "${gl_huang}暂无同步任务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
     
@@ -20913,7 +20262,7 @@ remote_run_all_tasks_push() {
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
         echo -e "${gl_huang}已取消批量执行${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -20936,7 +20285,7 @@ remote_run_all_tasks_push() {
         if [[ ! -d "$local_path" ]]; then
             echo -e "${gl_hong}✗ 失败: 本地目录不存在${gl_bai}"
             ((failed_count++))
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
         
@@ -20944,7 +20293,7 @@ remote_run_all_tasks_push() {
         if [[ "$auth_method" == "password" ]] && ! command -v sshpass &>/dev/null; then
             echo -e "${gl_hong}✗ 失败: sshpass 未安装${gl_bai}"
             ((failed_count++))
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
         
@@ -20952,7 +20301,7 @@ remote_run_all_tasks_push() {
         if [[ "$auth_method" == "key" ]] && [[ ! -f "$password_or_key" ]]; then
             echo -e "${gl_hong}✗ 失败: 密钥文件不存在${gl_bai}"
             ((failed_count++))
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
         
@@ -21089,7 +20438,7 @@ fix_nano_config() {
         echo -e "${gl_lv}nano 版本: ${nano_version:-未知}${gl_bai}"
     else
         echo -e "${gl_hong}错误: nano 未安装${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -21658,7 +21007,7 @@ tools_remove_all() {
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         continue
     fi
     clear
@@ -22117,7 +21466,7 @@ docker_ssh_migration() {
                 # 如果该 Compose 项目已经打包过，跳过
                 if [[ -n "${PACKED_COMPOSE_PATHS[$project_dir]}" ]]; then
                     echo -e "${gl_bufan}Compose 项目 [$project_name] 已备份过，跳过重复打包 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return
                 fi
 
@@ -22185,7 +21534,7 @@ docker_ssh_migration() {
         read -r -e -p "请输入要还原的备份目录: " BACKUP_DIR
         [[ ! -d "$BACKUP_DIR" ]] && {
             echo -e "${gl_huang}备份目录不存在${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         }
 
@@ -22209,7 +21558,7 @@ docker_ssh_migration() {
                 running_count=$(docker ps --filter "label=com.docker.compose.project=$project_name" --format '{{.Names}}' | wc -l)
                 if [[ "$running_count" -gt 0 ]]; then
                     echo -e "${gl_bufan}Compose 项目 [$project_name] 已有容器在运行，跳过还原 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return
                 fi
 
@@ -22239,14 +21588,14 @@ docker_ssh_migration() {
             # 检查容器是否已经存在且正在运行
             if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
                 echo -e "${gl_bufan}容器 [$container] 已在运行，跳过还原 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
 
             IMAGE=$(jq -r '.[0].Config.Image' "$json")
             [[ -z "$IMAGE" || "$IMAGE" == "null" ]] && {
                 echo -e "${gl_huang}未找到镜像信息，跳过: $container${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             }
 
@@ -22339,7 +21688,7 @@ docker_ssh_migration() {
         read -r -e -p "请输入要删除的备份目录: " BACKUP_DIR
         [[ ! -d "$BACKUP_DIR" ]] && {
             echo -e "${gl_huang}备份目录不存在${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         }
         rm -rf "$BACKUP_DIR"
@@ -22517,7 +21866,7 @@ add_user_to_docker() {
     if getent group docker | grep -q "\b${USER}\b"; then
         log_ok "当前用户 ${USER} 已在 docker 组中"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -22590,7 +21939,7 @@ remove_user_from_docker() {
     if ! getent group docker | grep -q "\b${USER}\b"; then
         log_warn "当前用户 ${USER} 不在 docker 组中"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -22836,7 +22185,7 @@ docker_commit_interactive() {
             ;;
         [Nn]|"")
             log_warn "已取消提交操作${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
             ;;
         *) handle_y_n; return 2 ;;
@@ -22871,7 +22220,7 @@ docker_commit_interactive() {
         
         [ "$save_filename" = "0" ] && { 
             log_warn "已跳过打包操作${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 0
         }
         
@@ -22887,7 +22236,7 @@ docker_commit_interactive() {
         # 检查文件名是否合法
         if [[ ! "$save_filename" =~ ^[a-zA-Z0-9._-]+$ ]]; then
             log_warn "文件名只能包含字母${gl_hong},${gl_bai}数字${gl_hong},${gl_bai}下划线和连字符${gl_hong}!${gl_huang}!${gl_lv}!${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
         
@@ -22905,7 +22254,7 @@ docker_commit_interactive() {
                     continue
                     ;;
                 *)
-                    handle_y_n        # 无效的输入,请输入(y或N)。
+                    handle_y_n
                     continue
                     ;;
             esac
@@ -22950,7 +22299,7 @@ docker_restore_image() {
             log_ok "已创建目录: ${gl_huang}$default_path${gl_bai}"
         else
             log_warn "已取消操作${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -22964,7 +22313,7 @@ docker_restore_image() {
     
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]]; then
         log_warn "目录为空，没有Docker镜像文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -22987,7 +22336,7 @@ docker_restore_image() {
             fi
         else
             log_error "序号超出范围: $file_input (1-${#LIST_FILES_ARRAY[@]})"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -23002,7 +22351,7 @@ docker_restore_image() {
     # 检查文件是否存在
     if [[ ! -f "$file_path" ]]; then
         log_error "文件不存在: $file_path"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -23013,7 +22362,7 @@ docker_restore_image() {
             read -r -e -p "$(echo -e "${gl_bai}是否继续加载? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" continue_load
             if [[ ! "$continue_load" =~ ^[Yy]$ ]]; then
                 log_warn "已取消加载${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         fi
@@ -31260,7 +30609,7 @@ show_network_info() {
     local interfaces=$(ip -o link show | awk -F': ' '{print $2}')
     if [ -z "$interfaces" ]; then
         log_error "无法获取网络接口"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -31932,7 +31281,7 @@ configure_static_ip() {
             log_error "network-scripts目录不存在: $config_dir"
             log_error "CentOS 9可能已默认使用NetworkManager，请安装network-scripts包"
             log_info "安装命令: sudo dnf install network-scripts"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -32176,7 +31525,7 @@ set_gateway() {
         else
             log_error "必须指定网关IP地址"
             echo -e "用法: ${gl_lv}set_gateway <网关IP> [网卡名称]${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -32184,7 +31533,7 @@ set_gateway() {
     # 验证IP地址格式
     if ! [[ "$gateway" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         log_error "网关IP地址格式不正确: ${gl_hong}$gateway${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -32226,7 +31575,7 @@ set_gateway() {
 
         if [[ -z "$interface" ]]; then
             log_error "必须指定网卡名称"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -32234,7 +31583,7 @@ set_gateway() {
     # 检查网卡是否存在
     if ! ip link show "$interface" &>/dev/null 2>&1 && ! ifconfig "$interface" &>/dev/null 2>&1; then
         log_error "网卡 ${gl_hong}$interface${gl_bai} 不存在或不可用"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -32273,7 +31622,7 @@ set_gateway() {
                 current_gateway=$(route -n | grep '^0\.0\.0\.0' | awk '{print $2}' | head -1)
             else
                 log_error "无法获取当前网关信息"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
 
@@ -32476,17 +31825,17 @@ EOF
                         systemctl restart systemd-networkd 2>/dev/null || true
                     else
                         log_error "netplan apply 执行失败，请检查配置文件"
-                        exit_animation    # 即将退出动画
+                        exit_animation
                         return 1
                     fi
                 else
                     log_warn "未应用 netplan 配置，请手动执行: sudo netplan apply"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
             else
                 log_error "未找到 netplan 配置文件"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
 
@@ -32521,7 +31870,7 @@ EOF
             log_ok "网关持久化配置已更新"
         else
             log_error "未找到任何网络配置文件"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -33914,7 +33263,7 @@ local_delete_task() {
 
     if [[ ! -f "$LOCAL_SYNC_CONFIG" ]] || [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
         echo -e "${gl_hong}错误: 暂无同步任务可删除${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -33932,7 +33281,7 @@ local_delete_task() {
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -33940,7 +33289,7 @@ local_delete_task() {
     total_tasks=$(wc -l <"$LOCAL_SYNC_CONFIG" 2>/dev/null)
     if [[ "$num" -lt 1 || "$num" -gt "$total_tasks" ]]; then
         echo -e "${gl_hong}错误: 任务编号不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -33997,7 +33346,7 @@ local_run_task() {
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34005,7 +33354,7 @@ local_run_task() {
     total_tasks=$(wc -l <"$LOCAL_SYNC_CONFIG" 2>/dev/null)
     if [[ "$num" -lt 1 || "$num" -gt "$total_tasks" ]]; then
         echo -e "${gl_hong}错误: 任务编号不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34024,7 +33373,7 @@ local_run_task() {
     if [[ ! -d "$source_path" ]]; then
         echo -e "${gl_hong}错误: 源目录不存在!${gl_bai}"
         echo -e "${gl_hong}请检查路径: ${source_path}${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34041,7 +33390,7 @@ local_run_task() {
             echo -e "${gl_lv}✓ 目标目录已创建${gl_bai}"
         else
             echo -e "${gl_hong}错误: 无法创建目标目录${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -34050,7 +33399,7 @@ local_run_task() {
     if [[ ! -w "$target_path" ]]; then
         echo -e "${gl_hong}错误: 目标目录写入权限不足!${gl_bai}"
         echo -e "${gl_huang}请检查目录权限或使用sudo执行${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34132,7 +33481,7 @@ local_run_all_tasks() {
 
     if [[ ! -f "$LOCAL_SYNC_CONFIG" ]] || [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
         echo -e "${gl_hong}错误: 暂无同步任务可执行${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34216,7 +33565,7 @@ local_schedule_task() {
 
     if [[ ! -f "$LOCAL_SYNC_CONFIG" ]] || [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
         echo -e "${gl_hong}错误: 暂无同步任务可设置定时${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34229,7 +33578,7 @@ local_schedule_task() {
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34237,7 +33586,7 @@ local_schedule_task() {
     total_tasks=$(wc -l <"$LOCAL_SYNC_CONFIG")
     if [[ "$num" -lt 1 || "$num" -gt "$total_tasks" ]]; then
         echo -e "${gl_hong}错误: 任务编号不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34450,7 +33799,7 @@ local_delete_schedule() {
 
     if ! [[ "$task_num" =~ ^[0-9]+$ ]]; then
         echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34460,7 +33809,7 @@ local_delete_schedule() {
 
     if [[ $? -ne 0 ]] || [[ -z "$crontab_content" ]]; then
         echo -e "${gl_hong}错误: 未找到定时任务${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34493,7 +33842,7 @@ local_delete_schedule() {
 
     if [[ -z "$target_line" ]]; then
         echo -e "${gl_hong}错误: 未找到该编号的定时任务${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34559,7 +33908,7 @@ local_run_task_reverse() {
 
     if [[ ! -f "$LOCAL_SYNC_CONFIG" ]] || [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
         echo -e "${gl_hong}错误: 暂无同步任务可执行${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34572,7 +33921,7 @@ local_run_task_reverse() {
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34580,7 +33929,7 @@ local_run_task_reverse() {
     total_tasks=$(wc -l <"$LOCAL_SYNC_CONFIG" 2>/dev/null)
     if [[ "$num" -lt 1 || "$num" -gt "$total_tasks" ]]; then
         echo -e "${gl_hong}错误: 任务编号不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34613,7 +33962,7 @@ local_run_task_reverse() {
     if [[ ! -d "$target_path" ]]; then
         echo -e "${gl_hong}错误: 原目标目录（现源目录）不存在!${gl_bai}"
         echo -e "${gl_hong}请检查路径: ${target_path}${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34624,7 +33973,7 @@ local_run_task_reverse() {
             echo -e "${gl_lv}✓ 目录已创建${gl_bai}"
         else
             echo -e "${gl_hong}错误: 无法创建目录${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -34632,7 +33981,7 @@ local_run_task_reverse() {
     if [[ ! -w "$source_path" ]]; then
         echo -e "${gl_hong}错误: 原源目录（现目标目录）写入权限不足!${gl_bai}"
         echo -e "${gl_huang}请检查目录权限或使用sudo执行${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -34759,14 +34108,14 @@ local_show_task_details() {
     if [[ ! -f "$LOCAL_SYNC_CONFIG" ]]; then
         echo -e "${gl_huang}配置文件不存在，暂无同步任务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
     
     if [[ ! -s "$LOCAL_SYNC_CONFIG" ]]; then
         echo -e "${gl_huang}暂无同步任务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
     
@@ -34855,7 +34204,7 @@ local_show_task_details() {
         local task=$(sed -n "${num}p" "$LOCAL_SYNC_CONFIG" 2>/dev/null)
         if [[ -z "$task" ]]; then
             echo -e "${gl_hong}错误: 未找到任务 #$num${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         
@@ -35123,7 +34472,7 @@ local_rsync_manager() {
 show_crontab_list() {
     if ! command -v crontab &>/dev/null; then
         echo -e "${gl_hong}错误：crontab命令不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -35170,7 +34519,7 @@ list_crontab() {
 
     if ! command -v crontab &>/dev/null; then
         log_error "crontab命令不存在，请检查系统"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -35188,7 +34537,7 @@ edit_crontab() {
 
     if ! command -v crontab &>/dev/null; then
         log_error "crontab命令不存在，请检查系统"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -35212,7 +34561,7 @@ add_crontab() {
 
     if ! command -v crontab &>/dev/null; then
         log_error "crontab命令不存在，请检查系统"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -35277,7 +34626,7 @@ delete_crontab() {
 
     if ! command -v crontab &>/dev/null; then
         log_error "crontab命令不存在，请检查系统"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -35292,7 +34641,7 @@ delete_crontab() {
     if [[ -z "$valid_tasks" ]]; then
         echo -e "${gl_huang}当前用户没有有效的${gl_bufan}crontab${gl_huang}任务可删除${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -35320,7 +34669,7 @@ delete_crontab() {
 
     if [[ ! "$line_num" =~ ^[0-9]+$ ]]; then
         log_error "请输入有效的数字"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -35376,7 +34725,7 @@ clear_crontab() {
     # 检查crontab命令是否存在
     if ! command -v crontab &>/dev/null; then
         log_error "crontab命令不存在，请安装cron/crontabs组件"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -35647,7 +34996,7 @@ view_raw_crontab() {
 
     if ! command -v crontab &>/dev/null; then
         log_error "crontab命令不存在，请检查系统"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -35682,7 +35031,7 @@ show_crontab_status() {
     # 检查crontab命令是否可用
     if ! command -v crontab &>/dev/null; then
         echo -e "${gl_hong}✗ crontab命令不可用${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -38526,7 +37875,7 @@ linux_reboot_server() {
     [Nn])
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}已取消重启服务器${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
         ;;
     *) handle_y_n ;;        # 无效的输入,请输入(y或N)。
@@ -39186,7 +38535,7 @@ linux_ssh_defense_management() {
             remove fail2ban
             rm -rf /etc/fail2ban
             echo "Fail2Ban防御程序已卸载"
-            exit_animation    # 即将退出动画
+            exit_animation
             break
             ;;
         0) cancel_return "系统工具"; break ;;    # 返回到上一级菜单
@@ -39784,7 +39133,7 @@ linux_command_history() {
                 return
             }
         done
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
 
@@ -39804,7 +39153,7 @@ linux_set_shortcut() {
         find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/m" && rm -f {}' \;
         ln -s /usr/local/bin/m /usr/local/bin/"$kuaijiejian"
         echo "快捷键已设置"
-        exit_animation    # 即将退出动画
+        exit_animation
         linux_Settings "$@"
     done
 }
@@ -40365,7 +39714,7 @@ duwatch() {
 
     if [[ ! -d $dir ]]; then
         echo -e "${gl_hong}目录不存在: ${gl_huang}$dir${gl_bai}" >&2
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -40480,7 +39829,7 @@ rename_files_add_prefix() {
     
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录下没有找到任何文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -40490,7 +39839,7 @@ rename_files_add_prefix() {
     read -e -p "$(echo -e "${gl_bai}请输入要添加的前缀(${gl_huang}0${gl_bai}返回): ")" prefix
     if [[ -z "$prefix" ]]; then
         log_warn "前缀不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -40561,7 +39910,7 @@ rename_files_add_suffix() {
     
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录下没有找到任何文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -40571,7 +39920,7 @@ rename_files_add_suffix() {
     read -e -p "$(echo -e "${gl_bai}请输入要添加的后缀 (不含扩展名)(${gl_huang}0${gl_bai}返回): ")" suffix
     if [[ -z "$suffix" ]]; then
         log_warn "后缀不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -40653,7 +40002,7 @@ rename_files_replace_string() {
     
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录下没有找到任何文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -40666,7 +40015,7 @@ rename_files_replace_string() {
 
     if [[ -z "$old_str" ]]; then
         log_warn "要替换的字符串不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -40738,7 +40087,7 @@ rename_files_sequential() {
     
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录下没有找到任何文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -40764,7 +40113,7 @@ rename_files_sequential() {
 
     if [[ -z "$template" ]]; then
         log_warn "模板不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -40876,7 +40225,7 @@ rename_files_change_case() {
     
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录下没有找到任何文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -40987,7 +40336,7 @@ rename_files_remove_chars() {
     
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录下没有找到任何文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -41000,7 +40349,7 @@ rename_files_remove_chars() {
 
     if [[ -z "$remove_pattern" ]]; then
         log_warn "要移除的字符不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -41069,7 +40418,7 @@ rename_files_remove_spaces() {
     
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录下没有找到任何文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
     
@@ -41159,7 +40508,7 @@ list_files() {
     
     if [[ ! -d "$target_dir" ]]; then
         log_error "目录不存在: $target_dir"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41169,7 +40518,7 @@ list_files() {
     # 切换到目标目录
     if ! cd "$target_dir" 2>/dev/null; then
         log_error "无法进入目录: $target_dir"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41456,14 +40805,14 @@ transfer_file_to_remote() {
     
     if ! list_files "." 0 4; then
         echo -e "${gl_huang}当前目录没有可传输的文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查数组是否真的有内容
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
         echo -e "${gl_huang}当前目录没有可传输的文件${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41484,7 +40833,7 @@ transfer_file_to_remote() {
             log_ok "已选择 [$user_input]: $file_to_transfer"
         else
             log_error "无效的序号: $user_input (有效范围: 1-$LIST_FILES_COUNT)"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -41492,7 +40841,7 @@ transfer_file_to_remote() {
         file_to_transfer="$user_input"
         if [[ ! -f "$file_to_transfer" ]]; then
             log_error "文件不存在: $file_to_transfer"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         log_ok "已指定文件: $file_to_transfer"
@@ -41501,7 +40850,7 @@ transfer_file_to_remote() {
     # 验证文件
     if [[ ! -f "$file_to_transfer" ]]; then
         log_error "无法访问文件: $file_to_transfer"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41517,7 +40866,7 @@ transfer_file_to_remote() {
     [ "$remote_ip" = "0" ] && { cancel_return "上一级选单"; return 1; }      # break 或 continue 或 return ，视上下文而定
     if [[ -z "$remote_ip" ]]; then
         log_error "远端服务器IP不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41530,7 +40879,7 @@ transfer_file_to_remote() {
     echo ""
     if [[ -z "$remote_password" ]]; then
         log_error "密码不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41550,7 +40899,7 @@ transfer_file_to_remote() {
     
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         log_warn "已取消操作"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41604,13 +40953,13 @@ copy_file_or_directory() {
 
     # 显示文件列表，4列显示，不显示隐藏文件
     if ! list_files "." 0 4; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查数组是否真的有内容
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41636,7 +40985,7 @@ copy_file_or_directory() {
             log_ok "已选择 [$user_input]: $src_path"
         else
             log_error "无效的序号: $user_input (有效范围: 1-$LIST_FILES_COUNT)"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -41644,7 +40993,7 @@ copy_file_or_directory() {
         src_path="$user_input"
         if [[ ! -e "$src_path" ]]; then
             log_error "文件或目录不存在: $src_path"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         log_ok "已指定: $src_path"
@@ -41653,7 +41002,7 @@ copy_file_or_directory() {
     # 验证源文件
     if [[ ! -e "$src_path" ]]; then
         log_error "无法访问: $src_path"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41679,7 +41028,7 @@ copy_file_or_directory() {
     
     if [[ -z "$dest_path" ]]; then
         log_error "目标路径不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41698,7 +41047,7 @@ copy_file_or_directory() {
             read -r -e -p "$(echo -e "${gl_bai}是否覆盖? (${gl_hong}y${gl_bai}/${gl_lv}N${gl_bai}): ")" overwrite
             if [[ ! "$overwrite" =~ ^[Yy]$ ]]; then
                 log_info "已取消操作"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         fi
@@ -41733,12 +41082,12 @@ copy_file_or_directory() {
                 fi
             else
                 log_error "复制失败"
-                exit_animation    # 即将退出动画
+                exit_animation
             fi
             ;;
         [Nn]|"")
             log_warn "已取消操作"
-            exit_animation    # 即将退出动画
+            exit_animation
             ;;
         *) handle_y_n ;;        # 无效的输入,请输入(y或N)。
     esac
@@ -41757,13 +41106,13 @@ move_file_or_directory() {
     
     # 显示文件列表，2列显示，不显示隐藏文件
     if ! list_files "." 0 4; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查数组是否为空
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -41788,7 +41137,7 @@ move_file_or_directory() {
             src_paths=("${LIST_FILES_ARRAY[$idx]}")
         else
             log_error "序号超出范围: $src_input (有效范围: 1-${LIST_FILES_COUNT})"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     # 判断是否包含通配符
@@ -41805,7 +41154,7 @@ move_file_or_directory() {
         
         if [[ ${#matched_files[@]} -eq 0 ]]; then
             log_error "未找到匹配的文件: $src_input"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -41829,7 +41178,7 @@ move_file_or_directory() {
         [ "$confirm" == "0" ] && { cancel_return "文件管理器"; return 1; }      # break 或 continue 或 return ，视上下文而定
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             log_info "已取消移动操作"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -41841,7 +41190,7 @@ move_file_or_directory() {
             src_paths=("$manual_path")
         else
             log_error "文件或目录不存在: $manual_path"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -41895,7 +41244,7 @@ move_file_or_directory() {
             dest_path="${dir_array[$idx]}"
         else
             log_error "目录序号超出范围: $dest_input"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -41908,7 +41257,7 @@ move_file_or_directory() {
         # 如果目标不是目录，检查是否是文件（不允许移动到文件）
         if [[ -e "$dest_path" ]]; then
             log_error "目标必须是目录: $dest_path"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         else
             # 目标不存在，询问是否创建
@@ -41917,13 +41266,13 @@ move_file_or_directory() {
             if [[ "$create_confirm" =~ ^[Yy]$ ]]; then
                 if ! mkdir -p "$dest_path"; then
                     log_error "创建目录失败: $dest_path"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
                 log_info "已创建目录: $dest_path"
             else
                 log_info "已取消移动操作"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         fi
@@ -42015,7 +41364,7 @@ batch_extract_all() {
     if [[ $total -eq 0 ]]; then
         log_warn "当前目录下没有找到压缩文件"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -42067,7 +41416,7 @@ batch_extract_all() {
     read -r -e -p "$(echo -e "${gl_bai}确认解压以上 ${gl_lv}$total${gl_bai} 个文件? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
     [[ ! "$confirm" =~ ^[Yy]$ ]] && {
         log_info "已取消解压操作"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
 
@@ -42097,12 +41446,12 @@ batch_extract_all() {
             if [[ "$create_dir" =~ ^[Yy]$ ]]; then
                 mkdir -p "$custom_dest" || {
                     log_error "创建目录失败: $custom_dest"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 }
             else
                 log_info "已取消"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         fi
@@ -42312,7 +41661,7 @@ extract_archive() {
     # 检查文件是否存在
     if [[ ! -f "$filename" ]]; then
         echo -e "${gl_hong}✗ 错误: 文件不存在: $filename${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42322,7 +41671,7 @@ extract_archive() {
         read -r -e -p "$(echo -e "是否继续解压? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             echo -e "${gl_huang}已取消操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -42383,13 +41732,13 @@ cat_view_file_content() {
     
     # 显示文件列表，2列显示，不显示隐藏文件
     if ! list_files "." 0 4; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查数组是否为空
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42412,7 +41761,7 @@ cat_view_file_content() {
             target_file="${LIST_FILES_ARRAY[$idx]}"
         else
             log_error "序号超出范围: $user_input (有效范围: 1-${LIST_FILES_COUNT})"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -42423,14 +41772,14 @@ cat_view_file_content() {
     # 检查文件是否存在
     if [[ ! -e "$target_file" ]]; then
         log_error "文件不存在: $target_file"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查是否为目录
     if [[ -d "$target_file" ]]; then
         log_error "无法预览目录内容: $target_file"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42455,13 +41804,13 @@ delete_files() {
     clear
     # 显示文件列表，2列显示，不显示隐藏文件
     if ! list_files "." 0 4; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查数组是否为空
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42501,7 +41850,7 @@ delete_files() {
         if [[ -e "$target_file" ]]; then
             if [[ -d "$target_file" ]]; then
                 log_warn "跳过目录(请使用目录删除功能): $target_file"
-                exit_animation    # 即将退出动画
+                exit_animation
             else
                 files_to_delete+=("$target_file")
             fi
@@ -42513,13 +41862,13 @@ delete_files() {
     # 报告无效输入
     if [[ ${#invalid_inputs[@]} -gt 0 ]]; then
         log_error "无效输入: ${invalid_inputs[*]}"
-        exit_animation    # 即将退出动画
+        exit_animation
     fi
     
     # 检查是否有可删除的文件
     if [[ ${#files_to_delete[@]} -eq 0 ]]; then
         log_warn "没有可删除的文件"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42539,7 +41888,7 @@ delete_files() {
     
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         log_info "已取消删除操作"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42571,13 +41920,13 @@ rename_file_or_dir() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     # 显示文件列表，2列显示，不显示隐藏文件
     if ! list_files "." 0 4; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查数组是否真的有内容（双重保险）
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42603,7 +41952,7 @@ rename_file_or_dir() {
             log_ok "已选择 [$user_input]: $current_name"
         else
             log_error "无效的序号: $user_input (有效范围: 1-$LIST_FILES_COUNT)"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -42611,7 +41960,7 @@ rename_file_or_dir() {
         current_name="$user_input"
         if [[ ! -e "$current_name" ]]; then
             log_error "文件不存在: $current_name"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         log_ok "已指定文件: $current_name"
@@ -42620,7 +41969,7 @@ rename_file_or_dir() {
     # 验证当前文件
     if [[ ! -e "$current_name" ]]; then
         log_error "无法访问文件: $current_name"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42634,19 +41983,19 @@ rename_file_or_dir() {
     # 验证新文件名
     if [[ -z "$new_name" ]]; then
         log_error "新文件名不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     if [[ -e "$new_name" ]]; then
         log_error "目标文件已存在: $new_name"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     if [[ "$current_name" == "$new_name" ]]; then
         log_warn "新旧文件名相同，无需重命名"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42666,12 +42015,12 @@ rename_file_or_dir() {
                 echo -e "${gl_huang}  $current_name ${gl_bai}-> ${gl_lv}$new_name${gl_bai}"
             else
                 log_error "重命名失败"
-                exit_animation    # 即将退出动画
+                exit_animation
             fi
             ;;
         [Nn]|"")
             log_warn "已取消操作"
-            exit_animation    # 即将退出动画
+            exit_animation
             ;;
         *) handle_y_n ;;        # 无效的输入,请输入(y或N)。
     esac
@@ -42690,13 +42039,13 @@ edit_file_with_nano() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     # 显示文件列表，2列显示，不显示隐藏文件
     if ! list_files "." 0 4; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查数组是否真的有内容（双重保险）
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42718,7 +42067,7 @@ edit_file_with_nano() {
             target_file="${LIST_FILES_ARRAY[$idx]}"
         else
             log_error "序号超出范围: $user_input (有效范围: 1-${LIST_FILES_COUNT})"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -42729,7 +42078,7 @@ edit_file_with_nano() {
     # 检查文件是否存在
     if [[ ! -f "$target_file" ]]; then
         log_error "文件不存在: $target_file"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42753,7 +42102,7 @@ list_directory_sizes() {
     # 检查路径是否存在
     if [ ! -d "$target_path" ]; then
         echo -e "${gl_hong}错误: 路径不存在: ${target_path}${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -42761,7 +42110,7 @@ list_directory_sizes() {
     local original_path="$(pwd)"
     cd "$target_path" || {
         echo -e "${gl_hong}错误: 无法进入目录: ${target_path}${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
 
@@ -42920,7 +42269,7 @@ enter_directory() {
         # 数字序号模式
         if [[ -z "${dirs[@]}" ]]; then
             echo -e "${gl_hong}当前目录没有可用的子目录列表，无法通过序号选择${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -43034,7 +42383,7 @@ modify_directory_permissions() {
         if [[ ! "$perm" =~ ^[0-7]{3,4}$ ]]; then
             echo -e "${gl_hong}错误：权限格式不正确，请输入3-4位数字 (如 755, 644)${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -43057,7 +42406,7 @@ modify_directory_permissions() {
         else
             echo -e "${gl_hong}✗ 修改失败 (可能需要root权限): $target_dir${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
         fi
     fi
     return 0
@@ -43072,7 +42421,7 @@ compress_file_or_directory() {
     
     if [ ! -e "$name" ]; then
         echo -e "${gl_bai}文件/目录 ${gl_lv}'$name' ${gl_bai}不存在"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -43498,7 +42847,7 @@ pve_shutdown_selector() {
         0) cancel_return; return 0 ;;
         '' | *[!0-9]*)
             echo -e "${gl_hong}错误: 请输入有效的数字序号${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
             ;;
         *)
@@ -43545,7 +42894,7 @@ pve_start_selector() {
         instances=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null)
         [ $? -ne 0 ] && {
             echo -e "${gl_hong}错误: 无法获取实例信息，请检查PVE环境${gl_bai}" >&2
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -43573,7 +42922,7 @@ pve_start_selector() {
     show_stopped_instances() {
         [ ${#STOPPED_INSTANCES[@]} -eq 0 ] && {
             echo -e "${gl_huang}没有找到已停止的虚拟机或LXC容器${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -43622,7 +42971,7 @@ pve_start_selector() {
                     echo -e "${gl_lv}虚拟机 $instance_id 启动命令已发送${gl_bai}" ||
                     {
                         echo -e "${gl_hong}启动虚拟机 $instance_id 失败${gl_bai}"
-                        exit_animation    # 即将退出动画
+                        exit_animation
                         return 1
                     }
             else
@@ -43630,14 +42979,14 @@ pve_start_selector() {
                     echo -e "${gl_lv}LXC容器 $instance_id 启动命令已发送${gl_bai}" ||
                     {
                         echo -e "${gl_hong}启动LXC容器 $instance_id 失败${gl_bai}"
-                        exit_animation    # 即将退出动画
+                        exit_animation
                         return 1
                     }
             fi
             ;;
         *)
             echo -e "${gl_huang}操作已取消${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 2
             ;;
         esac
@@ -43700,7 +43049,7 @@ pve_restart_selector() {
         instances=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null)
         [ $? -ne 0 ] && {
             echo -e "${gl_hong}错误: 无法获取实例信息，请检查PVE环境${gl_bai}" >&2
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -43727,7 +43076,7 @@ pve_restart_selector() {
     show_all_instances() {
         [ ${#ALL_INSTANCES[@]} -eq 0 ] && {
             echo -e "${gl_huang}没有找到任何虚拟机或LXC容器${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -43814,7 +43163,7 @@ pve_restart_selector() {
                         echo -e "${gl_lv}虚拟机 $instance_id 重启命令已发送${gl_bai}" ||
                         {
                             echo -e "${gl_hong}重启虚拟机 $instance_id 失败${gl_bai}"
-                            exit_animation    # 即将退出动画
+                            exit_animation
                             return 1
                         }
                 else
@@ -43826,7 +43175,7 @@ pve_restart_selector() {
                             echo -e "${gl_lv}LXC容器 $instance_id 通过停止/启动方式重启成功${gl_bai}" ||
                             {
                                 echo -e "${gl_hong}重启LXC容器 $instance_id 完全失败${gl_bai}"
-                                exit_animation    # 即将退出动画
+                                exit_animation
                                 return 1
                             }
                     }
@@ -43839,7 +43188,7 @@ pve_restart_selector() {
                         echo -e "${gl_lv}虚拟机 $instance_id 启动命令已发送${gl_bai}" ||
                         {
                             echo -e "${gl_hong}启动虚拟机 $instance_id 失败${gl_bai}"
-                            exit_animation    # 即将退出动画
+                            exit_animation
                             return 1
                         }
                 else
@@ -43853,7 +43202,7 @@ pve_restart_selector() {
                             echo -e "${gl_lv}LXC容器 $instance_id 强制启动成功${gl_bai}" ||
                                 {
                                     echo -e "${gl_hong}强制启动也失败了${gl_bai}"
-                                    exit_animation    # 即将退出动画
+                                    exit_animation
                                     return 1
                                 }
                         } || return 1
@@ -44042,7 +43391,7 @@ menu_edit_vm_conf() {
 
         if [[ ! "$VMID" =~ ^[0-9]+$ ]] || ((VMID < 100)); then
             log_error "VMID 必须是 ≥100 的纯数字"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
 
@@ -44051,7 +43400,7 @@ menu_edit_vm_conf() {
             echo -e ""
             log_error "配置文件 $CONF_FILE 不存在"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
 
@@ -44186,7 +43535,7 @@ qm_unlock_vm() {
 
     if [[ ! "$VMID" =~ ^[0-9]+$ ]] || ((VMID < 100)); then
         log_error "VMID 必须是 ≥100 的纯数字"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -44243,7 +43592,7 @@ pve_install_istoreos() {
         mkdir -p "/var/lib/vz/template/iso"
         if [[ $? -ne 0 ]]; then
             log_error "创建目录失败"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -44331,7 +43680,7 @@ pve_install_istoreos() {
         if [[ $available_mb -lt 500 ]]; then
             log_error "磁盘空间不足，需要至少500MB可用空间"
             log_error "当前可用空间: ${available_mb}MB"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -44345,17 +43694,17 @@ pve_install_istoreos() {
                 else
                     log_error "下载的文件大小异常 (仅$((gz_size / 1024 / 1024))MB)，可能下载失败"
                     rm -f "${img_gz_path}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
             else
                 log_error "下载失败，文件未生成"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         else
             log_error "下载命令执行失败"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -44372,17 +43721,17 @@ pve_install_istoreos() {
                     log_info "临时压缩包已清理"
                 else
                     log_error "解压后文件大小异常: 仅$((img_size / 1024 / 1024))MB (应大于100MB)"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
             else
                 log_error "解压失败，未生成img文件"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         else
             log_error "解压过程失败，请检查网络或手动下载固件"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -44395,12 +43744,12 @@ pve_install_istoreos() {
             log_info "固件大小: ${gl_lv}$((final_size / 1024 / 1024))MB${gl_bai}"
         else
             log_error "最终固件大小异常: 仅${gl_huang}$((final_size / 1024 / 1024))MB${gl_bai} (应大于100MB)"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
         log_error "固件文件不存在: ${gl_hong}${img_path}${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -44439,7 +43788,7 @@ pve_install_istoreos() {
     case "$input_name" in
     q | Q)
         log_info "用户选择退出"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
         ;;
     "")
@@ -44459,7 +43808,7 @@ pve_install_istoreos() {
     case "$input_memory" in
     q | Q)
         log_info "用户选择退出"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
         ;;
     "")
@@ -44471,7 +43820,7 @@ pve_install_istoreos() {
         if [[ ! "$input_memory" =~ ^[0-9]+$ ]]; then
             log_error "内存必须是数字"
             handle_invalid_input
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         vm_memory="$input_memory"
@@ -44518,7 +43867,7 @@ pve_install_istoreos() {
         log_ok "虚拟机创建成功"
     else
         log_error "虚拟机创建失败"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -44566,7 +43915,7 @@ pve_install_istoreos() {
         log_info "1. 存储名称是否正确: ${storage_name}"
         log_info "2. 镜像文件路径: ${img_path}"
         log_info "3. 存储是否有足够空间"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -45686,7 +45035,7 @@ pve_check_locks() {
     # 检查是否在PVE环境中
     if [ ! -f /etc/pve/.version ] && ! command -v qm &>/dev/null; then
         log_error "不在Proxmox VE环境中或qm命令未找到"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -45985,7 +45334,7 @@ install_and_pin_kernel() {
     [[ -z $kernel_ver ]] &&
         {
             log_error "内核版本不能为空！"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -45995,7 +45344,7 @@ install_and_pin_kernel() {
     apt install -y "pve-kernel-${kernel_ver}" ||
         {
             log_error "安装失败！"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -46006,7 +45355,7 @@ install_and_pin_kernel() {
     proxmox-boot-tool kernel pin "$kernel_ver" ||
         {
             log_error "固化失败！"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -46188,7 +45537,7 @@ update_initramfs_and_reboot() {
     echo -e "${gl_bai}正在更新 initramfs ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     update-initramfs -u -k all || {
         log_error "update-initramfs 失败！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     log_info "initramfs 更新完成。"
@@ -46199,12 +45548,12 @@ update_initramfs_and_reboot() {
     case "$confirm" in
     [yY])
         log_info "${gl_lv}系统将在 3 秒后重启 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         reboot
         ;;
     *)
         log_info "${gl_huang}已取消重启，请稍后手动执行 'reboot' 生效。${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         ;;
     esac
     break_end
@@ -46248,7 +45597,7 @@ is_pve_system() {
     if [ ! -d "/var/lib/vz/template/iso" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}PVE${gl_hong} 系统！\c"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1   # 检测失败，返回非0
     fi
     return 0       # 检测成功，返回0
@@ -46259,7 +45608,7 @@ is_fnos_system() {
     if [ ! -d "/vol1/1000" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}FnOS${gl_hong} 系统！\c"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1   # 检测失败，返回非0
     fi
     return 0       # 检测成功，返回0
@@ -46281,7 +45630,7 @@ is_istoreos_system() {
     if [ ! -d "/usr/lib/lua/luci/controller" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}iStoreOS${gl_hong} 系统！即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1   # 检测失败，返回非0
     fi
     return 0       # 检测成功，返回0
@@ -46444,11 +45793,11 @@ pve_change_vmid_interactive() {
                 ;;
             [Nn]|"")
                 log_info "操作已取消"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
                 ;;
             *)
-                handle_y_n        # 无效的输入,请输入(y或N)。
+                handle_y_n
                 continue
                 ;;
         esac
@@ -46524,7 +45873,7 @@ pve_change_vmid_interactive() {
             ;;
         [Nn]|"")
             log_info "操作已取消"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
             ;;
         *) handle_y_n; return 1 ;;       # 无效的输入,请重新输入!
@@ -46543,20 +45892,20 @@ pve_change_vmid() {
     # 参数检查
     if [[ -z "$OLD_ID" || -z "$NEW_ID" || -z "$NEW_NAME" ]]; then
         log_error "缺少参数"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     if [[ "$OLD_ID" == "$NEW_ID" ]]; then
         log_error "新旧ID不能相同"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查新ID是否已被使用
     if [[ -f "/etc/pve/qemu-server/${NEW_ID}.conf" ]]; then
         log_error "新ID ${NEW_ID} 已被使用"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -46622,7 +45971,7 @@ pve_change_vmid() {
     log_info "[3/6] 修改配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     if [[ ! -f "/etc/pve/qemu-server/${OLD_ID}.conf" ]]; then
         log_error "配置文件不存在"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -46631,7 +45980,7 @@ pve_change_vmid() {
     
     if [[ ! -f "/etc/pve/qemu-server/${NEW_ID}.conf" ]]; then
         log_error "重命名配置文件失败"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -46647,7 +45996,7 @@ pve_change_vmid() {
         # 检查目标目录是否存在
         if [[ -d "/var/lib/vz/images/${NEW_ID}" ]]; then
             log_error "目标目录 /var/lib/vz/images/${NEW_ID} 已存在"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -46656,7 +46005,7 @@ pve_change_vmid() {
         
         if [[ ! -d "/var/lib/vz/images/${NEW_ID}" ]]; then
             log_error "重命名磁盘目录失败"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -46666,7 +46015,7 @@ pve_change_vmid() {
         log_info "[5/6] 重命名磁盘文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         cd "/var/lib/vz/images/${NEW_ID}" || {
             log_error "无法进入目录 /var/lib/vz/images/${NEW_ID}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
         
@@ -46999,20 +46348,20 @@ lxc_change_ctid() {
     # 参数检查
     if [[ -z "$OLD_ID" || -z "$NEW_ID" || -z "$NEW_HOSTNAME" ]]; then
         log_error "缺少参数"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     if [[ "$OLD_ID" == "$NEW_ID" ]]; then
         log_error "新旧ID不能相同"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查新ID是否已被使用
     if [[ -f "/etc/pve/lxc/${NEW_ID}.conf" ]]; then
         log_error "新ID ${NEW_ID} 已被使用"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -47078,7 +46427,7 @@ lxc_change_ctid() {
     log_info "[3/6] 修改配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     if [[ ! -f "/etc/pve/lxc/${OLD_ID}.conf" ]]; then
         log_error "配置文件不存在"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -47087,7 +46436,7 @@ lxc_change_ctid() {
     
     if [[ ! -f "/etc/pve/lxc/${NEW_ID}.conf" ]]; then
         log_error "重命名配置文件失败"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -47123,7 +46472,7 @@ lxc_change_ctid() {
         log_info "[5/6] 重命名容器文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         cd "/var/lib/vz/images/${NEW_ID}" || {
             log_error "无法进入目录 /var/lib/vz/images/${NEW_ID}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
         
@@ -47359,7 +46708,7 @@ show_compose_project_menu() {
     base_path="$(pwd)" # 使用当前目录作为基础路径
     if [ ! -d "$base_path" ]; then
         echo -e "${gl_huang}错误: 路径 $base_path 不存在${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -47375,7 +46724,7 @@ show_compose_project_menu() {
         local projects
         if ! show_directory_list "$base_path" 4 false true projects; then
             log_info "没有找到Git项目，按任意键返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -47390,7 +46739,7 @@ show_compose_project_menu() {
         # 检查是否要退出
         if [ "$project_choice" = "q" ] || [ "$project_choice" = "quit" ] || [ "$project_choice" = "exit" ]; then
             echo -e "${gl_huang}退出操作${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -47407,14 +46756,14 @@ show_compose_project_menu() {
             # 检查是否为空
             if [ -z "$dir_name" ]; then
                 echo -e "${gl_huang}无效的选择，请重新输入${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue
             fi
             
             # 检查是否包含非法字符（/ 开头或包含 .. 等危险路径）
             if [[ "$dir_name" =~ ^/ ]] || [[ "$dir_name" =~ \.\. ]] || [[ "$dir_name" =~ / ]]; then
                 log_error "目录名不能包含路径分隔符或相对路径符号"
-                exit_animation    # 即将退出动画
+                exit_animation
                 continue
             fi
             
@@ -47457,7 +46806,7 @@ show_compose_project_menu() {
         # 检查目录是否存在并可以进入
         if [ ! -d "$full_path" ]; then
             echo -e "${gl_hong}错误: 目录 '$full_path' 不存在${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -48100,7 +47449,7 @@ git_clone_docker_projects() {
             read -r -rp "$(echo -e "${gl_bai}请输入Git仓库的${gl_bufan}URL${gl_bai}或${gl_bufan}git clone${gl_bai}命令: ")" repoUrl
             if [ -z "$repoUrl" ]; then
                 echo -e "${gl_hong}错误：未输入有效的URL${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
             local cleanUrl=${repoUrl#*git clone }
@@ -48117,7 +47466,7 @@ git_clone_docker_projects() {
                 read -r -rp "$(echo -e "${gl_bufan}是否强制重新克隆? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}) ：")" overwrite
                 if [[ ${overwrite,,} != "y" ]]; then
                     echo -e "${gl_lv}已取消克隆${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return
                 fi
                 rm -rf "$repoName"
@@ -48412,7 +47761,7 @@ install_docker_compose() {
         if [ ! -s "$TEMP_FILE" ]; then
             log_error "下载的文件为空，可能URL无效"
             rm -f "$TEMP_FILE"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -48431,7 +47780,7 @@ install_docker_compose() {
             if [[ ! "$continue_install" =~ ^[Yy]$ ]]; then
                 log_info "安装已取消"
                 rm -f "$TEMP_FILE"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
         fi
@@ -48449,18 +47798,18 @@ install_docker_compose() {
                 log_ok "Docker Compose 安装成功"
             else
                 log_error "Docker Compose 版本检测失败"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         else
             log_error "移动文件失败，可能需要 sudo 权限"
             rm -f "$TEMP_FILE"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
         log_error "下载失败，请检查网络连接或URL地址"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -48557,7 +47906,7 @@ uninstall_docker_compose() {
     if [ "$INSTALLED" = false ]; then
         log_error "系统未安装 Docker Compose"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -48585,7 +47934,7 @@ uninstall_docker_compose() {
     if [[ ! "$confirm_uninstall" =~ ^[Yy]$ ]]; then
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}卸载已取消${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -48897,12 +48246,12 @@ docker_mirror_menu() {
                         sleep_fractional 3
                     else
                         echo -e "${gl_hong}Docker 安装失败，请手动安装后重试${gl_bai}"
-                        exit_animation    # 即将退出动画
+                        exit_animation
                         return
                     fi
                 else
                     echo -e "${gl_huang}已取消安装，返回主菜单${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return
                 fi
             fi
@@ -48910,7 +48259,7 @@ docker_mirror_menu() {
             # 检查 Docker 服务是否运行
             if ! docker info &>/dev/null; then
                 echo -e "${gl_hong}Docker 服务未运行，请先启动 Docker 服务${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
 
@@ -49054,7 +48403,7 @@ enter_compose_dir() {
     # 检查是否为空
     if [[ -z "$COMPOSE_WORK_DIR" ]]; then
         echo -e "${gl_huang}路径不能为空${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -49068,12 +48417,12 @@ enter_compose_dir() {
                 echo -e "${gl_lv}✓ 已创建目录: $COMPOSE_WORK_DIR${gl_bai}"
             else
                 echo -e "${gl_hong}✗ 创建目录失败${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
         else
             echo -e "${gl_huang}已取消${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
     fi
@@ -49224,7 +48573,7 @@ docker_compose_env_tools() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入自定义路径: ")" COMPOSE_WORK_DIR
             else
                 log_error "无效选择"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
         else
@@ -49235,7 +48584,7 @@ docker_compose_env_tools() {
         # 检查是否为空
         if [[ -z "$COMPOSE_WORK_DIR" ]]; then
             log_warn "路径不能为空"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -49249,12 +48598,12 @@ docker_compose_env_tools() {
                     log_ok "已创建目录: $COMPOSE_WORK_DIR"
                 else
                     log_error "创建目录失败"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return
                 fi
             else
                 log_warn "已取消"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
         fi
@@ -49288,7 +48637,7 @@ docker_compose_env_tools() {
 
         if [[ $project_count -eq 0 ]]; then
             log_warn "在 ${COMPOSE_WORK_DIR} 中未找到任何 docker-compose 项目"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -49475,7 +48824,7 @@ EOF
         # 验证备份目录
         [[ ! -d "$BACKUP_DIR" ]] && {
             log_error "${gl_hong}备份目录不存在: ${gl_huang}$BACKUP_DIR${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         }
 
@@ -49552,7 +48901,7 @@ EOF
             done
         else
             log_warn "无备份"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -49597,7 +48946,7 @@ EOF
         # 验证备份目录
         [[ ! -d "$BACKUP_DIR" ]] && {
             log_error "${gl_bai}备份目录不存在: ${gl_hong}$BACKUP_DIR${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -49605,7 +48954,7 @@ EOF
         read -r -e -p "$(echo -e "${gl_bai}目标服务器 IP: ")" TARGET_IP
         [[ -z "$TARGET_IP" ]] && {
             log_error "目标服务器 IP 不能为空"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -49627,7 +48976,7 @@ EOF
         if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
             "${TARGET_USER}@${TARGET_IP}" "whoami" &>/dev/null; then
             log_error "无法连接到目标服务器或认证失败"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -49641,7 +48990,7 @@ EOF
         if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
             "${TARGET_USER}@${TARGET_IP}" "mkdir -p '$target_backup_dir'" 2>/dev/null; then
             log_error "无法在目标服务器创建目录: $target_backup_dir"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -49661,7 +49010,7 @@ EOF
                 log_ok "备用传输方式完成"
             else
                 log_error "所有传输方式均失败"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         fi
@@ -49680,7 +49029,7 @@ EOF
             break_end
         else
             log_error "传输验证失败，备份可能不完整"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     }
@@ -49700,7 +49049,7 @@ EOF
 
             [[ "$sure" != "y" && "$sure" != "Y" ]] && {
                 echo -e "${gl_hong}已取消${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             }
             rm -rf "${BACKUP_ROOT}"/compose_backup_*
@@ -49719,7 +49068,7 @@ EOF
 
         [[ "$sure" != "y" && "$sure" != "Y" ]] && {
             echo -e "${gl_hong}已取消${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         }
         rm -rf "$BACKUP_DIR"
@@ -49748,13 +49097,13 @@ EOF
                         break # 安装成功，跳出循环继续执行
                     else
                         echo -e "${gl_hong}Docker安装失败，请检查！${gl_bai}"
-                        exit_animation    # 即将退出动画
+                        exit_animation
                         return 1 # 或者 exit 1，取决于您的脚本结构
                     fi
                     ;;
                 n | no | "")
                     echo -e "${gl_hong}已取消安装Docker，退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1 # 或者 exit 1，取决于您的脚本结构
                     ;;
                 *)
@@ -49847,7 +49196,7 @@ docker_image_backup_tools() {
         if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
             echo -e "${gl_hong}错误: Docker 未安装或未运行${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -49866,7 +49215,7 @@ docker_image_backup_tools() {
 
         if [[ ${#IMAGES[@]} -eq 0 ]]; then
             log_warn "未找到任何 Docker 镜像"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -49911,7 +49260,7 @@ docker_image_backup_tools() {
 
             if [[ ${#images_to_backup[@]} -eq 0 ]]; then
                 log_warn "未选择任何镜像"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
             echo -e "${gl_zi}已选择 ${gl_huang}${#images_to_backup[@]}${gl_zi} 个镜像${gl_bai}"
@@ -49946,7 +49295,7 @@ echo -e "${gl_zi}>>> 恢复 Docker 镜像 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_b
 # 检查 manifest
 if [[ ! -f "$MANIFEST" ]]; then
     echo -e "${gl_hong}错误: 未找到 manifest.json 文件${gl_bai}"
-    exit_animation    # 即将退出动画
+    exit_animation
     exit 1
 fi
 
@@ -49958,7 +49307,7 @@ echo -e "${gl_bai}发现 ${gl_huang}${IMAGE_COUNT}${gl_bai} 个镜像需要加�
 read -r -e -p "$(echo -e "${gl_bai}是否要加载所有镜像? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo -e "${gl_huang}已取消${gl_bai}"
-    exit_animation    # 即将退出动画
+    exit_animation
     exit 0
 fi
 
@@ -50064,7 +49413,7 @@ EOF
         if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
             echo -e "${gl_hong}错误: Docker 未安装或未运行${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -50148,14 +49497,14 @@ EOF
         # 验证备份目录
         [[ ! -d "$BACKUP_DIR" ]] && {
             log_error "备份目录不存在: $BACKUP_DIR"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
         # 验证 manifest
         if [[ ! -d "$BACKUP_DIR" ]]; then
             log_error "${gl_bai}备份目录不存在: ${gl_hong}$BACKUP_DIR${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -50176,7 +49525,7 @@ EOF
         read -r -e -p "$(echo -e "${gl_bai}目标服务器 IP: ")" TARGET_IP
         [[ -z "$TARGET_IP" ]] && {
             log_error "目标服务器 IP 不能为空"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
 
@@ -50199,7 +49548,7 @@ EOF
         if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
             "${TARGET_USER}@${TARGET_IP}" "whoami" &>/dev/null; then
             log_error "无法连接到目标服务器或认证失败"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -50210,7 +49559,7 @@ EOF
             read -r -e -p "$(echo -e "${gl_bai}是否继续? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" continue_choice
             if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
                 log_info "已取消迁移"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         fi
@@ -50227,7 +49576,7 @@ EOF
         if ! sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
             "${TARGET_USER}@${TARGET_IP}" "mkdir -p '$target_backup_dir'" 2>/dev/null; then
             log_error "${gl_bai}无法在目标服务器创建目录: ${gl_huang}$target_backup_dir${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -50253,7 +49602,7 @@ EOF
                 log_ok "备用传输方式完成"
             else
                 log_error "所有传输方式均失败"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         fi
@@ -50299,7 +49648,7 @@ EOF
         # 检查 Docker
         if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
             echo -e "${gl_hong}错误: Docker 未安装或未运行${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"exit_animation    # 即将退出动画
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"exit_animation
             return 1
         fi
 
@@ -50384,7 +49733,7 @@ EOF
         # 验证备份目录
         [[ ! -d "$BACKUP_DIR" ]] && {
             log_error "${gl_bai}备份目录不存在: ${gl_hong}$BACKUP_DIR${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         }
 
@@ -50400,7 +49749,7 @@ EOF
                 log_info "正在执行自动恢复脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 bash "$RESTORE_SCRIPT"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
         fi
@@ -50416,7 +49765,7 @@ EOF
 
         if [[ ${#image_files[@]} -eq 0 ]]; then
             log_warn "未找到镜像文件 (.tar 或 .tar.gz)"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -50456,7 +49805,7 @@ EOF
 
             if [[ ${#files_to_load[@]} -eq 0 ]]; then
                 log_warn "未选择任何镜像文件"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return
             fi
             ;;
@@ -50674,7 +50023,7 @@ EOF
                 # 导出单个镜像
                 if [[ ${#ALL_IMAGES[@]} -eq 0 ]]; then
                     echo -e "${gl_huang}没有可导出的镜像${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     continue
                 fi
 
@@ -50910,7 +50259,7 @@ EOF
         if [[ ${#backups[@]} -eq 0 ]]; then
             echo -e "${gl_huang}没有找到镜像备份${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -51008,7 +50357,7 @@ stop_all_compose_projects() {
     # 检查Docker是否运行
     if ! docker info &>/dev/null; then
         log_error "Docker 服务未运行"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -51128,7 +50477,7 @@ stop_all_compose_projects() {
             read -r -e -p "$(echo -e "${gl_bai}请输入自定义路径: ")" COMPOSE_WORK_DIR
         else
             log_error "无效选择"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
     else
@@ -51139,14 +50488,14 @@ stop_all_compose_projects() {
     # 检查是否为空
     if [[ -z "$COMPOSE_WORK_DIR" ]]; then
         log_warn "路径不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
     # 检查目录是否存在
     if [[ ! -d "$COMPOSE_WORK_DIR" ]]; then
         log_warn "目录不存在: $COMPOSE_WORK_DIR"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -51158,14 +50507,14 @@ stop_all_compose_projects() {
 
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
     # 切换到工作目录
     if ! cd "$COMPOSE_WORK_DIR" 2>/dev/null; then
         log_error "无法进入目录: $COMPOSE_WORK_DIR"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -51256,7 +50605,7 @@ start_all_compose_projects() {
     # 检查Docker是否运行
     if ! docker info &>/dev/null; then
         log_error "Docker 服务未运行"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -51457,14 +50806,14 @@ start_all_compose_projects() {
     # 检查是否为空
     if [[ -z "$COMPOSE_WORK_DIR" ]]; then
         log_warn "路径不能为空"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
     # 检查目录是否存在
     if [[ ! -d "$COMPOSE_WORK_DIR" ]]; then
         log_warn "目录不存在: $COMPOSE_WORK_DIR"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -51476,14 +50825,14 @@ start_all_compose_projects() {
 
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
     # 切换到工作目录
     if ! cd "$COMPOSE_WORK_DIR" 2>/dev/null; then
         log_error "无法进入目录: $COMPOSE_WORK_DIR"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -51617,7 +50966,7 @@ detect_primary_gpu() {
 
     if [[ ${#gpu_list[@]} -eq 0 ]]; then
         log_warn "未检测到GPU设备"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -51702,7 +51051,7 @@ fnos_check_gpu_info() {
         log_info "安装pciutils工具 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         apt-get install -y pciutils 2>/dev/null || {
             log_error "无法安装pciutils，请手动安装：apt-get install pciutils"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
     fi
@@ -51713,7 +51062,7 @@ fnos_check_gpu_info() {
 
     if [[ -z "$gpu_info" || "$gpu_info" == *"未检测到GPU设备"* ]]; then
         log_error "无法检测GPU信息"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52299,7 +51648,7 @@ fnos_clean_broken_kernels() {
 
     if [ -z "$broken_kernels" ]; then
         log_ok "没有发现错误内核，系统干净"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -52544,7 +51893,7 @@ file_rename_sorter() {
 
     if [[ ${#files[@]} -eq 0 ]]; then
         echo -e "${gl_huang}当前目录中没有找到 ${gl_bai}.${gl_lv}$file_type ${gl_huang}文件"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52553,7 +51902,7 @@ file_rename_sorter() {
     # 创建临时文件夹
     if ! mkdir -p "$temp_folder" 2>/dev/null; then
         log_error "无法创建临时文件夹"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52578,7 +51927,7 @@ file_rename_sorter() {
     if [[ ${#moved_files[@]} -eq 0 ]]; then
         log_warn "没有文件被移动到临时文件夹"
         rm -rf "$temp_folder" 2>/dev/null
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52647,7 +51996,7 @@ rename_original_images_pc() {
 
     if ! mkdir -p "$temp_folder" 2>/dev/null; then
         log_error "无法创建临时文件夹"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52664,7 +52013,7 @@ rename_original_images_pc() {
     if [[ $total_count -eq 0 ]]; then
         log_warn "当前目录中没有找到图片文件"
         rm -rf "$temp_folder" 2>/dev/null
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52687,7 +52036,7 @@ rename_original_images_pc() {
     if [[ $moved_count -eq 0 ]]; then
         log_warn "没有文件被成功移动"
         rm -rf "$temp_folder" 2>/dev/null
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52715,7 +52064,7 @@ rename_original_images_pc() {
     if [[ ${#sorted_files[@]} -eq 0 ]]; then
         log_error "无法获取临时文件夹中的文件列表"
         rm -rf "$temp_folder" 2>/dev/null
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52846,7 +52195,7 @@ rename_original_images_phone() {
 
     if ! mkdir -p "$temp_folder" 2>/dev/null; then
         log_error "无法创建临时文件夹"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52863,7 +52212,7 @@ rename_original_images_phone() {
     if [[ $total_count -eq 0 ]]; then
         log_warn "当前目录中没有找到图片文件"
         rm -rf "$temp_folder" 2>/dev/null
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52885,7 +52234,7 @@ rename_original_images_phone() {
     if [[ $moved_count -eq 0 ]]; then
         log_warn "没有文件被成功移动"
         rm -rf "$temp_folder" 2>/dev/null
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -52920,7 +52269,7 @@ rename_original_images_phone() {
     if [[ ${#sorted_files[@]} -eq 0 ]]; then
         log_error "无法获取临时文件夹中的文件列表"
         rm -rf "$temp_folder" 2>/dev/null
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -53456,7 +52805,7 @@ wallpaper_pc_organizer_ffmpeg() {
 
         if [[ $total -eq 0 ]]; then
             log_error "没有找到可处理的图片文件"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -53708,7 +53057,7 @@ wallpaper_phone_organizer_ffmpeg() {
         log_ok "手机壁纸整理完成"
     else
         log_error "手机壁纸整理失败，脚本终止"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -53729,7 +53078,7 @@ wallpaper_phone_organizer_ffmpeg() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     if ! wallpaper_phone_confirm_action "是否继续执行后续步骤" "n"; then
         log_info "脚本已退出。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -53799,7 +53148,7 @@ wallpaper_pc_organizer_python() {
             return 0
         else
             log_error "$err_msg"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     }
@@ -53816,7 +53165,7 @@ wallpaper_pc_organizer_python() {
             echo -e "${gl_bai}待整理目录：${gl_huang}${PHOTOS_DIR}${gl_bai}"
             log_error "未找到 .jpg、.jpeg、.png、.webp 壁纸文件，脚本终止。"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
         fi
 
         log_info "找到 ${#files[@]} 个图片文件"
@@ -53847,7 +53196,7 @@ wallpaper_pc_organizer_python() {
             log_info "备份目录: ${BACKUP_DIR}"
         else
             log_error "备份过程中出现错误"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     }
@@ -53864,7 +53213,7 @@ wallpaper_pc_organizer_python() {
             return 0
         else
             log_error "${GITEE_SCRIPT_BASE_URL}/${script_name} 执行失败"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     }
@@ -53887,13 +53236,13 @@ wallpaper_pc_organizer_python() {
         # 检查Python脚本是否存在
         if [[ ! -f "$CLASSIFY_SCRIPT" ]]; then
             log_error "Python分类脚本不存在: $CLASSIFY_SCRIPT"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
         # 进入目录
         if ! wallpaper_pc_check_and_cd "$SCRIPT_DIR" "无法进入目录: $SCRIPT_DIR"; then
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -53910,7 +53259,7 @@ wallpaper_pc_organizer_python() {
 
         if [[ $file_count -eq 0 ]]; then
             log_error "没有找到图片文件"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -53941,7 +53290,7 @@ wallpaper_pc_organizer_python() {
             return 0
         else
             log_error "Python分类失败: classify.py"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     }
@@ -53960,7 +53309,7 @@ wallpaper_pc_organizer_python() {
         log_ok "壁纸整理完成"
     else
         log_error "壁纸整理失败，脚本终止"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -53981,7 +53330,7 @@ wallpaper_pc_organizer_python() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     if ! wallpaper_pc_confirm_action "是否继续执行后续步骤" "n"; then
         log_info "脚本已退出。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -54051,7 +53400,7 @@ wallpaper_phone_organizer_python() {
             return 0
         else
             log_error "$err_msg"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     }
@@ -54068,7 +53417,7 @@ wallpaper_phone_organizer_python() {
             echo -e "${gl_bai}待整理目录：${gl_huang}${PHOTOS_DIR}${gl_bai}"
             log_error "未找到 .jpg、.jpeg、.png、.webp 壁纸文件，脚本终止。"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
         fi
 
         log_info "找到 ${#files[@]} 个图片文件"
@@ -54099,7 +53448,7 @@ wallpaper_phone_organizer_python() {
             log_info "备份目录: ${BACKUP_DIR}"
         else
             log_error "备份过程中出现错误"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     }
@@ -54122,13 +53471,13 @@ wallpaper_phone_organizer_python() {
         # 检查Python脚本是否存在
         if [[ ! -f "$CLASSIFY_SCRIPT" ]]; then
             log_error "Python分类脚本不存在: $CLASSIFY_SCRIPT"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
         # 进入目录
         if ! wallpaper_phone_check_and_cd "$SCRIPT_DIR" "无法进入目录: $SCRIPT_DIR"; then
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -54145,7 +53494,7 @@ wallpaper_phone_organizer_python() {
 
         if [[ $file_count -eq 0 ]]; then
             log_error "没有找到图片文件"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -54194,7 +53543,7 @@ wallpaper_phone_organizer_python() {
         log_ok "手机壁纸整理完成"
     else
         log_error "手机壁纸整理失败，脚本终止"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -54215,7 +53564,7 @@ wallpaper_phone_organizer_python() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     if ! wallpaper_phone_confirm_action "是否继续执行后续步骤" "n"; then
         log_info "脚本已退出。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     fi
 
@@ -54452,7 +53801,7 @@ check_and_install_docker() {
                     break # 安装成功，跳出循环继续执行
                 else
                     echo -e "${gl_hong}Docker安装失败，请检查！${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1 # 安装失败，返回1
                 fi
                 ;;
@@ -54470,7 +53819,7 @@ check_and_install_docker() {
     # 检查 Docker 服务是否运行
     if ! docker info &>/dev/null; then
         echo -e "${gl_hong}Docker${gl_bai} 服务未运行，请先启动 ${gl_hong}Docker${gl_bai} 服务${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -54736,13 +54085,13 @@ clone_docker_repo() {
                     echo -e "${gl_lv}目录创建成功: $work_dir${gl_bai}"
                 else
                     echo -e "${gl_hong}目录创建失败: $work_dir${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
                 ;;
             *)
                 echo -e "${gl_hong}已取消操作${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
                 ;;
         esac
@@ -54751,7 +54100,7 @@ clone_docker_repo() {
     # 切换到工作目录
     cd "$work_dir" || {
         echo -e "${gl_hong}无法切换到目录: $work_dir${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     # 执行克隆
@@ -54793,14 +54142,14 @@ docker_compose_manager() {
     if ! docker info &>/dev/null; then
         echo -e "${gl_hong}Docker${gl_bai} 服务未运行，请先启动 ${gl_huang}Docker${gl_bai} 服务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
     # 检查 目录是否存在
     if [[ ! -d /vol1/1000/compose && ! -d /mnt/compose && ! -d /compose ]]; then
         log_error "${gl_bai} 目录 ${gl_huang}/vol1/1000/compose${gl_bai} 与 ${gl_huang}/mnt/compose${gl_bai} 与 ${gl_huang}/compose${gl_bai} 均不存在。"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -54880,7 +54229,7 @@ download_and_extract() {
 
     [[ -z "$url" ]] && { 
         echo -e "${gl_huang}URL为空，已取消操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     
@@ -54895,7 +54244,7 @@ download_and_extract() {
     if [[ $download_result -ne 0 ]]; then
         echo -e "${gl_hong}下载失败！${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -54911,13 +54260,13 @@ download_and_extract() {
     
     if ! list_files "." 0 4; then
         echo -e "${gl_lv}即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
         echo -e "${gl_lv}即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -54930,12 +54279,12 @@ download_and_extract() {
     
     [[ -z "$user_input" ]] && { 
         echo -e "${gl_huang}已取消操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     }
     [[ "$user_input" == "0" ]] && { 
         echo -e "${gl_huang}跳过解压${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     }
     
@@ -54948,7 +54297,7 @@ download_and_extract() {
             target_file="${LIST_FILES_ARRAY[$idx]}"
         else
             log_error "序号超出范围: $user_input (有效范围: 1-${LIST_FILES_COUNT})"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -54959,7 +54308,7 @@ download_and_extract() {
     # 检查文件是否存在
     if [[ ! -f "$target_file" ]]; then
         log_error "文件不存在或不是普通文件: $target_file"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -54974,12 +54323,12 @@ download_and_extract() {
         if [[ "$create_dir" =~ ^[Yy]$ ]]; then
             mkdir -p "$output_dir" && echo -e "${gl_lv}目录创建成功${gl_bai}" || {
                 echo -e "${gl_hong}目录创建失败${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             }
         else
             echo -e "${gl_huang}已取消解压${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 0
         fi
     fi
@@ -55023,19 +54372,19 @@ auto_download_extract() {
         curl -# -L -o "$filepath" "$url" 2>&1 || {
             echo -e "${gl_hong}下载失败: $url${gl_bai}" >&2
             rm -f "$filepath" 2>/dev/null
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
     else
         echo -e "${gl_hong}错误：未找到 wget 或 curl${gl_bai}" >&2
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查文件是否下载成功
     [[ ! -f "$filepath" ]] && {
         echo -e "${gl_hong}错误：文件下载后不存在${gl_bai}" >&2
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     
@@ -55048,7 +54397,7 @@ auto_download_extract() {
     if [[ "$output_dir" != "." ]] && [[ ! -d "$output_dir" ]]; then
         mkdir -p "$output_dir" || {
             echo -e "${gl_hong}创建目录失败: $output_dir${gl_bai}" >&2
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
     fi
@@ -55132,7 +54481,7 @@ auto_download_extract() {
         
     else
         echo -e "${gl_huang}未知格式，仅下载不解压: $filename${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         result=0
     fi
     
@@ -55146,7 +54495,7 @@ auto_download_extract() {
         return 0
     else
         echo -e "${gl_hong}解压失败: $filename (退出码: $result)${gl_bai}" >&2
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 }
@@ -55187,7 +54536,7 @@ download_docker_repo() {
                     echo -e "${gl_lv}目录创建成功: $work_dir${gl_bai}"
                 else
                     echo -e "${gl_hong}目录创建失败: $work_dir${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
                 ;;
@@ -55198,7 +54547,7 @@ download_docker_repo() {
     # 切换到工作目录
     cd "$work_dir" || {
         echo -e "${gl_hong}无法切换到目录: $work_dir${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     # 执行下载
@@ -55508,7 +54857,7 @@ backup_compose_project() {
     # 确保目标目录存在
     mkdir -p "$BACKUP_DEST_DIR" || {
         echo -e "${gl_hong}错误：无法创建目标目录 $BACKUP_DEST_DIR${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
 
@@ -55556,7 +54905,7 @@ backup_compose_project() {
         if ((${#list[@]} == 0)); then
             echo -e "${gl_huang}当前目录无可压缩的文件/目录${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         
@@ -55610,7 +54959,7 @@ backup_compose_project() {
 
         [[ -e "$target" ]] || {
             echo -e "${gl_hong}错误：'$target' 不存在！${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         }
 
@@ -55824,7 +55173,7 @@ git_project_manager() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_error "路径 $base_path 不存在"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -55840,7 +55189,7 @@ git_project_manager() {
         local projects
         if ! show_directory_list "$base_path" 4 false true projects; then
             log_info "没有找到Git项目 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -56301,12 +55650,12 @@ cert_check() {
     local cert=${1:-}
     [[ -z $cert ]] && {
         log_error "用法：cert_check <证书文件路径>"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     [[ ! -f $cert ]] && {
         log_error "文件 $cert 不存在！"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 2
     }
 
@@ -56356,7 +55705,7 @@ ngx_log_auto_perm() {
     [[ -z "$NG_USER" || "$NG_USER" == "n/a" ]] && NG_USER=$(ps -eo user,comm | awk '$2=="nginx" && $1!="root"{print $1; exit}')
     [[ -z "$NG_USER" ]] && {
         log_error "无法识别 Nginx 运行用户"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     log_ok "Nginx 运行用户：$NG_USER"
@@ -56386,7 +55735,7 @@ ngx_log_auto_perm() {
     rm -f "$tmp"
     ((${#LOGS[@]} == 0)) && {
         log_warn "未发现任何日志路径"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 0
     }
     log_ok "共发现 ${#LOGS[@]} 条日志"
@@ -56419,7 +55768,7 @@ extract_nginx_links_simple() {
 
     if [[ ! -d "$conf_dir" ]]; then
         echo "错误: 目录 '$conf_dir' 不存在"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     clear
@@ -56558,7 +55907,7 @@ switch_gateway() {
     253) gateway=10.10.10.253 ;;
     *)
         echo "无效网关" >&2
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
         ;;
     esac
@@ -56646,7 +55995,7 @@ check_nginx_installed() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bai}Nginx状态：${gl_hong}未安装${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     return 0
@@ -56901,7 +56250,7 @@ uninstall_nginx() {
         echo -e ""
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_warn "Nginx 未安装，无需卸载"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     echo -e ""
@@ -56911,7 +56260,7 @@ uninstall_nginx() {
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     clear
@@ -57494,7 +56843,7 @@ push_all_repos() {
 
     cd "$start_dir" || {
         log_error "无法进入目录：$start_dir"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
 
@@ -57608,7 +56957,7 @@ configure_git_ssh() {
     else
         log_error "添加到安全目录失败。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -57618,7 +56967,7 @@ configure_git_ssh() {
     if ! git rev-parse --git-dir >/dev/null 2>&1; then
         log_error "当前目录不是一个 Git 仓库。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -57630,7 +56979,7 @@ configure_git_ssh() {
     if [[ -z "$remote_info" ]]; then
         log_error "当前 Git 仓库没有配置远程仓库。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -57690,7 +57039,7 @@ configure_git_https() {
     else
         log_error "添加到安全目录失败。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -57700,7 +57049,7 @@ configure_git_https() {
     if ! git rev-parse --git-dir >/dev/null 2>&1; then
         log_error "当前目录不是一个 Git 仓库。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -57712,7 +57061,7 @@ configure_git_https() {
     if [[ -z "$remote_info" ]]; then
         log_error "当前 Git 仓库没有配置远程仓库。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -58199,7 +57548,7 @@ clone_compose_repositories() {
 
     cd "$work_dir" || {
         echo -e "${gl_hong}无法切换到目录: $work_dir${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     git_clone_docker_projects
@@ -58210,7 +57559,7 @@ uninstall_git() {
     if ! command -v git &>/dev/null; then
         echo -e ""
         log_warn "Git 未安装，无需卸载"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 
@@ -58220,7 +57569,7 @@ uninstall_git() {
     read -r -e -p "$(echo -e "${gl_bai}确定要卸载 Git 吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")"
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation    # 即将退出动画 
+        exit_animation 
         return 1
     fi
 
@@ -58997,7 +58346,7 @@ auto_setup_trash() {
             log_ok "回收站初始化成功"
         else
             log_error "回收站初始化失败"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
@@ -59051,7 +58400,7 @@ auto_setup_trash() {
         return 0
     else
         echo -e "${gl_hong}rm${gl_bai}重定向配置失败"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 }
@@ -59204,7 +58553,7 @@ enable_trash() {
         fi
     fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    exit_animation    # 即将退出动画
+    exit_animation
     return 1
 }
 
@@ -59225,7 +58574,7 @@ disable_trash() {
 
     echo
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    exit_animation    # 即将退出动画
+    exit_animation
     return 1
 }
 
@@ -59237,7 +58586,7 @@ empty_trash() {
 
     if [[ -z "$TRASH_CMD" ]]; then
         echo -e "${gl_hong}回收站未启用${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -59262,7 +58611,7 @@ empty_trash() {
     fi
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    exit_animation    # 即将退出动画
+    exit_animation
     return 1
 }
 
@@ -59274,7 +58623,7 @@ restore_trash_interactive() {
 
     if [[ -z "$TRASH_CMD" ]]; then
         echo -e "${gl_hong}回收站未启用${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -59291,7 +58640,7 @@ restore_trash_interactive() {
 
     if [[ $item_count -eq 0 ]]; then
         echo -e "${gl_huang}回收站为空，没有文件可恢复${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -59351,7 +58700,7 @@ restore_trash_interactive() {
 
     ((${#to_restore[@]} == 0)) && {
         echo -e "${gl_huang}没有选择有效的文件序号，取消恢复${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     }
 
@@ -59418,7 +58767,7 @@ restore_single_file() {
 
         if [[ -z "$filename" ]]; then
             echo -e "${gl_hong}无法找到文件: 序号 $index${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -59443,12 +58792,12 @@ restore_single_file() {
                 return 0
             else
                 echo -e "${gl_hong}✗ 恢复失败: $filename${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         else
             echo -e "${gl_hong}✗ 文件信息不完整: $filename${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
@@ -59460,12 +58809,12 @@ restore_single_file() {
             return $?
         else
             echo -e "${gl_hong}trash-restore 命令不可用${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     else
         echo -e "${gl_hong}不支持的回收站工具${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
 }
@@ -59485,7 +58834,7 @@ refresh_trash() {
         echo -e "${gl_hong}回收站功能不可用${gl_bai}"
     fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    exit_animation    # 即将退出动画
+    exit_animation
     return 1
 }
 
@@ -59497,7 +58846,7 @@ test_trash_function() {
 
     if [[ -z "$TRASH_CMD" ]]; then
         echo -e "${gl_hong}回收站未启用${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -59548,7 +58897,7 @@ setup_rm_redirect() {
 
     if [[ -z "$TRASH_CMD" ]]; then
         echo -e "${gl_hong}回收站未启用，请先启用回收站${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -59656,7 +59005,7 @@ remove_rm_redirect() {
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             echo -e "${gl_huang}已取消操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
 
@@ -59783,7 +59132,7 @@ uninstall_trash_tool() {
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -59794,7 +59143,7 @@ uninstall_trash_tool() {
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
     fi
@@ -59926,7 +59275,7 @@ one_click_auto_setup() {
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消自动配置${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return
     fi
 
@@ -60143,13 +59492,13 @@ interactive_delete() {
 
         # 新代码：调用 list_files
         if ! list_files "." 0 4; then
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
 
         # 检查数组是否为空
         if [[ ${#LIST_FILES_ARRAY[@]} -eq 0 ]] || [[ "$LIST_FILES_COUNT" -eq 0 ]]; then
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         local list=("${LIST_FILES_ARRAY[@]}")
@@ -60266,7 +59615,7 @@ interactive_delete() {
         done
         ((${#to_del[@]} == 0)) && {
             echo -e "${gl_huang}没有有效的文件可删除${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         }
 
@@ -60289,7 +59638,7 @@ interactive_delete() {
 
         [[ $confirm_response =~ ^[Yy]$ ]] || {
             echo -e "${gl_huang}操作已取消${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         }
 
@@ -60340,7 +59689,7 @@ extract_file() {
 
     [[ -f "$archive" ]] || {
         echo -e "${gl_hong}错误：'$archive' 不存在！${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
 
@@ -60359,7 +59708,7 @@ extract_file() {
         fi
         command -v unzip &>/dev/null || {
             echo -e "${gl_hong}错误：unzip 命令未安装！${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
         ;;
@@ -60367,7 +59716,7 @@ extract_file() {
         cmd=("7z" "x" "-y")
         command -v 7z &>/dev/null || {
             echo -e "${gl_hong}错误：7z 命令未安装！${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         }
         ;;
@@ -60380,7 +59729,7 @@ extract_file() {
             cmd=("rar" "x" "-inul")
         else
             echo -e "${gl_hong}错误：unrar 或 rar 命令未安装！${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         ;;
@@ -60391,7 +59740,7 @@ extract_file() {
                 safe_read "$(echo -e "${gl_bai}解压.img.gz文件将覆盖 $target_file，是否继续？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm "any"
                 [[ $confirm =~ ^[Yy]$ ]] || {
                     echo -e "${gl_huang}已取消${gl_bai}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 0
                 }
             }
@@ -60401,7 +59750,7 @@ extract_file() {
     # 移除 *.xz
     *)
         echo -e "${gl_hong}不支持的压缩格式：$archive${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
         ;;
     esac
@@ -60452,7 +59801,7 @@ extract_file() {
         if [[ "$output_dir" != "." ]] && [[ "$output_dir" != "$PWD" ]]; then
             cd "$output_dir" || {
                 echo -e "${gl_hong}无法进入目录: $output_dir${gl_bai}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             }
         fi
@@ -60713,7 +60062,7 @@ interactive_compress() {
 
         if ((${#list[@]} == 0)); then
             echo -e "${gl_huang}当前目录无可压缩的文件/目录${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return
         fi
         
@@ -61553,7 +60902,7 @@ download_file() {
         # 新增：检查链接是否以http或https开头
         if [[ ! "$url" =~ ^https?:// ]]; then
             echo -e "${gl_hong}错误：链接必须以http://或https://开头！${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             continue
         fi
 
@@ -62156,7 +61505,7 @@ istoreos_install_custom() {
     
     if [ -z "$tool_name" ]; then
         log_error "未输入工具名"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -62179,7 +61528,7 @@ istoreos_install_often() {
     read -r -e -p "$(echo -e "${gl_bai}确定要安装常用工具吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")"
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     # 安装工具
@@ -62216,7 +61565,7 @@ istoreos_search_custom() {
     
     if [ -z "$tool_name" ]; then
         log_error "未输入工具名"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -62242,7 +61591,7 @@ istoreos_remove_custom() {
     
     if [ -z "$tool_name" ]; then
         log_error "未输入工具名"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -62530,7 +61879,7 @@ wukongdaily_backup_system() {
     mkdir -p "$backup_path" 2>/dev/null
     if [ $? -ne 0 ]; then
         log_error "无法创建目录 '${gl_huang}${backup_path}${gl_hong}'，请检查权限或路径是否正确 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -62544,21 +61893,21 @@ wukongdaily_backup_system() {
     
     if [ $? -ne 0 ]; then
         log_error "无法创建备份子目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 进入备份目录
     cd "$full_path" || {
         log_error "无法进入目录: ${gl_huang}${full_path}${gl_hong} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     
     # 检查源目录是否存在
     if [ ! -d "/overlay" ]; then
         log_error "源目录 /overlay 不存在 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -62621,7 +61970,7 @@ wukongdaily_restore_system() {
                 
                 if [ ${#restore_list[@]} -eq 0 ]; then
                     log_error "在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong} 中未找到备份文件"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
                 
@@ -62632,12 +61981,12 @@ wukongdaily_restore_system() {
                     log_info "使用序号选择的备份文件: ${gl_huang}${file_path}${gl_bai}"
                 else
                     log_error "无效的序号 ${gl_huang}${param}${gl_hong}，可用范围: 1-${#restore_list[@]}"
-                    exit_animation    # 即将退出动画
+                    exit_animation
                     return 1
                 fi
             else
                 log_error "备份目录不存在: ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         else
@@ -62703,7 +62052,7 @@ wukongdaily_restore_system() {
                     
                     if [ -z "$user_input" ]; then
                         log_error "请输入序号或路径"
-                        exit_animation    # 即将退出动画
+                        exit_animation
                         continue
                     fi
                     
@@ -62724,7 +62073,7 @@ wukongdaily_restore_system() {
                         # 检查路径是否存在
                         if [ ! -f "$file_path" ]; then
                             log_error "文件不存在: ${gl_huang}${file_path}${gl_hong}"
-                            exit_animation    # 即将退出动画
+                            exit_animation
                             continue
                         fi
                         
@@ -62756,7 +62105,7 @@ wukongdaily_restore_system() {
     if [ ! -f "$file_path" ]; then
         log_error "备份文件不存在: ${gl_huang}${file_path}${gl_hong}"
         log_error "请确保文件路径正确并重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -62831,7 +62180,7 @@ wukongdaily_restore_system() {
                 esac
             else
                 log_error "恢复失败，请检查备份文件是否完整"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
             ;;
@@ -62875,7 +62224,7 @@ wukongdaily_manage_backup_files() {
     # 检查目录是否存在
     if [ ! -d "$backup_dir" ]; then
         log_error "备份目录不存在: ${gl_huang}${backup_dir}${gl_hong}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -62887,7 +62236,7 @@ wukongdaily_manage_backup_files() {
         if [ ${#backup_list[@]} -eq 0 ]; then
             log_error "未找到备份文件"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -63060,13 +62409,13 @@ wukongdaily_restore_from_url() {
             curl -L -o "$download_path" "$backup_url"
         else
             log_error "未找到wget或curl，请先安装其中任意一个下载工具"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
         if [ $? -ne 0 ]; then
             log_error "下载失败，请检查URL和网络连接"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -63078,20 +62427,20 @@ wukongdaily_restore_from_url() {
         log_info "使用本地文件: ${gl_huang}${download_path}${gl_bai}"
     else
         log_error "不是有效的URL或文件不存在: ${gl_huang}${backup_url}${gl_hong}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查下载的文件
     if [ ! -f "$download_path" ]; then
         log_error "备份文件不存在: ${gl_huang}${download_path}${gl_hong}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     if [ ! -s "$download_path" ]; then
         log_error "备份文件为空或损坏 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -63288,7 +62637,7 @@ istoreos_backup_system() {
     mkdir -p "$backup_path" 2>/dev/null
     if [ $? -ne 0 ]; then
         log_error "无法创建目录 '${gl_huang}${backup_path}${gl_hong}'，请检查权限或路径是否正确 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -63302,21 +62651,21 @@ istoreos_backup_system() {
     
     if [ $? -ne 0 ]; then
         log_error "无法创建备份子目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 进入备份目录
     cd "$full_path" || {
         log_error "无法进入目录: ${gl_huang}${full_path}${gl_hong} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     }
     
     # 检查 sysupgrade 命令是否可用
     if ! command -v sysupgrade >/dev/null 2>&1; then
         log_error "sysupgrade 命令不可用，请检查系统 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -63446,7 +62795,7 @@ istoreos_restore_system() {
                 fi
             else
                 log_error "备份目录不存在: ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong}"
-                exit_animation    # 即将退出动画
+                exit_animation
                 return 1
             fi
         else
@@ -63512,7 +62861,7 @@ istoreos_restore_system() {
                     
                     if [ -z "$user_input" ]; then
                         log_error "请输入序号或路径"
-                        exit_animation    # 即将退出动画
+                        exit_animation
                         continue
                     fi
                     
@@ -63533,12 +62882,12 @@ istoreos_restore_system() {
                         # 检查路径是否存在
                         if [ ! -f "$file_path" ]; then
                             log_error "文件不存在: ${gl_huang}${file_path}${gl_hong}"
-                            exit_animation    # 即将退出动画
+                            exit_animation
                             continue
                         fi
                         
                         log_info "使用手动输入的路径: ${gl_huang}${file_path}${gl_bai}"
-                        exit_animation    # 即将退出动画
+                        exit_animation
                         break
                     fi
                 done
@@ -63566,7 +62915,7 @@ istoreos_restore_system() {
     if [ ! -f "$file_path" ]; then
         log_error "备份文件不存在: ${gl_huang}${file_path}${gl_hong}"
         log_error "请确保文件路径正确并重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -63574,7 +62923,7 @@ istoreos_restore_system() {
     if [ ! -s "$file_path" ]; then
         log_error "备份文件为空或损坏: ${gl_huang}${file_path} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         log_error "请检查文件是否完整并重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -63584,7 +62933,7 @@ istoreos_restore_system() {
         echo -e "${gl_hui}此备份可能无法通过 sysupgrade 正确恢复${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}是否继续? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" continue_restore
         if [[ ! "$continue_restore" =~ ^[Yy]$ ]]; then
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
     fi
@@ -63731,7 +63080,7 @@ istoreos_manage_backup_files() {
     # 检查目录是否存在
     if [ ! -d "$backup_dir" ]; then
         log_error "备份目录不存在: ${gl_huang}${backup_dir}${gl_hong}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -63743,7 +63092,7 @@ istoreos_manage_backup_files() {
         if [ ${#backup_list[@]} -eq 0 ]; then
             log_error "未找到备份文件"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -63962,13 +63311,13 @@ istoreos_restore_from_url() {
             curl -L -o "$download_path" "$backup_url"
         else
             log_error "未找到wget或curl，请先安装其中任意一个下载工具"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
         if [ $? -ne 0 ]; then
             log_error "下载失败，请检查URL和网络连接"
-            exit_animation    # 即将退出动画
+            exit_animation
             return 1
         fi
         
@@ -63980,21 +63329,21 @@ istoreos_restore_from_url() {
         log_info "使用本地文件: ${gl_huang}${download_path}${gl_bai}"
     else
         log_error "不是有效的URL或文件不存在: ${gl_huang}${backup_url}${gl_hong}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     # 检查下载的文件
     if [ ! -f "$download_path" ]; then
         log_error "备份文件不存在: ${gl_huang}${download_path}${gl_hong}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
     if [ ! -s "$download_path" ]; then
         log_error "备份文件为空或损坏 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         log_error "请检查文件是否完整并重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        exit_animation    # 即将退出动画
+        exit_animation
         return 1
     fi
     
@@ -64231,7 +63580,7 @@ istoreos_system_update() {
         local current_dir="$(pwd)"
         cd "$download_path" || {
             echo -e "${gl_hong}错误: 无法进入下载路径 ${download_path}${gl_bai}"
-            exit_animation    # 即将退出动画
+            exit_animation
             cd "$current_dir"
             break
         }
