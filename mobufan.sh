@@ -44231,10 +44231,10 @@ show_compose_commands_menu() {
         echo -e "${gl_bufan}13. ${gl_bai}查看${container_color}$current_dir_name${gl_bai}资源占用  ${gl_bufan}14. ${gl_bai}拉取${container_color}$current_dir_name${gl_bai}镜像文件"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}23. ${gl_bai}开放${container_color}$current_dir_name${gl_bai}访问端口  ${gl_bufan}24. ${gl_bai}重构${container_color}$current_dir_name${gl_bai}后并启动"
-        echo -e "${gl_bufan}25. ${gl_bai}进入${container_color}$MAIN_SERVICE${gl_bai}服务终端  ${gl_bufan}26. ${gl_bai}修改${container_color}$MAIN_SERVICE${gl_bai}重启策略"
+        echo -e "${gl_bufan}25. ${gl_bai}进入${container_color}$current_dir_name${gl_bai}服务终端  ${gl_bufan}26. ${gl_bai}修改${container_color}$current_dir_name${gl_bai}重启策略"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}88. ${gl_huang}停止${container_color}$current_dir_name${gl_huang}后并清理${gl_bai}  ${gl_hong}99. ${gl_hong}停止${container_color}$current_dir_name${gl_hong}彻底清理${gl_bai}"
-        echo -e "${gl_huang}0.  ${gl_bai}返回${container_color}$MAIN_SERVICE${gl_bai}上级      ${gl_hong}00. ${gl_bai}退出${container_color}$MAIN_SERVICE${gl_bai}脚本"
+        echo -e "${gl_huang}0.  ${gl_bai}返回${container_color}$current_dir_name${gl_bai}上级      ${gl_hong}00. ${gl_bai}退出${container_color}$current_dir_name${gl_bai}脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         if ! safe_read "请输入你的选择" cmd_choice "number" "" 0 99; then
