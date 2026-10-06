@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.6.6"
+sh_v="1.6.7"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -44009,7 +44009,7 @@ linux_pve_menu() {
         3)  pve_restart_selector ;;                                             # 交互重启虚拟机
         4)  pve_instance_management ;;                                          # 手动管理虚拟机
         5)  show_kernel_version || continue ;;                                  # 查看内核版本
-        6)  show_pve_kernel 7.0 ;;                                         # 查看可用内核
+        6)  show_pve_kernel 7.0 ;;                                              # 查看可用内核
         7)  install_and_pin_kernel || continue ;;                               # 安装内核并固化
         8)  reboot_for_new_kernel || continue ;;                                # 重启应用新内核
         9)  modify_grub_params || continue ;;                                   # 修改GRUB引导参数
@@ -44046,7 +44046,7 @@ linux_pve_menu() {
 # 函数：子菜单 Compose容器管理
 show_compose_project_menu() {
     local base_path
-    base_path="$(pwd)" # 使用当前目录作为基础路径
+    base_path="$(pwd)"
     if [ ! -d "$base_path" ]; then
         echo -e "${gl_huang}错误: 路径 $base_path 不存在${gl_bai}"
         exit_animation
@@ -44062,7 +44062,7 @@ show_compose_project_menu() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         local projects
-        if ! show_directory_list "$base_path" 4 false true projects; then
+        if ! show_directory_list "$base_path" 2 false true projects; then
             log_info "没有找到Git项目，按任意键返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             exit_animation
             return 1
@@ -44220,21 +44220,21 @@ show_compose_commands_menu() {
         container_color=$(check_container_status "$current_dir_name")
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}1.  ${gl_bai}启动${container_color}$current_dir_name${gl_bai}服务      ${gl_bufan}2.  ${gl_bai}停止${container_color}$current_dir_name${gl_bai}服务"
+        echo -e "${gl_bufan}1.  ${gl_bai}停止${container_color}$current_dir_name${gl_bai}服务      ${gl_bufan}2.  ${gl_bai}启动${container_color}$current_dir_name${gl_bai}服务"
         echo -e "${gl_bufan}3.  ${gl_bai}重启${container_color}$current_dir_name${gl_bai}服务      ${gl_bufan}4.  ${gl_bai}更新${container_color}$current_dir_name${gl_bai}容器"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}5.  ${gl_bai}查看${container_color}$current_dir_name${gl_bai}配置      ${gl_bufan}6.  ${gl_bai}编辑${container_color}$current_dir_name${gl_bai}配置"
-        echo -e "${gl_bufan}7.  ${container_color}$current_dir_name${gl_bai}服务状态      ${gl_bufan}8.  ${container_color}$current_dir_name${gl_bai}服务日志"
-        echo -e "${gl_bufan}9.  ${gl_hong}停止并清理${container_color}$current_dir_name${gl_bai}"
+        echo -e "${gl_bufan}5.  ${gl_bai}查看${container_color}$current_dir_name${gl_bai}配置文件  ${gl_bufan}6.  ${gl_bai}编辑${container_color}$current_dir_name${gl_bai}配置文件"
+        echo -e "${gl_bufan}7.  ${gl_bai}创建${container_color}$current_dir_name${gl_bai}配置文件  ${gl_bufan}8.  ${gl_bai}查看${container_color}$current_dir_name${gl_bai}最终配置"
+        echo -e "${gl_bufan}9.  ${gl_bai}查看${container_color}$current_dir_name${gl_bai}服务日志  ${gl_bufan}10. ${gl_bai}跟踪${container_color}$current_dir_name${gl_bai}服务日志"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}11. ${gl_bai}查看${container_color}$current_dir_name${gl_bai}最终配置  ${gl_bufan}12. ${gl_bai}打印${container_color}$current_dir_name${gl_bai}服务依赖拓扑图"
-        echo -e "${gl_bufan}13. ${gl_bai}查看${container_color}$current_dir_name${gl_bai}资源占用  ${gl_bufan}14. ${gl_bai}仅拉取${container_color}$current_dir_name${gl_bai}镜像（不启动）"
+        echo -e "${gl_bufan}11. ${gl_bai}查看${container_color}$current_dir_name${gl_bai}服务状态  ${gl_bufan}12. ${gl_bai}查看${container_color}$current_dir_name${gl_bai}镜像详情"
+        echo -e "${gl_bufan}13. ${gl_bai}查看${container_color}$current_dir_name${gl_bai}资源占用  ${gl_bufan}14. ${gl_bai}拉取${container_color}$current_dir_name${gl_bai}镜像文件"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}21. ${gl_bai}创建${container_color}$current_dir_name${gl_bai}配置文件  ${gl_bufan}22. ${gl_bai}管理${container_color}$current_dir_name${gl_bai}文件"
-        echo -e "${gl_bufan}23. ${gl_bai}开放${container_color}$current_dir_name${gl_bai}访问端口  ${gl_bufan}24. ${gl_bai}重新构建${container_color}$current_dir_name${gl_bai}"
-        echo -e "${gl_bufan}25. ${gl_bai}进入${container_color}$current_dir_name${gl_bai}服务      ${gl_bufan}26. ${gl_bai}修改${container_color}$current_dir_name${gl_bai}重启策略"
+        echo -e "${gl_bufan}23. ${gl_bai}开放${container_color}$current_dir_name${gl_bai}访问端口  ${gl_bufan}24. ${gl_bai}重构${container_color}$current_dir_name${gl_bai}后并启动"
+        echo -e "${gl_bufan}25. ${gl_bai}进入${container_color}$MAIN_SERVICE${gl_bai}服务终端  ${gl_bufan}26. ${gl_bai}修改${container_color}$MAIN_SERVICE${gl_bai}重启策略"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单          ${gl_hong}00. ${gl_bai}退出脚本"
+        echo -e "${gl_huang}88. ${gl_huang}停止${container_color}$current_dir_name${gl_huang}后并清理${gl_bai}  ${gl_hong}99. ${gl_hong}停止${container_color}$current_dir_name${gl_hong}彻底清理${gl_bai}"
+        echo -e "${gl_huang}0.  ${gl_bai}返回${container_color}$MAIN_SERVICE${gl_bai}上级      ${gl_hong}00. ${gl_bai}退出${container_color}$MAIN_SERVICE${gl_bai}脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         if ! safe_read "请输入你的选择" cmd_choice "number" "" 0 99; then
@@ -44244,18 +44244,18 @@ show_compose_commands_menu() {
         case $cmd_choice in
         1)
             echo -e ""
-            echo -e "正在启动 ${gl_huang}$current_dir_name${gl_bai} 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "${gl_bai}正在停止并删除 ${gl_huang}$current_dir_name${gl_bai} 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            docker-compose up -d --remove-orphans
+            docker-compose down
+            echo -e "\n"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         2)
             echo -e ""
-            echo -e "${gl_bai}正在停止并删除 ${gl_huang}$current_dir_name${gl_bai} 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "正在启动 ${gl_huang}$current_dir_name${gl_bai} 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            docker-compose down
-            echo -e "\n"
+            docker-compose up -d --remove-orphans
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
@@ -44283,7 +44283,7 @@ show_compose_commands_menu() {
             if [ -f "docker-compose.yml" ]; then
                 cat docker-compose.yml | sed '/^$/d'
             else
-                echo -e "${gl_hong}错误: docker-compose.yml 文件不存在${gl_bai}"
+                echo -e "${gl_hong}[错误]: docker-compose.yml 文件不存在${gl_bai}"
             fi
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
@@ -44295,14 +44295,11 @@ show_compose_commands_menu() {
             if [ -f "docker-compose.yml" ]; then
                 nano docker-compose.yml
             else
-                echo -e "${gl_hong}错误: docker-compose.yml 文件不存在${gl_bai}"
-                local create_choice
+                echo -e "${gl_hong}[错误]: docker-compose.yml 文件不存在${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}docker-compose.yml 不存在，要创建吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" create_choice
-                
                 if [[ "$create_choice" =~ ^[Yy]$ ]]; then
                     echo -e "${gl_lv}正在创建 docker-compose.yml ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                    touch docker-compose.yml
-                    nano docker-compose.yml
+                    create_file docker-compose.yml
                 else
                     echo -e "${gl_huang}已取消创建${gl_bai}"
                 fi
@@ -44311,40 +44308,11 @@ show_compose_commands_menu() {
             break_end
             ;;
         7)
-            echo -e ""
-            echo -e "${gl_bai}正在显示 ${gl_huang}$current_dir_name${gl_bai} 服务状态 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            docker-compose ps
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            break_end
+            echo
+            echo -e "${gl_bai}正在创建${gl_huang}$current_dir_name${gl_bai}配置文件"
+            create_file docker-compose.yml
             ;;
         8)
-            echo -e ""
-            echo -e "${gl_bai}正在显示 ${gl_huang}$current_dir_name${gl_bai} 服务日志 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            docker-compose logs
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            break_end
-            ;;
-        9)
-            echo -e ""
-            echo -e "${gl_bai}正在停止并删除 ${gl_huang}$current_dir_name${gl_bai} 服务及相关资源 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_hong}⚠️  警告: 此操作将删除容器、网络和卷！${gl_bai}"
-            echo -e "${gl_bai}数据卷不会被删除，但网络和相关资源将被清理${gl_bai}"
-            echo -e ""
-            read -r -e -p "$(echo -e "${gl_bai}确认执行？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-            if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                docker-compose down --volumes --remove-orphans && docker system prune -af --volumes
-                echo -e ""
-                echo -e "${gl_lv}✓ 服务、网络和卷已清理完成${gl_bai}"
-            else
-                echo -e "${gl_huang}已取消操作${gl_bai}"
-            fi
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            break_end
-            ;;
-        11)
             echo -e ""
             echo -e "${gl_bai}正在查看 ${gl_huang}$current_dir_name${gl_bai} 服务最终生效配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -44352,21 +44320,34 @@ show_compose_commands_menu() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
-        12)
-            echo
-            echo -e "${gl_bai}正在打印 ${gl_huang}$current_dir_name${gl_bai} 服务依赖拓扑图 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+        9)
+            echo -e ""
+            echo -e "${gl_bai}正在显示 ${gl_huang}$current_dir_name${gl_bai} 服务日志 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            docker-compose images
+            docker-compose logs
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
+            ;;
+        10)
+            view_compose_logs
+            ;;
+        11)
+            echo -e ""
+            echo -e "${gl_bai}正在显示 ${gl_huang}$current_dir_name${gl_bai} 服务状态 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            docker-compose ps
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
+            ;;
+        12)
+            # docker-compose images
+            list_beautify_all
             ;;
         13)
             echo
             echo -e "${gl_huang}$current_dir_name${gl_bai}服务列表 & 实时资源占用（Ctrl-C 退出）"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            docker-compose ps
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            docker-compose stats
+            bash <(curl -sL https://cmdbox.meimolihan.eu.org/sh/docker_occupy_find.sh) $current_dir_name
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             ;;
         14)
@@ -44377,22 +44358,11 @@ show_compose_commands_menu() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
-        21)
-            echo
-            echo -e "${gl_bai}正在创建${gl_huang}$current_dir_name${gl_bai}配置文件"
-            create_file docker-compose.yml
-            break_end
-            ;;
-        22)
-            echo
-            echo -e "${gl_zi}>>> 管理$current_dir_name 文件${gl_bai}"
-            linux_file "." "$current_dir_name 项目管理" "Compose项目菜单"
-            ;;
+
         23)
             echo -e ""
-            echo -e "${gl_zi}>>> 开放$current_dir_name访问端口${gl_bai}"
+            echo -e "${gl_zi}>>> 开放$current_dir_name访问端口 ${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
             default_port=$(
                 awk '
                 match($0, /-[[:space:]]*([0-9]+):[0-9]+/) {
@@ -44402,7 +44372,6 @@ show_compose_commands_menu() {
             ' docker-compose.yml 2>/dev/null
             )
             [[ -z $default_port ]] && default_port=""
-
             if [[ -n "$default_port" ]]; then
                 echo -e "${gl_bai}默认端口: ${gl_lv}${default_port}${gl_bai} (直接回车使用此端口)"
                 read -r -e -p "$(echo -e "${gl_bai}请输入要放行的端口号 (${gl_huang}0${gl_bai}返回): ")" port
@@ -44410,9 +44379,7 @@ show_compose_commands_menu() {
             else
                 read -r -e -p "$(echo -e "${gl_bai}请输入要放行的端口号 (${gl_huang}0${gl_bai}返回): ")" port
             fi
-
             [ "$port" == "0" ] && { cancel_return "上一级选单"; continue; }
-
             if [[ $port =~ ^[0-9]+$ && $port -ge 1 && $port -le 65535 ]]; then
                 iptables -A INPUT -p tcp --dport "$port" -j ACCEPT
                 echo -e ""
@@ -44435,12 +44402,44 @@ show_compose_commands_menu() {
             break_end
             ;;
         25)
+            local TARGET_SERVICE="$MAIN_SERVICE"
+            if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
+                local selected_service=$(select_service)
+                [[ -n "$selected_service" ]] && TARGET_SERVICE="$selected_service"
+            fi
+            if [[ -z "$TARGET_SERVICE" ]]; then
+                echo -e "${gl_hong}未找到可进入的服务${gl_bai}"
+                break_end
+                continue
+            fi
             echo -e ""
-            echo -e "${gl_bai}进入 ${gl_huang}$current_dir_name${gl_bai} 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "${gl_bai}进入 ${gl_huang}$TARGET_SERVICE${gl_bai} 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            if ! docker exec -it "$current_dir_name" bash 2>/dev/null; then
+            if ! docker inspect "$TARGET_SERVICE" &>/dev/null; then
+                echo -e "${gl_hong}容器 $TARGET_SERVICE 不存在${gl_bai}"
+                read -r -e -p "$(echo -e "${gl_bai}是否启动容器？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" start_choice
+                if [[ "$start_choice" =~ ^[Yy]$ ]]; then
+                    docker-compose up -d "$TARGET_SERVICE"
+                    sleep 2
+                else
+                    break_end
+                    continue
+                fi
+            fi
+            if ! docker inspect -f '{{.State.Running}}' "$TARGET_SERVICE" 2>/dev/null | grep -q "true"; then
+                echo -e "${gl_hong}容器 $TARGET_SERVICE 未运行${gl_bai}"
+                read -r -e -p "$(echo -e "${gl_bai}是否启动容器？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" start_choice
+                if [[ "$start_choice" =~ ^[Yy]$ ]]; then
+                    docker-compose up -d "$TARGET_SERVICE"
+                    sleep 2
+                else
+                    break_end
+                    continue
+                fi
+            fi
+            if ! docker exec -it "$TARGET_SERVICE" bash 2>/dev/null; then
                 echo -e "${gl_hong}bash 不可用，尝试使用 sh ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                docker exec -it $current_dir_name sh
+                docker exec -it "$TARGET_SERVICE" sh
             fi
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
@@ -44451,38 +44450,31 @@ show_compose_commands_menu() {
                 local selected_service=$(select_service)
                 [[ -n "$selected_service" ]] && TARGET_SERVICE="$selected_service"
             fi
-            
             if [[ -z "$TARGET_SERVICE" ]]; then
                 echo -e "${gl_hong}未找到可修改的服务${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
                 continue
             fi
-            
             install yq
             clear
             echo -e ""
             echo -e "${gl_zi}>>> 永久修改重启策略 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
             if [ ! -f "docker-compose.yml" ] && [ ! -f "docker-compose.yaml" ]; then
                 echo -e "${gl_hong}❌ 未找到 docker-compose.yml 文件${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
                 continue
             fi
-
             compose_file="docker-compose.yml"
             if [ ! -f "$compose_file" ]; then
                 compose_file="docker-compose.yaml"
             fi
-
             echo -e "${gl_bai}配置文件: ${gl_huang}$compose_file${gl_bai}"
             echo -e "${gl_bai}目标服务: ${gl_huang}$TARGET_SERVICE${gl_bai}"
             echo -e ""
-
             echo -e "${gl_huang}当前配置:${gl_bai}"
-
             if command -v yq &>/dev/null; then
                 yq e ".services.$TARGET_SERVICE" "$compose_file" 2>/dev/null || {
                     echo -e "${gl_bai}使用grep过滤注释行:${gl_bai}"
@@ -44492,13 +44484,10 @@ show_compose_commands_menu() {
                 echo -e "${gl_bai}服务 $TARGET_SERVICE 的配置:${gl_bai}"
                 grep -A 20 "^\s*$TARGET_SERVICE:" "$compose_file" | grep -v "^\s*#" | head -15
             fi
-
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e ""
-
             current_restart=$(grep -A 10 "^\s*$TARGET_SERVICE:" "$compose_file" | grep "^\s*restart:" | head -1 | sed 's/^\s*restart:\s*//' || echo "未设置")
             echo -e "${gl_bai}当前重启策略: ${gl_lv}${current_restart:-未设置}${gl_bai}"
-
             echo -e "${gl_huang}>>> 请选择重启策略:${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}1.  ${gl_lv}no${gl_bai} - 不自动重启 (默认)"
@@ -44510,9 +44499,7 @@ show_compose_commands_menu() {
             echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
             echo -e "${gl_hong}00. ${gl_bai}退出脚本"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
             read -p "请输入选择 [0-5]: " policy_choice
-
             case $policy_choice in
             1) new_policy="no" ;;
             2) new_policy="always" ;;
@@ -44523,10 +44510,9 @@ show_compose_commands_menu() {
                 [ "$new_policy" == "0" ] && { cancel_return "上一级选单"; continue; }
                 ;;
             0) cancel_return; continue ;;
-            00|000|0000) exit_script ;;
+            00|000|0000) exit_script; return 0 ;;
             *) handle_invalid_input ;;
             esac
-
             echo -e ""
             if grep -q "^\s*restart:" "$compose_file"; then
                 if sed -i "s/^\(\s*\)restart:.*/\1restart: $new_policy/" "$compose_file"; then
@@ -44547,9 +44533,7 @@ show_compose_commands_menu() {
                     echo -e "${gl_hong}✗ 未找到 $TARGET_SERVICE 服务定义${gl_bai}"
                 fi
             fi
-
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
             echo -e "${gl_huang}修改后的配置:${gl_bai}"
             if command -v yq &>/dev/null; then
                 yq e ".services.$TARGET_SERVICE" "$compose_file" 2>/dev/null || {
@@ -44560,15 +44544,12 @@ show_compose_commands_menu() {
                 echo -e "${gl_bai}服务 $TARGET_SERVICE 的配置:${gl_bai}"
                 grep -A 20 "^\s*$TARGET_SERVICE:" "$compose_file" | grep -v "^\s*#" | head -20
             fi
-
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
             if docker inspect "$TARGET_SERVICE" >/dev/null 2>&1; then
                 echo -e ""
                 echo -e "${gl_huang}检测到容器 $TARGET_SERVICE 正在运行${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}是否立即更新容器的重启策略？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" update_now
-
                 if [[ "$update_now" =~ ^[Yy]$ ]]; then
                     echo -e "${gl_bai}更新容器重启策略 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
                     if docker update --restart="$new_policy" "$TARGET_SERVICE" >/dev/null 2>&1; then
@@ -44581,13 +44562,11 @@ show_compose_commands_menu() {
                     echo -e "${gl_bai}如需应用到容器，请手动执行:${gl_bai}"
                     echo -e "${gl_lv}docker update --restart=$new_policy $TARGET_SERVICE${gl_bai}"
                 fi
-
                 echo -e ""
                 echo -e "${gl_huang}是否重新创建容器以应用配置？${gl_bai}"
                 echo -e "${gl_bai}重新创建容器会停止并重新启动容器，但会保留数据卷${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "输入 ${gl_bufan}y${gl_bai} 重新创建，其他键跳过:")" recreate_choice
-
                 if [ "$recreate_choice" = "y" ] || [ "$recreate_choice" = "Y" ]; then
                     echo -e "${gl_bai}重新创建容器 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
                     if command -v docker-compose &>/dev/null; then
@@ -44606,7 +44585,58 @@ show_compose_commands_menu() {
                 echo -e "${gl_huang}容器 $TARGET_SERVICE 未运行${gl_bai}"
                 echo -e "${gl_bai}下次启动容器时会应用新的重启策略${gl_bai}"
             fi
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
+            ;;
+        88)
+            echo -e ""
+            echo -e "${gl_bai}正在停止并删除 ${gl_huang}$current_dir_name${gl_bai} 服务及相关资源 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_hong}⚠️  警告: 此操作将删除容器、网络和卷、删除项目镜像！${gl_bai}"
+            echo -e "${gl_bai}数据卷不会被删除，但网络和相关资源将被清理${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            read -r -e -p "$(echo -e "${gl_bai}确认执行？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                # ⚠️ 警告: 此操作将删除当前项目容器、网络、项目数据卷；同时全局清理所有闲置镜像和闲置数据卷！
+                # docker-compose down --volumes --remove-orphans && docker system prune -af --volumes
+                # 停止容器、网络、删除项目镜像，同时清理孤儿容器 + 全部未使用镜像、全部未使用网络、全部未使用卷、悬空构建缓存
+                docker compose down --rmi all --remove-orphans && docker system prune -af --volumes
+                echo -e ""
+                echo -e "${gl_lv}✓ 服务、网络和卷已清理完成${gl_bai}"
+            else
+                echo -e "${gl_huang}已取消操作${gl_bai}"
+            fi
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            break_end
+            ;;
+        99)
+            echo -e ""
+            echo -e "${gl_bai}正在停止并删除 ${gl_huang}$current_dir_name${gl_bai} 服务及相关资源 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            echo -e "${gl_hong}⚠️  警告: 此操作将删除容器、网络、卷、镜像，并且【删除整个项目目录】！${gl_bai}"
+            echo -e "${gl_hong}项目目录路径：${gl_huang}${current_dir}${gl_bai}"
+            echo -e "${gl_bai}目录内所有文件都会被永久删除！${gl_bai}"
+            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+            read -r -e -p "$(echo -e "${gl_hong}确认要执行吗？ ${gl_bai}(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                docker compose down --rmi all --remove-orphans && docker system prune -af --volumes
+                echo -e "${gl_lv}✓ Compose容器、网络、卷已清理${gl_bai}"
 
+                local parent_dir=$(dirname "${current_dir}")
+                cd "${parent_dir}" || {
+                    log_error "无法切换到上级目录 ${parent_dir}"
+                    read -r
+                    break_end
+                }
+
+                echo -e "${gl_huang}正在删除项目目录：${current_dir}${gl_bai}"
+                rm -rf "${current_dir}"
+                echo -e "${gl_lv}✓ 项目目录已彻底删除${gl_bai}"
+
+                return 0
+            else
+                echo -e "${gl_huang}已取消操作${gl_bai}"
+            fi
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
