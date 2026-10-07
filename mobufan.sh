@@ -1,24 +1,7 @@
 #!/bin/bash
-sh_v="1.6.8"
-
-# ============ 交互环境判定 ============
-# 非 TTY（管道/重定向/自动化）或设置了 NO_COLOR/CI 时关闭颜色与动画，
-# 这样脚本被日志采集或自动化调用时不会输出 ANSI 乱码、也不会卡在动画上。
-if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != "dumb" && -z "${CI:-}" ]]; then
-    _mb_color=1
-    _mb_anim=1
-else
-    _mb_color=
-    _mb_anim=
-fi
+sh_v="1.6.7"
 
 list_color_init() {
-    if [[ -z "$_mb_color" ]]; then
-        # 非交互环境：全部置空。字符串插值照常工作，只是不产生 ANSI 序列。
-        export gl_hui='' gl_hong='' gl_lv='' gl_huang='' gl_lan='' \
-               gl_bai='' gl_zi='' gl_bufan='' gl_cheng='' reset=''
-        return 0
-    fi
     export gl_hui=$'\033[38;5;59m'
     export gl_hong=$'\033[38;5;9m'
     export gl_lv=$'\033[38;5;10m'
@@ -27,7 +10,6 @@ list_color_init() {
     export gl_bai=$'\033[38;5;15m'
     export gl_zi=$'\033[38;5;13m'
     export gl_bufan=$'\033[38;5;14m'
-    export gl_cheng=$'\033[38;5;220m'   # 橙：原脚本 4 处引用却从未定义，导致动画末位点丢色
     export reset=$'\033[0m'
 }
 list_color_init
@@ -37,69 +19,19 @@ log_ok() { echo -e "${gl_lv}[成功]${gl_bai} $*"; }
 log_warn() { echo -e "${gl_huang}[警告]${gl_bai} $*"; }
 log_error() { echo -e "${gl_hong}[错误]${gl_bai} $*" >&2; }
 
-# ============ 带超时的 HTTP 获取 ============
-# 脚本里有 130+ 处 curl 调用，其中相当一部分没带任何超时参数。
-# 一旦目标站点不可达（DNS 黑洞、防火墙丢包、代理挂起），
-# curl 会无限期挂住，整个交互脚本就卡死在那里 —— 用户只能强杀。
-#
-# mb_get：用于「探测类」小请求（IP / 地区判断 / 版本号），
-#         默认 5秒连接 + 10秒总时长，拿不到就返回空，由调用方决定降级逻辑。
-# mb_dl ：用于「下载类」请求（脚本 / 仓库 / 配置），
-#         超时给足60 秒，失败时返回非 0。
-mb_get() {
-    curl -fsSL --connect-timeout 5 --max-time 10 "$@" 2>/dev/null
-}
-
-mb_dl() {
-    curl -fsSL --connect-timeout 10 --max-time 60 -o "$1" "${@:2}" 2>/dev/null
-}
-
 # 暂停函数
-# 亚秒级等待。原实现每帧都要 fork 一次外部 sleep 进程，而动画每秒约 17 帧，
-# fork 开销在低端设备（软路由/小主机）上非常明显。这里优先用 shell 内建
-# read -t 计时，避开 fork；不可用时再逐级降级。
 sleep_fractional() {
-    local seconds="${1:-0}"
-
-    # 惰性初始化一个"永不投递数据"的 fd，供 read -t 计时使用
-    if [[ -z "${_mb_sleep_fd+x}" ]]; then
-        _mb_sleep_fd=
-        if exec {_mb_sleep_fd}< <(:) 2>/dev/null; then
-            :
-        fi
-    fi
-
-    if [[ -n "${_mb_sleep_fd:-}" ]]; then
-        read -r -t "$seconds" _mb_scratch <&"$_mb_sleep_fd" 2>/dev/null
-        return 0
-    fi
-
+    local seconds=$1
     if sleep "$seconds" 2>/dev/null; then return 0; fi
     if command -v perl >/dev/null 2>&1; then perl -e "select(undef, undef, undef, $seconds)"; return 0; fi
     if command -v python3 >/dev/null 2>&1; then python3 -c "import time; time.sleep($seconds)"; return 0; fi
     if command -v python >/dev/null 2>&1; then python -c "import time; time.sleep($seconds)"; return 0; fi
-    local int_seconds
-    int_seconds=$(echo "$seconds" | awk '{print int($1+0.999)}')
+    local int_seconds=$(echo "$seconds" | awk '{print int($1+0.999)}')
     sleep "$int_seconds"
 }
 
-# ============ 统一 spinner 动画引擎 ============
-# 原脚本有 4 个近乎逐字重复的动画函数（exit_animation / exit_script /
-# cancel_empty / cancel_return），每个都复制了同一份 25 行帧数组与循环逻辑，
-# 合计约 100 行重复代码。现统一为 _spin 单一实现，
-# 4 个对外函数保留原名与原签名，所有调用点无需改动。
-#
-# 用法：_spin "<前缀文字>" "<完成提示>" [是否清屏]
-_spin() {
-    local text="$1" done_msg="$2" do_clear="${3:-1}"
-    local i
-
-    # 非交互环境或显式关动画时，直接给结果，不浪费时间
-    if [[ -z "${_mb_anim:-}" ]]; then
-        [[ -n "$done_msg" ]] && echo -e "${gl_lv}✓${gl_bai}${done_msg}${gl_bai}"
-        return 0
-    fi
-
+# 退出动画函数
+exit_animation() {
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     local dots=(
         "${gl_hong}."
@@ -114,37 +46,23 @@ _spin() {
     local dot_idx=0
     local total_dots=6
 
-    for ((i = 0; i < 20; i++)); do
-        if ((i > 0 && i % 3 == 0 && dot_idx < total_dots)); then
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
             dot_buffer+=${dots[$dot_idx]}
             ((dot_idx++))
         fi
-        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai} ${text} ${dot_buffer}"
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai} 正在退出 ${dot_buffer}"
         sleep_fractional 0.06
     done
-
-    echo -e "\r\033[K${gl_lv}✓${gl_bai}${done_msg}${gl_bai} \n"
-    [[ "$do_clear" == "1" ]] && clear
-    return 0
-}
-
-# 退出动画函数
-exit_animation() {
-    _spin "正在退出" "成功退出"
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功退出\n"
+    clear
 }
 
 # 按任意键继续...
 break_end() {
     echo -e "${gl_lv}操作完成${gl_bai}"
-    # 非交互环境没有终端可读，read 会立即 EOF 而直接穿透，
-    # 造成菜单连闪。这里显式跳过等待。
-    if [[ -z "$_mb_anim" || ! -t 0 ]]; then
-        echo ""
-        clear
-        return 0
-    fi
     echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-    read -r -n 1 -s -p ""
+    read -r -n 1 -s -r -p ""
     echo ""
     clear
 }
@@ -173,26 +91,106 @@ handle_y_n() {
 
 # 退出脚本
 exit_script() {
-    _spin "正在退出" "成功退出"
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai} 正在退出 ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功退出\n"
+    clear
     exit 0
 }
 
-# 空输入，返回上一级选单
+# 返回上一级
 cancel_empty() {
     local menu_name="${1:-上一级选单}"
-    _spin "空输入，返回 ${gl_huang}${menu_name}" "成功返回${gl_huang}${menu_name}"
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai}空输入，返回 ${gl_huang}${menu_name} ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai}成功返回${gl_huang}${menu_name}${gl_bai} \n"
+    clear
 }
 
-# 返回上一级
+
 cancel_return() {
     local menu_name="${1:-上一级选单}"
-    _spin "即将返回 ${gl_huang}${menu_name}" "成功返回${gl_huang}${menu_name}"
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai}即将返回 ${gl_huang}${menu_name} ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功返回${gl_huang}${menu_name}${gl_bai} \n"
+    clear
 }
 
 ############################## 列表美化 ##############################
 
-# 颜色变量已在文件头部 list_color_init() 中统一初始化（含非 TTY / NO_COLOR 处理），
-# 此处不再重复定义，避免覆盖头部的环境判定逻辑。
+# 列表公用颜色变量
+list_color_init() {
+    export gl_hui=$'\033[38;5;59m'
+    export gl_hong=$'\033[38;5;9m'
+    export gl_lv=$'\033[38;5;10m'
+    export gl_huang=$'\033[38;5;11m'
+    export gl_lan=$'\033[38;5;32m'
+    export gl_bai=$'\033[38;5;15m'
+    export gl_zi=$'\033[38;5;13m'
+    export gl_bufan=$'\033[38;5;14m'
+    export reset=$'\033[0m'
+}
+list_color_init
 
 # 用于替代 column 命令的函数
 column_if_available() {
@@ -3250,31 +3248,29 @@ mobufan_sh_update() {
 # 智能获取本机IPv4和IPv6地址的网络信息收集函数。
 ip_address() {
 
-# 修复：这两个函数原本定义在 ip_address() 函数体内部。
-# bash 的函数定义是全局的 —— ip_address() 只要被调用一次，
-# 就会把全局那个健壮的 get_public_ip（多源容错 + 超时 + 私网过滤）
-# 永久替换成这里的裸 curl，导致后续所有调用都失去容错能力、
-# 且可能把私网地址/运营商内网地址当成公网 IP 展示。
-# 现改为复用全局实现，本函数只保留 ip_address 自己的局部逻辑。
+get_public_ip() {
+    curl -s https://ipinfo.io/ip && echo
+}
 
-# 私有辅助：取本机出站IP（与全局 get_internal_ip 功能相近但实现不同，
-# 这里显式加 _ 前缀，避免将来与其他模块的同名函数互相覆盖）
-_ip_addr_local() {
+get_local_ip() {
     ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \K[^ ]+' || \
     hostname -I 2>/dev/null | awk '{print $1}' || \
     ifconfig 2>/dev/null | grep -E 'inet [0-9]' | grep -v '127.0.0.1' | awk '{print $2}' | head -n1
 }
 
 public_ip=$(get_public_ip)
-isp_info=$(curl -s --connect-timeout 3 --max-time 5 http://ipinfo.io/org 2>/dev/null)
+isp_info=$(curl -s --max-time 3 http://ipinfo.io/org)
+
 
 if echo "$isp_info" | grep -Eiq 'mobile|unicom|telecom'; then
-    ipv4_address=$(_ip_addr_local)
+    ipv4_address=$(get_local_ip)
 else
     ipv4_address="$public_ip"
 fi
 
-ipv6_address=$(curl -s --connect-timeout 3 --max-time 5 https://v6.ipinfo.io/ip 2>/dev/null)
+
+# ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
+ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
 
 }
 
@@ -3466,34 +3462,16 @@ remove() {
     done
 }
 
-# 通用 systemctl 包装，兼容 Alpine/OpenRC（apk）
-#
-# 修复：原实现只声明了 COMMAND="$1" SERVICE_NAME="$2"，其余参数被静默丢弃。
-# 脚本里有大量 `systemctl status sshd --no-pager -l`、
-# `systemctl is-active crond --quiet` 这类多参数调用，走包装函数时都会丢参数，
-# 导致 --no-pager / --quiet 失效、输出被截断或走进交互式分页器而卡住。
+# 通用 systemctl 函数，适用于各种发行版
+# shellcheck disable=SC2032
 systemctl() {
-    # OpenRC 环境没有 systemctl，用 service 命令做等价映射
-    if command -v apk &>/dev/null; then
-        local op="$1" svc="$2"
-        shift 2 2>/dev/null || shift $#
-        case "$op" in
-        start | stop | restart | reload | status | enable | disable)
-            # 仅"单服务 + 标准动作"才映射，其余情况交回原生 systemctl 语义
-            if [[ -n "$svc" && $# -eq 0 ]]; then
-                service "$svc" "$op"
-                return $?
-            fi
-            ;;
-        esac
-    fi
+    local COMMAND="$1"
+    local SERVICE_NAME="$2"
 
-    # 探测真实路径：Debian 12+ / Fedora 35+ 已 usrmerge，
-    # 硬编码 /bin/systemctl 在部分环境下并不存在。
-    if [[ -x /bin/systemctl ]]; then
-        /bin/systemctl "$@"
+    if command -v apk &>/dev/null; then
+        service "$SERVICE_NAME" "$COMMAND"
     else
-        command systemctl "$@"
+        /bin/systemctl "$COMMAND" "$SERVICE_NAME"
     fi
 }
 
@@ -3516,25 +3494,23 @@ start() {
 }
 
 # 停止服务
-# 修复：原实现写成 `systemctl stop "$1"; if cmd; then`，
-# 但 cmd 这个函数全脚本从未定义 —— bash 会去 PATH 里找同名外部命令
-# （Linux 上是 command not found 恒为假；Windows 上甚至会拉起 cmd.exe）。
-# 结果是停止成功也报失败。这里直接用 systemctl 的退出码判断。
 stop() {
-    if systemctl stop "$1"; then
-        log_ok "${gl_huang}$1${gl_bai} 服务已停止。"
+    systemctl stop "$1"
+    if cmd; then
+        echo "${gl_huang}$1${gl_bai} 服务已停止。"
     else
-        log_error "停止 ${gl_huang}$1${gl_bai} 服务失败。"
+        echo "停止 ${gl_huang}$1${gl_bai} 服务失败。"
     fi
 }
 
 # 查看服务状态
-# 修复：同上，移除不存在的 cmd 调用。
-# 注意 systemctl status 对"已停止"的服务也返回非 0，这是正常语义，
-# 不能当错误处理，所以这里只透传输出、不做成败判定。
 status() {
     systemctl status "$1"
-    echo -e "${gl_bai}$1 服务状态已显示。"
+    if cmd; then
+        echo "$1 服务状态已显示。"
+    else
+        echo "错误：无法显示 $1 服务状态。"
+    fi
 }
 
 enable() {
@@ -9316,7 +9292,7 @@ check_port() {
 install_add_docker_cn() {
 
     local country
-    country=$(mb_get "https://ipinfo.io/country")
+    country=$(curl -s ipinfo.io/country)
     if [ "$country" = "CN" ]; then
         cat >/etc/docker/daemon.json <<EOF
 {
@@ -9354,20 +9330,14 @@ EOF
 
 install_add_docker_guanfang() {
     local country
-    country=$(mb_get "https://ipinfo.io/country")
+    country=$(curl -s ipinfo.io/country)
     if [ "$country" = "CN" ]; then
-        cd ~ || return 1
-        # 修复：原来下载失败仍会往下执行 sh install，
-        # 拿不到文件时要么报错要么执行到残留的旧文件。
-        if curl -fsSL --connect-timeout 10 --max-time 60 -O ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/install; then
-            chmod +x install && sh install --mirror Aliyun
-            rm -f install
-        else
-            log_error "国内镜像下载 docker 安装脚本失败，尝试官方源..."
-            curl -fsSL --connect-timeout 10 --max-time 120 https://get.docker.com | sh
-        fi
+        cd ~
+        curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/install && chmod +x install
+        sh install --mirror Aliyun
+        rm -f install
     else
-        curl -fsSL --connect-timeout 10 --max-time 120 https://get.docker.com | sh
+        curl -fsSL https://get.docker.com | sh
     fi
     install_add_docker_cn
 
@@ -9392,7 +9362,7 @@ install_add_docker() {
         dnf update -y
         dnf install -y yum-utils device-mapper-persistent-data lvm2
         rm -f /etc/yum.repos.d/docker*.repo >/dev/null
-        country=$(mb_get "https://ipinfo.io/country")
+        country=$(curl -s ipinfo.io/country)
         arch=$(uname -m)
         if [ "$country" = "CN" ]; then
             curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo | tee /etc/yum.repos.d/docker-ce.repo >/dev/null
@@ -9408,7 +9378,7 @@ install_add_docker() {
         apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
         rm -f /usr/share/keyrings/docker-archive-keyring.gpg
         local country
-        country=$(mb_get "https://ipinfo.io/country")
+        country=$(curl -s ipinfo.io/country)
         local arch
         arch=$(uname -m)
         if [ "$country" = "CN" ]; then
@@ -11416,7 +11386,7 @@ update_docker_compose_with_db_creds() {
 
 auto_optimize_dns() {
     local country
-    country=$(mb_get "https://ipinfo.io/country")
+    country=$(curl -s ipinfo.io/country)
 
     if [ "$country" = "CN" ]; then
         local dns1_ipv4="223.5.5.5"
@@ -11469,7 +11439,7 @@ install_ldnmp() {
 install_certbot() {
 
     cd ~
-    curl -fsSL --connect-timeout 10 --max-time 60 -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
+    curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
     chmod +x auto_cert_renewal.sh
 
     check_crontab_installed
@@ -11675,7 +11645,7 @@ phpmyadmin_upgrade() {
     cd /etc/nginx/
     docker rm -f $ldnmp_pods >/dev/null 2>&1
     docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi >/dev/null 2>&1
-    curl -fsSL --connect-timeout 10 --max-time 60 -O https://raw.githubusercontent.com/kejilion/docker/refs/heads/main/docker-compose.phpmyadmin.yml
+    curl -sS -O https://raw.githubusercontent.com/kejilion/docker/refs/heads/main/docker-compose.phpmyadmin.yml
     docker compose -f docker-compose.phpmyadmin.yml up -d
     clear
     ip_address
@@ -12904,19 +12874,11 @@ fail2ban_config_cloudflare() {
     wget -O /etc/nginx/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
     docker exec nginx nginx -s reload
 
-    cd /etc/fail2ban/jail.d/ || { log_error "目录不存在"; return 1; }
-    # 修复：原来下载失败后仍会往下执行 sed -i，
-    # 改到的是目录下残留的旧配置文件。
-    if ! curl -fsSL --connect-timeout 10 --max-time 60 -O https://gitee.com/meimolihan/fail2ban/raw/master/nginx-docker-cc.conf; then
-        log_error "nginx-docker-cc.conf 下载失败，已中止配置"
-        return 1
-    fi
+    cd /etc/fail2ban/jail.d/
+    curl -sS -O https://gitee.com/meimolihan/fail2ban/raw/master/nginx-docker-cc.conf
 
-    cd /etc/fail2ban/action.d || { log_error "目录不存在"; return 1; }
-    if ! curl -fsSL --connect-timeout 10 --max-time 60 -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf; then
-        log_error "cloudflare-docker.conf 下载失败，已中止配置"
-        return 1
-    fi
+    cd /etc/fail2ban/action.d
+    curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
 
     sed -i "s/kejilion@outlook.com/$cfuser/g" /etc/fail2ban/action.d/cloudflare-docker.conf
     sed -i "s/APIKEY00000/$cftoken/g" /etc/fail2ban/action.d/cloudflare-docker.conf
@@ -12949,7 +12911,7 @@ fail2ban_auto_under_attack() {
     cd ~
     install jq bc
     check_crontab_installed
-    curl -fsSL --connect-timeout 10 --max-time 60 -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
+    curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
     chmod +x CF-Under-Attack.sh
     sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
     sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
@@ -13411,7 +13373,7 @@ done
 check_docker_image_update() {
     local container_name=$1
     local country
-    country=$(mb_get "https://ipinfo.io/country")
+    country=$(curl -s ipinfo.io/country)
     if [[ "$country" == "CN" ]]; then
         update_status=""
         return
@@ -13956,7 +13918,7 @@ f2b_install_sshd() {
 
     if command -v dnf &>/dev/null; then
         cd /etc/fail2ban/jail.d/
-        curl -fsSL --connect-timeout 10 --max-time 60 -O https://gitee.com/meimolihan/sh/raw/master/f2b/centos-ssh.conf
+        curl -sS -O https://gitee.com/meimolihan/sh/raw/master/f2b/centos-ssh.conf
     fi
 }
 
@@ -17782,9 +17744,9 @@ format_partition() {
     fi
 
     echo -e "正在格式化分区 ${gl_huang}/dev/$PARTITION${gl_bai} 为 ${gl_lv}$FS_TYPE ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    # 修复：原实现用从未定义的 cmd() 判断成败，格式化成功也会报失败。
-    # 改为直接用 mkfs 的退出码。
-    if mkfs."$FS_TYPE" "/dev/$PARTITION"; then
+    mkfs.$FS_TYPE "/dev/$PARTITION"
+
+    if cmd; then
         log_ok "分区格式化成功！"
     else
         log_error "分区格式化失败！"
@@ -28467,7 +28429,7 @@ EOF
 
     ip_address=$(hostname -I 2>/dev/null | awk '{print $1}')
     [[ -z "$ip_address" ]] && ip_address=$(ip route get 1 2>/dev/null | awk '{print $7; exit}')
-    [[ -z "$ip_address" ]] && ip_address=$(mb_get "https://ifconfig.me" || echo "服务器IP")
+    [[ -z "$ip_address" ]] && ip_address=$(curl -s ifconfig.me 2>/dev/null || echo "服务器IP")
 
     echo -e ""
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -30710,7 +30672,7 @@ switch_mirror() {
     local clean_cache=${2:-false}
 
     local country
-    country=$(mb_get "https://ipinfo.io/country")
+    country=$(curl -s ipinfo.io/country)
 
     echo "检测到国家：$country"
 
@@ -36428,16 +36390,11 @@ linux_ssh_defense_management() {
 # 修复OpenSSH高危漏洞函数
 linux_fix_openssh_vulnerability() {
     root_use
-    cd ~ || return 1
-    # 修复：原来下载失败仍会 chmod +x 并执行，
-    # 结果是执行到~/ 下的同名残留文件（或直接报错中断）。
-    if curl -fsSL --connect-timeout 10 --max-time 60 -O https://gitee.com/meimolihan/sh/raw/master/file/upgrade_openssh9.8p1.sh; then
-        chmod +x ~/upgrade_openssh9.8p1.sh && ~/upgrade_openssh9.8p1.sh
-        rm -f ~/upgrade_openssh9.8p1.sh
-    else
-        log_error "OpenSSH 升级脚本下载失败，已中止（未做任何改动）"
-        return 1
-    fi
+    cd ~
+    curl -sS -O https://gitee.com/meimolihan/sh/raw/master/file/upgrade_openssh9.8p1.sh
+    chmod +x ~/upgrade_openssh9.8p1.sh
+    ~/upgrade_openssh9.8p1.sh
+    rm -f ~/upgrade_openssh9.8p1.sh
 }
 
 # 定时任务管理函数
@@ -36832,7 +36789,7 @@ linux_tg_bot_monitor() {
             chmod +x ~/TG-check-notify.sh
             nano ~/TG-check-notify.sh
         else
-            curl -fsSL --connect-timeout 10 --max-time 60 -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/TG-check-notify.sh
+            curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/TG-check-notify.sh
             chmod +x ~/TG-check-notify.sh
             nano ~/TG-check-notify.sh
         fi
@@ -36844,7 +36801,7 @@ linux_tg_bot_monitor() {
             echo "@reboot tmux new -d -s TG-check-notify '~/TG-check-notify.sh'"
         ) | crontab - >/dev/null 2>&1
 
-        curl -fsSL --connect-timeout 10 --max-time 60 -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/TG-SSH-check-notify.sh >/dev/null 2>&1
+        curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/TG-SSH-check-notify.sh >/dev/null 2>&1
         sed -i "3i$(grep '^TELEGRAM_BOT_TOKEN=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh >/dev/null 2>&1
         sed -i "4i$(grep '^CHAT_ID=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
         chmod +x ~/TG-SSH-check-notify.sh
@@ -40166,14 +40123,9 @@ linux_file() {
 
 cluster_python3() {
     install python3 python3-paramiko
-    cd ~/cluster/ || return 1
-    # 修复：下载失败时不再盲目执行 ~/cluster/$py_task（可能是上次残留的旧脚本）
-    if curl -fsSL --connect-timeout 10 --max-time 60 -O "${gh_proxy}raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task"; then
-        python3 ~/cluster/"$py_task"
-    else
-        log_error "任务脚本 ${py_task} 下载失败，已中止"
-        return 1
-    fi
+    cd ~/cluster/
+    curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task"
+    python3 ~/cluster/"$py_task"
 }
 
 run_commands_on_servers() {
@@ -44934,20 +44886,16 @@ check_git_version() {
         local latest_version=""
 
         if command -v curl &>/dev/null; then
-            latest_version=$(curl -fsSL --connect-timeout 5 --max-time 15 \
-                https://api.github.com/repos/git/git/releases/latest 2>/dev/null |
+            latest_version=$(curl -s https://api.github.com/repos/git/git/releases/latest 2>/dev/null |
                 grep -oP '"tag_name": "v\K[^"]+' | head -1)
         elif command -v wget &>/dev/null; then
-            # 补 --timeout/--tries：原来这里完全没有超时，
-            # GitHub 不可达时脚本会永久挂起
-            latest_version=$(wget -qO- --timeout=10 --tries=2 \
-                https://api.github.com/repos/git/git/releases/latest 2>/dev/null |
+            latest_version=$(wget -qO- https://api.github.com/repos/git/git/releases/latest 2>/dev/null |
                 grep -oP '"tag_name": "v\K[^"]+' | head -1)
         fi
 
         if [[ -z "$latest_version" ]]; then
             if command -v curl &>/dev/null; then
-                latest_version=$(curl -fsSL --connect-timeout 5 --max-time 15 https://git-scm.com/ 2>/dev/null |
+                latest_version=$(curl -s https://git-scm.com/ 2>/dev/null |
                     grep -oP 'Latest source release <span[^>]*>\K[^<]+' |
                     head -1)
             fi
