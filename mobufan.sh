@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.6.7"
+sh_v="1.6.9"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -11,6 +11,12 @@ list_color_init() {
     export gl_zi=$'\033[38;5;13m'
     export gl_bufan=$'\033[38;5;14m'
     export reset=$'\033[0m'
+    # 补充：脚本中被引用但此前未定义的颜色变量
+    export gl_cheng=$'\033[38;5;214m' # 橙
+    export gl_tian=$'\033[38;5;117m'  # 天蓝
+    export gl_qing=$'\033[38;5;51m'   # 青
+    export gl_ok=$'\033[38;5;46m'     # 成功绿
+    export gl_reset=$'\033[0m'        # 重置（与 reset 同义，兼容旧写法）
 }
 list_color_init
 
@@ -26,7 +32,8 @@ sleep_fractional() {
     if command -v perl >/dev/null 2>&1; then perl -e "select(undef, undef, undef, $seconds)"; return 0; fi
     if command -v python3 >/dev/null 2>&1; then python3 -c "import time; time.sleep($seconds)"; return 0; fi
     if command -v python >/dev/null 2>&1; then python -c "import time; time.sleep($seconds)"; return 0; fi
-    local int_seconds=$(echo "$seconds" | awk '{print int($1+0.999)}')
+    local int_seconds
+    int_seconds=$(echo "$seconds" | awk '{print int($1+0.999)}')
     sleep "$int_seconds"
 }
 
@@ -177,20 +184,6 @@ cancel_return() {
 }
 
 ############################## 列表美化 ##############################
-
-# 列表公用颜色变量
-list_color_init() {
-    export gl_hui=$'\033[38;5;59m'
-    export gl_hong=$'\033[38;5;9m'
-    export gl_lv=$'\033[38;5;10m'
-    export gl_huang=$'\033[38;5;11m'
-    export gl_lan=$'\033[38;5;32m'
-    export gl_bai=$'\033[38;5;15m'
-    export gl_zi=$'\033[38;5;13m'
-    export gl_bufan=$'\033[38;5;14m'
-    export reset=$'\033[0m'
-}
-list_color_init
 
 # 用于替代 column 命令的函数
 column_if_available() {
@@ -456,7 +449,7 @@ list_beautify_journal_log() {
     {
         LINE=${1:-50}
 
-        journalctl -n $LINE --no-pager 2>/dev/null | awk -v gray="$gl_hui" -v green="$gl_lv" \
+        journalctl -n "$LINE" --no-pager 2>/dev/null | awk -v gray="$gl_hui" -v green="$gl_lv" \
         -v yellow="$gl_huang" -v purple="$gl_zi" -v red="$gl_hong" -v reset="$reset" '
         BEGIN {
             OFS = "\t"
@@ -862,7 +855,7 @@ list_beautify_docker_stats() {
         data=$(docker stats --no-stream --format "{{.Container}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}" 2>/dev/null)
 
         if [ -z "$data" ]; then
-            printf "%s%s\n" "$gl_huang" "没有运行中的容器" "$reset"
+            printf "%s%s%s\n" "$gl_huang" "没有运行中的容器" "$reset"
             return
         fi
 
@@ -924,10 +917,10 @@ list_beautify_nic_info() {
         printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "--------" "--------" "------------------" "--------------------" "----" "----" "$reset"
 
         for nic in $(ls /sys/class/net 2>/dev/null); do
-            state=$(cat /sys/class/net/$nic/operstate 2>/dev/null)
-            ipaddr=$(ip -4 addr show $nic 2>/dev/null | awk '/inet /{print $2}' | head -n1)
-            mac=$(cat /sys/class/net/$nic/address 2>/dev/null)
-            mtu=$(cat /sys/class/net/$nic/mtu 2>/dev/null)
+            state=$(cat "/sys/class/net/$nic/operstate" 2>/dev/null)
+            ipaddr=$(ip -4 addr show "$nic" 2>/dev/null | awk '/inet /{print $2}' | head -n1)
+            mac=$(cat "/sys/class/net/$nic/address" 2>/dev/null)
+            mtu=$(cat "/sys/class/net/$nic/mtu" 2>/dev/null)
             speed_path="/sys/class/net/$nic/speed"
             if [ -f "$speed_path" ]; then
                 speed=$(cat "$speed_path" 2>/dev/null)
@@ -2149,7 +2142,8 @@ get_public_ip() {
         )
 
         for url in "${services[@]}"; do
-                local ip=$(get_ip "$url")
+                local ip
+                ip=$(get_ip "$url")
                 if [[ -n "$ip" ]] && ! is_private_ip "$ip"; then
                         echo "$ip"
                         return 0
@@ -2175,7 +2169,8 @@ get_internal_ip() {
 
 # 获取主机名函数
 get_hostname() {
-        local name=$(hostname 2>/dev/null)
+        local name
+        name=$(hostname 2>/dev/null)
         [ -n "$name" ] && echo "$name" && return 0
 
         name=$(cat /proc/sys/kernel/hostname 2>/dev/null)
@@ -2251,23 +2246,32 @@ display_storage_info() {
     local path="$1"
     local show_all="${2:-true}"
 
-    local df_output=$(df -h "$path" 2>/dev/null | tail -1)
+    local df_output
+    df_output=$(df -h "$path" 2>/dev/null | tail -1)
 
     if [ -z "$df_output" ]; then
         echo -e "${gl_hong}✗ 无法获取存储空间信息${gl_bai}"
         return 1
     fi
 
-    local filesystem=$(echo "$df_output" | awk '{print $1}')
-    local total=$(echo "$df_output" | awk '{print $2}')
-    local used=$(echo "$df_output" | awk '{print $3}')
-    local available=$(echo "$df_output" | awk '{print $4}')
-    local use_percent=$(echo "$df_output" | awk '{print $5}' | tr -d '%')
-    local mount_point=$(echo "$df_output" | awk '{print $6}')
+    local filesystem
+    filesystem=$(echo "$df_output" | awk '{print $1}')
+    local total
+    total=$(echo "$df_output" | awk '{print $2}')
+    local used
+    used=$(echo "$df_output" | awk '{print $3}')
+    local available
+    available=$(echo "$df_output" | awk '{print $4}')
+    local use_percent
+    use_percent=$(echo "$df_output" | awk '{print $5}' | tr -d '%')
+    local mount_point
+    mount_point=$(echo "$df_output" | awk '{print $6}')
 
     if [ -z "$use_percent" ] || ! [[ "$use_percent" =~ ^[0-9]+$ ]]; then
-        local used_num=$(echo "$used" | sed 's/[A-Za-z]*//g')
-        local total_num=$(echo "$total" | sed 's/[A-Za-z]*//g')
+        local used_num
+        used_num="${used//[A-Za-z]/}"
+        local total_num
+        total_num="${total//[A-Za-z]/}"
         local used_unit=${used: -1}
         local total_unit=${total: -1}
 
@@ -2283,7 +2287,7 @@ display_storage_info() {
             total_num=$((total_num * 1024))
         fi
 
-        if [ $total_num -gt 0 ]; then
+        if [ "$total_num" -gt 0 ]; then
             use_percent=$((used_num * 100 / total_num))
         else
             use_percent=0
@@ -2354,9 +2358,8 @@ display_storage_info() {
         perm_string=$(stat -c "%A" "$path" 2>/dev/null)
 
         owner=$(stat -c "%U" "$path" 2>/dev/null)
-        group=$(stat -c "%G" "$path" 2>/dev/null)
 
-        if [ $? -ne 0 ]; then
+        if ! group=$(stat -c "%G" "$path" 2>/dev/null); then
             perm_octal="未知"
             perm_string="未知"
             owner="未知"
@@ -2500,7 +2503,8 @@ display_file_info() {
         return 1
     fi
 
-    local file_name=$(basename "$file_path")
+    local file_name
+    file_name=$(basename "$file_path")
     local file_type=""
     local file_size=""
     local file_permissions=""
@@ -2518,7 +2522,8 @@ display_file_info() {
         file_type="📄 普通文件"
     elif [ -L "$file_path" ]; then
         file_type="🔗 符号链接"
-        local link_target=$(readlink -f "$file_path")
+        local link_target
+        link_target=$(readlink -f "$file_path")
     elif [ -b "$file_path" ]; then
         file_type="💿 块设备"
     elif [ -c "$file_path" ]; then
@@ -2597,7 +2602,8 @@ display_file_info() {
     echo -e "  🔢 Inode号:  ${gl_lv}${file_inode}${gl_bai}"
     echo -e "  🔗 硬链接数: ${gl_huang}${file_links}${gl_bai}"
 
-    local file_device=$(stat -c "%d" "$file_path" 2>/dev/null)
+    local file_device
+    file_device=$(stat -c "%d" "$file_path" 2>/dev/null)
     if [ -n "$file_device" ]; then
         echo -e "  💽 设备号:   ${gl_lan}${file_device}${gl_bai}"
     fi
@@ -2692,16 +2698,20 @@ display_file_info() {
         echo -e "${gl_huang}📄 文件内容信息${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        local line_count=$(wc -l < "$file_path" 2>/dev/null)
-        local word_count=$(wc -w < "$file_path" 2>/dev/null)
-        local char_count=$(wc -m < "$file_path" 2>/dev/null)
+        local line_count
+        line_count=$(wc -l < "$file_path" 2>/dev/null)
+        local word_count
+        word_count=$(wc -w < "$file_path" 2>/dev/null)
+        local char_count
+        char_count=$(wc -m < "$file_path" 2>/dev/null)
 
         echo -e "  📈 行数: ${gl_lv}${line_count}${gl_bai}"
         echo -e "  📈 词数: ${gl_lan}${word_count}${gl_bai}"
         echo -e "  📈 字符: ${gl_zi}${char_count}${gl_bai}"
 
         if [ -x "$file_path" ]; then
-            local shebang=$(head -1 "$file_path" 2>/dev/null | grep -E "^#!")
+            local shebang
+            shebang=$(head -1 "$file_path" 2>/dev/null | grep -E "^#!")
             if [ -n "$shebang" ]; then
                 echo -e "  🐚 脚本类型: ${gl_huang}${shebang#*!}${gl_bai}"
             fi
@@ -2721,8 +2731,10 @@ display_file_info() {
         echo -e "${gl_huang}📁 目录信息${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        local file_count=$(find "$file_path" -maxdepth 1 -type f 2>/dev/null | wc -l)
-        local dir_count=$(find "$file_path" -maxdepth 1 -type d 2>/dev/null | wc -l)
+        local file_count
+        file_count=$(find "$file_path" -maxdepth 1 -type f 2>/dev/null | wc -l)
+        local dir_count
+        dir_count=$(find "$file_path" -maxdepth 1 -type d 2>/dev/null | wc -l)
         dir_count=$((dir_count - 1))
 
         echo -e "  📄 文件数量: ${gl_lv}${file_count}${gl_bai}"
@@ -2749,7 +2761,8 @@ display_file_info() {
 
     echo -e "  👤 当前用户权限: ${access_info}"
 
-    local current_user=$(whoami)
+    local current_user
+    current_user=$(whoami)
     if [ "$file_owner" != "$current_user" ] && [ "$file_owner" != "未知" ]; then
         echo -e "  ⚠ 当前用户 ${gl_huang}${current_user}${gl_bai} 不是文件所有者 ${gl_lv}${file_owner}${gl_bai}"
     fi
@@ -2793,7 +2806,8 @@ select_and_display_file_info() {
 
                 clear
 
-                local absolute_path=$(realpath "$full_path" 2>/dev/null || echo "$full_path")
+                local absolute_path
+                absolute_path=$(realpath "$full_path" 2>/dev/null || echo "$full_path")
                 echo -e ""
                 echo -e "${gl_huang}📁 文件/目录信息${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -2950,7 +2964,7 @@ check_directory_empty() {
 }
 
 mobufan() {
-    cd ~
+    cd ~ || return
     mobufan_sh "$@"
 }
 
@@ -3102,7 +3116,8 @@ show_directory_list() {
 
         for ((i = 0; i < len; i++)); do
             local char="${str:i:1}"
-            local code=$(printf '%d' "'$char")
+            local code
+            code=$(printf '%d' "'$char")
 
             if [[ $code -lt 128 ]]; then
                 ((width++))
@@ -3130,7 +3145,7 @@ show_directory_list() {
     for d in "${dir_array[@]}"; do
         local width
         width=$(get_display_width "$d")
-        (($width > max_display_width)) && max_display_width=$width
+        ((width > max_display_width)) && max_display_width=$width
     done
 
     local column_width=$((max_display_width + 4))
@@ -3465,13 +3480,15 @@ remove() {
 # 通用 systemctl 函数，适用于各种发行版
 # shellcheck disable=SC2032
 systemctl() {
-    local COMMAND="$1"
-    local SERVICE_NAME="$2"
-
     if command -v apk &>/dev/null; then
-        service "$SERVICE_NAME" "$COMMAND"
+        # Alpine: service <名称> <动作> [其余参数...]
+        local COMMAND="$1"
+        local SERVICE_NAME="$2"
+        shift 2
+        service "$SERVICE_NAME" "$COMMAND" "$@"
     else
-        /bin/systemctl "$COMMAND" "$SERVICE_NAME"
+        # systemd: 完整透传，避免丢弃 --no-pager / -l / --quiet 等参数
+        /bin/systemctl "$@"
     fi
 }
 
@@ -3495,8 +3512,7 @@ start() {
 
 # 停止服务
 stop() {
-    systemctl stop "$1"
-    if cmd; then
+    if systemctl stop "$1"; then
         echo "${gl_huang}$1${gl_bai} 服务已停止。"
     else
         echo "停止 ${gl_huang}$1${gl_bai} 服务失败。"
@@ -3505,8 +3521,7 @@ stop() {
 
 # 查看服务状态
 status() {
-    systemctl status "$1"
-    if cmd; then
+    if systemctl status "$1"; then
         echo "$1 服务状态已显示。"
     else
         echo "错误：无法显示 $1 服务状态。"
@@ -3823,10 +3838,11 @@ safe_rm() {
 
     pushd "$target_dir" >/dev/null || return 1
 
-    local file_count=$(ls -A | wc -l)
+    local file_count
+    file_count=$(ls -A | wc -l)
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录 ${gl_lv}$(pwd) ${gl_huang}为空，无需删除${gl_bai}"
-        popd >/dev/null
+        popd >/dev/null || return
         exit_animation
         return 0
     fi
@@ -3842,7 +3858,7 @@ safe_rm() {
         echo -e "\n=== 交互式删除模式 ==="
         for item in * .*; do
             if [[ "$item" != "." && "$item" != ".." && -e "$item" ]]; then
-                read -p "删除 '$item'? [y/N]: " confirm
+                read -r -p "删除 '$item'? [y/N]: " confirm
                 if [[ "$confirm" =~ ^[Yy]$ ]]; then
                     if rm -rf "$item" 2>/dev/null; then
                         echo -e "${gl_lv}已删除: ${gl_huang}$item${gl_bai}"
@@ -3854,7 +3870,7 @@ safe_rm() {
                 fi
             fi
         done
-        popd >/dev/null
+        popd >/dev/null || return
         return 0
     fi
 
@@ -3862,7 +3878,7 @@ safe_rm() {
         echo -e "${gl_bai}强制删除模式 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         rm -rf ./*
         rm -rf ./..* 2>/dev/null # 尝试删除隐藏文件，忽略错误
-        popd >/dev/null
+        popd >/dev/null || return
         echo -e "${gl_lv}删除完成${gl_bai}"
         exit_animation
         return 0
@@ -3891,7 +3907,7 @@ safe_rm() {
         ;;
     esac
 
-    popd >/dev/null
+    popd >/dev/null || return
 }
 
 # ========== 新增：下载文件到本地函数 ==========
@@ -3967,8 +3983,10 @@ rz_download_files_to_local() {
             if [[ "$input" =~ ^[0-9]+$ ]]; then
                 selected_indices+=("$input")
             elif [[ "$input" =~ ^[0-9]+-[0-9]+$ ]]; then
-                local start=$(echo "$input" | cut -d'-' -f1)
-                local end=$(echo "$input" | cut -d'-' -f2)
+                local start
+                start=$(echo "$input" | cut -d'-' -f1)
+                local end
+                end=$(echo "$input" | cut -d'-' -f2)
                 for ((i=start; i<=end; i++)); do
                     selected_indices+=("$i")
                 done
@@ -3992,13 +4010,15 @@ rz_download_files_to_local() {
         echo -e "${gl_bai}使用通配符匹配文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
         while IFS= read -r -d $'\0' file; do
-            local filename=$(basename "$file")
+            local filename
+            filename=$(basename "$file")
             selected_files+=("$filename")
         done < <(find . -maxdepth 1 -type f -name "$user_input" -print0 2>/dev/null)
 
         if [[ ${#selected_files[@]} -eq 0 ]]; then
             while IFS= read -r -d $'\0' file; do
-                local filename=$(basename "$file")
+                local filename
+                filename=$(basename "$file")
                 selected_files+=("$filename")
             done < <(find . -maxdepth 1 -type d -name "$user_input" -print0 2>/dev/null)
         fi
@@ -4213,9 +4233,12 @@ manual_file_search_and_process() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         for i in "${!files[@]}"; do
-            local abs_path=$(readlink -f "${files[$i]}" 2>/dev/null || realpath "${files[$i]}" 2>/dev/null || echo "${files[$i]}")
-            local file_size=$(du -h "${files[$i]}" 2>/dev/null | cut -f1)
-            local file_date=$(date -r "${files[$i]}" "+%Y-%m-%d %H:%M" 2>/dev/null)
+            local abs_path
+            abs_path=$(readlink -f "${files[$i]}" 2>/dev/null || realpath "${files[$i]}" 2>/dev/null || echo "${files[$i]}")
+            local file_size
+            file_size=$(du -h "${files[$i]}" 2>/dev/null | cut -f1)
+            local file_date
+            file_date=$(date -r "${files[$i]}" "+%Y-%m-%d %H:%M" 2>/dev/null)
 
             if [[ ${#abs_path} -gt 60 ]]; then
                 local part1="${abs_path:0:30}"
@@ -4400,7 +4423,8 @@ manual_file_search_and_process() {
                 esac
             fi
 
-            local sorted_indices=($(echo "$indices" | tr ' ' '\n' | sort -unr))
+            local sorted_indices
+            mapfile -t sorted_indices < <(echo "$indices" | tr ' ' '\n' | sort -unr)
             local move_count=0
 
             for idx in "${sorted_indices[@]}"; do
@@ -4510,7 +4534,8 @@ manual_file_search_and_process() {
 
             case "$confirm" in
             [Yy])
-                local sorted_indices=($(echo "$indices" | tr ' ' '\n' | sort -unr))
+                local sorted_indices
+                mapfile -t sorted_indices < <(echo "$indices" | tr ' ' '\n' | sort -unr)
                 local delete_count=0
 
                 for idx in "${sorted_indices[@]}"; do
@@ -4622,7 +4647,8 @@ manual_file_search_and_process() {
                 echo -e "${gl_bai}最后修改: ${gl_zi}$(date -r "$preview_file" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)${gl_bai}"
                 echo -e "${gl_bai}${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-                local file_type=$(file -b "$preview_file" 2>/dev/null)
+                local file_type
+                file_type=$(file -b "$preview_file" 2>/dev/null)
                 echo -e "${gl_bai}文件类型: ${gl_bufan}${file_type:-未知}${gl_bai}"
 
                 if [[ -f "$preview_file" ]]; then
@@ -4706,8 +4732,10 @@ manual_file_search_and_process() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入要添加的前缀: ")" prefix
                 local rename_count=0
                 for file in "${files[@]}"; do
-                    local filename=$(basename "$file")
-                    local dir=$(dirname "$file")
+                    local filename
+                    filename=$(basename "$file")
+                    local dir
+                    dir=$(dirname "$file")
                     local newname="${dir}/${prefix}${filename}"
                     if mv "$file" "$newname" 2>/dev/null; then
                         log_ok "已重命名: ${gl_bufan}${filename}${gl_bai} -> ${gl_lv}${prefix}${filename}${gl_bai}"
@@ -4719,8 +4747,10 @@ manual_file_search_and_process() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入要添加的后缀 (不含扩展名): ")" suffix
                 local rename_count=0
                 for file in "${files[@]}"; do
-                    local filename=$(basename "$file")
-                    local dir=$(dirname "$file")
+                    local filename
+                    filename=$(basename "$file")
+                    local dir
+                    dir=$(dirname "$file")
                     local ext="${filename##*.}"
                     local name="${filename%.*}"
                     local newname="${dir}/${name}${suffix}.${ext}"
@@ -4738,8 +4768,10 @@ manual_file_search_and_process() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入替换为的字符串: ")" new_str
                 local rename_count=0
                 for file in "${files[@]}"; do
-                    local filename=$(basename "$file")
-                    local dir=$(dirname "$file")
+                    local filename
+                    filename=$(basename "$file")
+                    local dir
+                    dir=$(dirname "$file")
                     local newname="${dir}/${filename//$old_str/$new_str}"
                     if [[ "$filename" != "$(basename "$newname")" ]]; then
                         if mv "$file" "$newname" 2>/dev/null; then
@@ -4754,7 +4786,8 @@ manual_file_search_and_process() {
                 local rename_count=0
                 local idx=1
                 for file in "${files[@]}"; do
-                    local dir=$(dirname "$file")
+                    local dir
+                    dir=$(dirname "$file")
                     local ext="${file##*.}"
                     local newname="${dir}/${template//###/$(printf "%03d" $idx)}"
                     if [[ "$template" != *"###"* ]]; then
@@ -4843,8 +4876,10 @@ manual_file_search_and_process() {
             local file_idx=$((idx - 1))
             if [[ $file_idx -ge 0 && $file_idx -lt ${#files[@]} ]]; then
                 local target_file="${files[$file_idx]}"
-                local abs_path=$(readlink -f "$target_file" 2>/dev/null || realpath "$target_file" 2>/dev/null || echo "$target_file")
-                local target_dir=$(dirname "$abs_path")
+                local abs_path
+                abs_path=$(readlink -f "$target_file" 2>/dev/null || realpath "$target_file" 2>/dev/null || echo "$target_file")
+                local target_dir
+                target_dir=$(dirname "$abs_path")
 
                 if cd "$target_dir" 2>/dev/null; then
                     log_ok "已切换到目录: ${gl_lv}$target_dir${gl_bai}"
@@ -4951,7 +4986,8 @@ scan_duplicate_files() {
         echo -e "${gl_bai}重复文件: ${gl_hong}${duplicate_files_count}${gl_bai}"
 
         if [[ $duplicate_files_count -gt 0 ]]; then
-            local duplicate_size_mb=$(echo "scale=2; $total_duplicate_size / 1024 / 1024" | bc 2>/dev/null || echo "0")
+            local duplicate_size_mb
+            duplicate_size_mb=$(echo "scale=2; $total_duplicate_size / 1024 / 1024" | bc 2>/dev/null || echo "0")
             echo -e "${gl_bai}浪费空间: ${gl_hong}${duplicate_size_mb} MB${gl_bai}"
         fi
 
@@ -4967,9 +5003,12 @@ scan_duplicate_files() {
                 for i in "${!files[@]}"; do
                     local file="${files[$i]}"
                     if [[ -f "$file" ]]; then
-                        local file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
-                        local size_human=$(numfmt --to=iec --suffix=B "$file_size" 2>/dev/null || echo "${file_size}B")
-                        local mtime=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
+                        local file_size
+                        file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
+                        local size_human
+                        size_human=$(numfmt --to=iec --suffix=B "$file_size" 2>/dev/null || echo "${file_size}B")
+                        local mtime
+                        mtime=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
 
                         if [[ $i -eq 0 ]]; then
                             echo -e "  ${gl_lv}✓ ${file}${gl_bai} (${size_human}, ${mtime}) - ${gl_lv}[保留建议]${gl_bai}"
@@ -5037,9 +5076,12 @@ interactive_remove_duplicates() {
                 for i in "${!valid_files[@]}"; do
                     local file="${valid_files[$i]}"
                     if [[ -f "$file" ]]; then
-                        local file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
-                        local size_human=$(numfmt --to=iec --suffix=B "$file_size" 2>/dev/null || echo "${file_size}B")
-                        local mtime=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
+                        local file_size
+                        file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
+                        local size_human
+                        size_human=$(numfmt --to=iec --suffix=B "$file_size" 2>/dev/null || echo "${file_size}B")
+                        local mtime
+                        mtime=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
 
                         if [[ $i -eq 0 ]]; then
                             echo -e "${gl_lv}[保留建议]${gl_bai} ${file} (${size_human}, ${mtime})"
@@ -5094,8 +5136,10 @@ interactive_remove_duplicates() {
                     for i in "${!valid_files[@]}"; do
                         local file="${valid_files[$i]}"
                         if [[ -f "$file" ]]; then
-                            local file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
-                            local size_human=$(numfmt --to=iec --suffix=B "$file_size" 2>/dev/null || echo "${file_size}B")
+                            local file_size
+                            file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
+                            local size_human
+                            size_human=$(numfmt --to=iec --suffix=B "$file_size" 2>/dev/null || echo "${file_size}B")
                             echo -e "  ${gl_huang}$((i + 1))${gl_bai}) ${file} (${size_human})"
                         else
                             echo -e "  ${gl_hong}$((i + 1))${gl_bai}) ${file} (文件无效)"
@@ -5246,18 +5290,22 @@ auto_remove_duplicates() {
                 local keep_file="${valid_files[0]}"
 
                 if [[ $strategy -eq 1 ]]; then
-                    local oldest_mtime=$(stat -c "%Y" "${valid_files[0]}" 2>/dev/null || echo 0)
+                    local oldest_mtime
+                    oldest_mtime=$(stat -c "%Y" "${valid_files[0]}" 2>/dev/null || echo 0)
                     for file in "${valid_files[@]:1}"; do
-                        local file_mtime=$(stat -c "%Y" "$file" 2>/dev/null || echo 0)
+                        local file_mtime
+                        file_mtime=$(stat -c "%Y" "$file" 2>/dev/null || echo 0)
                         if [[ $file_mtime -lt $oldest_mtime ]]; then
                             keep_file="$file"
                             oldest_mtime=$file_mtime
                         fi
                     done
                 else
-                    local newest_mtime=$(stat -c "%Y" "${valid_files[0]}" 2>/dev/null || echo 0)
+                    local newest_mtime
+                    newest_mtime=$(stat -c "%Y" "${valid_files[0]}" 2>/dev/null || echo 0)
                     for file in "${valid_files[@]:1}"; do
-                        local file_mtime=$(stat -c "%Y" "$file" 2>/dev/null || echo 0)
+                        local file_mtime
+                        file_mtime=$(stat -c "%Y" "$file" 2>/dev/null || echo 0)
                         if [[ $file_mtime -gt $newest_mtime ]]; then
                             keep_file="$file"
                             newest_mtime=$file_mtime
@@ -5268,7 +5316,8 @@ auto_remove_duplicates() {
                 for file in "${valid_files[@]}"; do
                     if [[ "$file" != "$keep_file" ]]; then
                         if [[ -f "$file" ]] && [[ -w "$file" ]]; then
-                            local file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
+                            local file_size
+                            file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
                             if rm -f "$file"; then
                                 deleted_count=$((deleted_count + 1))
                                 saved_space=$((saved_space + file_size))
@@ -5288,7 +5337,8 @@ auto_remove_duplicates() {
     if [[ $deleted_count -eq 0 ]] && [[ $error_count -eq 0 ]]; then
         log_ok "未发现需要删除的重复文件"
     else
-        local saved_mb=$(echo "scale=2; $saved_space / 1024 / 1024" | bc 2>/dev/null || echo "0")
+        local saved_mb
+        saved_mb=$(echo "scale=2; $saved_space / 1024 / 1024" | bc 2>/dev/null || echo "0")
         log_ok "自动删除完成！"
         echo -e "${gl_bai}删除文件数: ${gl_lv}${deleted_count}${gl_bai}"
         echo -e "${gl_bai}节省空间: ${gl_lv}${saved_mb} MB${gl_bai}"
@@ -5347,7 +5397,8 @@ get_duplicate_groups() {
             else
                 duplicate_groups["$checksum"]="${duplicate_groups[$checksum]}|$file"
                 duplicate_files_count=$((duplicate_files_count + 1))
-                local file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
+                local file_size
+                file_size=$(stat -c%s "$file" 2>/dev/null || echo 0)
                 total_duplicate_size=$((total_duplicate_size + file_size))
             fi
         fi
@@ -5432,10 +5483,12 @@ show_scan_statistics() {
     while IFS= read -r -d $'\0' file; do
         if [[ -f "$file" ]] && [[ -r "$file" ]]; then
             total_files=$((total_files + 1))
-            local size=$(stat -c%s "$file" 2>/dev/null || echo 0)
+            local size
+            size=$(stat -c%s "$file" 2>/dev/null || echo 0)
             total_size=$((total_size + size))
 
-            local filename=$(basename "$file")
+            local filename
+            filename=$(basename "$file")
             if [[ "$filename" == *.* ]]; then
                 local ext="${filename##*.}"
                 ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
@@ -5463,7 +5516,8 @@ show_scan_statistics() {
     echo -e "${gl_bai}文件总数: ${gl_lv}${total_files}${gl_bai}"
 
     if [[ $total_files -gt 0 ]]; then
-        local total_mb=$(echo "scale=2; $total_size / 1024 / 1024" | bc 2>/dev/null || echo "0")
+        local total_mb
+        total_mb=$(echo "scale=2; $total_size / 1024 / 1024" | bc 2>/dev/null || echo "0")
         echo -e "${gl_bai}总大小: ${gl_lv}${total_mb} MB${gl_bai}"
 
         echo -e "${gl_bai}文件大小分布:${gl_bai}"
@@ -5550,8 +5604,10 @@ preview_file_content() {
 
         for ((i = start_index; i <= end_index; i++)); do
             local file="${files_in_dir[$i]}"
-            local file_size=$(du -h "$file" 2>/dev/null | cut -f1)
-            local file_date=$(date -r "$file" "+%Y-%m-%d %H:%M" 2>/dev/null)
+            local file_size
+            file_size=$(du -h "$file" 2>/dev/null | cut -f1)
+            local file_date
+            file_date=$(date -r "$file" "+%Y-%m-%d %H:%M" 2>/dev/null)
 
             local icon="📄"
             if [[ "$file" == *.sh ]] || [[ "$file" == *.bash ]]; then
@@ -5564,7 +5620,8 @@ preview_file_content() {
                 icon="📦"
             fi
 
-            local term_width=$(tput cols 2>/dev/null || echo 100)
+            local term_width
+            term_width=$(tput cols 2>/dev/null || echo 100)
             local max_display_len=$((term_width - 50))
 
             if [[ ${#file} -gt $max_display_len && $max_display_len -gt 40 ]]; then
@@ -5595,7 +5652,7 @@ preview_file_content() {
         done
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bai}操作: ${gl_huang}数字${gl_lv}=${gl_bai}选择文件 ${gl_hong}| ${gl_huang}n${gl_bai}/${gl_huang}p${gl_lv}=${gl_bai}翻页 ${gl_hong}| ${gl_huang}q${gl_bai}/${gl_haung}0${gl_lv}=${gl_bai}返回"
+        echo -e "${gl_bai}操作: ${gl_huang}数字${gl_lv}=${gl_bai}选择文件 ${gl_hong}| ${gl_huang}n${gl_bai}/${gl_huang}p${gl_lv}=${gl_bai}翻页 ${gl_hong}| ${gl_huang}q${gl_bai}/${gl_huang}0${gl_lv}=${gl_bai}返回"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         if [[ $total_pages -gt 1 ]]; then
@@ -5645,15 +5702,20 @@ preview_file_content() {
             echo -e "${gl_bai}最后修改: ${gl_zi}$(date -r "$preview_file" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)${gl_bai}"
             echo -e "${gl_bai}${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-            local file_type=$(file -b "$preview_file" 2>/dev/null)
+            local file_type
+            file_type=$(file -b "$preview_file" 2>/dev/null)
             echo -e "${gl_bai}文件类型: ${gl_bufan}${file_type:-未知}${gl_bai}"
 
-            local permissions=$(ls -la "$preview_file" 2>/dev/null | awk '{print $1}')
+            local permissions
+            permissions=$(ls -la "$preview_file" 2>/dev/null | awk '{print $1}')
             echo -e "${gl_bai}文件权限: ${gl_zi}$permissions${gl_bai}"
 
-            local line_count=$(wc -l <"$preview_file" 2>/dev/null)
-            local word_count=$(wc -w <"$preview_file" 2>/dev/null)
-            local char_count=$(wc -m <"$preview_file" 2>/dev/null)
+            local line_count
+            line_count=$(wc -l <"$preview_file" 2>/dev/null)
+            local word_count
+            word_count=$(wc -w <"$preview_file" 2>/dev/null)
+            local char_count
+            char_count=$(wc -m <"$preview_file" 2>/dev/null)
             echo -e "${gl_bai}统计信息: ${gl_lv}行数:${line_count:-0} 单词:${word_count:-0} 字符:${char_count:-0}${gl_bai}"
 
             echo -e "${gl_bai}${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -5693,7 +5755,8 @@ preview_file_content() {
                 echo -e "${gl_bai}文件完整内容:${gl_bai}"
             fi
 
-            local file_size_kb=$(du -k "$preview_file" 2>/dev/null | cut -f1)
+            local file_size_kb
+            file_size_kb=$(du -k "$preview_file" 2>/dev/null | cut -f1)
             if [[ $file_size_kb -gt 1024 ]]; then
                 local file_size_mb=$((file_size_kb / 1024))
                 echo -e ""
@@ -5868,7 +5931,8 @@ linux_script_manager() {
     download_script() {
         local script_num="$1"
         local url="${SCRIPT_URLS[$script_num]}"
-        local script_name=$(basename "$url")
+        local script_name
+        script_name=$(basename "$url")
         local target_path="$SCRIPT_DIR/$script_name"
 
         if [ -z "$url" ]; then
@@ -5898,17 +5962,22 @@ linux_script_manager() {
         if [ -d "$SCRIPT_DIR" ]; then
             for script in "$SCRIPT_DIR"/*.sh; do
                 if [ -f "$script" ] && [ -x "$script" ]; then
-                    local name=$(basename "$script")
+                    local name
+                    name=$(basename "$script")
                     scripts+=("$name")
                 fi
             done
         fi
 
-        echo "${scripts[@]}"
+        # 调用方使用 mapfile 读取，必须按行输出；空数组时保持零输出（否则 mapfile 会读入一个空元素）
+        if [ ${#scripts[@]} -gt 0 ]; then
+            printf "%s\n" "${scripts[@]}"
+        fi
     }
 
     show_downloaded_scripts() {
-        local scripts=($(list_downloaded_scripts))
+        local scripts
+        mapfile -t scripts < <(list_downloaded_scripts)
         local i=1
 
         echo -e "${gl_huang}>>> 已保存的脚本${gl_bai}(${gl_lv}$SCRIPT_DIR${gl_bai})"
@@ -5927,7 +5996,8 @@ linux_script_manager() {
     }
 
     add_to_cron() {
-        local scripts=($(list_downloaded_scripts))
+        local scripts
+        mapfile -t scripts < <(list_downloaded_scripts)
 
         if [ ${#scripts[@]} -eq 0 ]; then
             log_warn "没有可添加到定时任务的脚本"
@@ -5993,7 +6063,8 @@ linux_script_manager() {
         echo -e "${gl_huang}>>> 当前定时任务${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        local cron_jobs=$(crontab -l 2>/dev/null | grep "$SCRIPT_DIR" || true)
+        local cron_jobs
+        cron_jobs=$(crontab -l 2>/dev/null | grep "$SCRIPT_DIR" || true)
 
         if [ -z "$cron_jobs" ]; then
             echo -e "${gl_hui}暂无定时任务${gl_bai}"
@@ -6008,8 +6079,7 @@ linux_script_manager() {
 
             case "$choice" in
             [Yy])
-                crontab -l 2>/dev/null | grep -v "$SCRIPT_DIR" | crontab -
-                if [ $? -eq 0 ]; then
+                if crontab -l 2>/dev/null | grep -v "$SCRIPT_DIR" | crontab -; then
                     log_ok "已删除所有脚本定时任务"
                 else
                     log_error "删除定时任务失败"
@@ -6042,7 +6112,8 @@ linux_script_manager() {
 
             for script in "$SCRIPT_DIR"/*.sh; do
                 if [ -f "$script" ]; then
-                    local script_name=$(basename "$script")
+                    local script_name
+                    script_name=$(basename "$script")
                     scripts+=("$script_name")
 
                     if [ -x "$script" ]; then
@@ -6056,7 +6127,7 @@ linux_script_manager() {
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-            read -e -p "$(echo -e "${gl_bai}请输入脚本序号或脚本名 (支持tab补全)(${gl_huang}0${gl_bai}返回): ")" script_input
+            read -r -e -p "$(echo -e "${gl_bai}请输入脚本序号或脚本名 (支持tab补全)(${gl_huang}0${gl_bai}返回): ")" script_input
 
             echo -e "${gl_bai}"
 
@@ -6072,8 +6143,7 @@ linux_script_manager() {
 
                         case "$add_perm" in
                         [Yy] | [Yy][Ee][Ss])
-                            chmod +x "$script_path"
-                            if [ $? -eq 0 ]; then
+                            if chmod +x "$script_path"; then
                                 log_ok "已添加执行权限: $selected_script"
                             else
                                 log_error "添加执行权限失败"
@@ -6121,8 +6191,7 @@ linux_script_manager() {
 
                         case "$add_perm" in
                         [Yy] | [Yy][Ee][Ss])
-                            chmod +x "$script_path"
-                            if [ $? -eq 0 ]; then
+                            if chmod +x "$script_path"; then
                                 log_ok "已添加执行权限: $script_input"
                             else
                                 log_error "添加执行权限失败"
@@ -6173,8 +6242,7 @@ linux_script_manager() {
 
                             case "$add_perm" in
                             [Yy] | [Yy][Ee][Ss])
-                                chmod +x "$script_path"
-                                if [ $? -eq 0 ]; then
+                                if chmod +x "$script_path"; then
                                     log_ok "已添加执行权限: $script_input"
                                 else
                                     log_error "添加执行权限失败"
@@ -6213,7 +6281,8 @@ linux_script_manager() {
                         local found_scripts=()
                         for script in "$SCRIPT_DIR"/*.sh; do
                             if [ -f "$script" ]; then
-                                local script_name=$(basename "$script")
+                                local script_name
+                                script_name=$(basename "$script")
                                 if [[ "$script_name" == *"$script_input"* ]]; then
                                     found_scripts+=("$script_name")
                                 fi
@@ -6229,8 +6298,7 @@ linux_script_manager() {
 
                                 case "$add_perm" in
                                 [Yy] | [Yy][Ee][Ss])
-                                    chmod +x "$script_path"
-                                    if [ $? -eq 0 ]; then
+                                    if chmod +x "$script_path"; then
                                         log_ok "已添加执行权限: $selected_script"
                                     else
                                         log_error "添加执行权限失败"
@@ -6269,7 +6337,7 @@ linux_script_manager() {
                             log_info "找到多个匹配的脚本:"
                             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                             for i in "${!found_scripts[@]}"; do
-                                echo -e "${gl_bufan}$(($i + 1)). ${gl_bai}${found_scripts[$i]}"
+                                echo -e "${gl_bufan}$((i + 1)). ${gl_bai}${found_scripts[$i]}"
                             done
                             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                             break_end
@@ -6399,8 +6467,10 @@ tv_rename_ultimate() {
         local count_array=()
 
         for file in "${files[@]}"; do
-            local filename=$(basename -- "$file")
-            local results=($(enhanced_extract_episode_info "$filename"))
+            local filename
+            filename=$(basename -- "$file")
+            local results
+            mapfile -t results < <(enhanced_extract_episode_info "$filename")
 
             for result in "${results[@]}"; do
                 IFS=':' read -r pattern season episode type <<<"$result"
@@ -6414,7 +6484,7 @@ tv_rename_ultimate() {
                         fi
                     done
 
-                    if [ $found -eq 0 ]; then
+                    if [ "$found" -eq 0 ]; then
                         pattern_array+=("$type")
                         example_array+=("$filename")
                         count_array+=(1)
@@ -6437,7 +6507,7 @@ tv_rename_ultimate() {
                 local percentage=$((count * 100 / ${#files[@]}))
                 local index=$((i + 1))
 
-                if [ $percentage -ge 50 ]; then
+                if [ "$percentage" -ge 50 ]; then
                     echo -e "  ${gl_lv}${index}.${gl_bai} ${gl_bufan}${type}${gl_bai} (${percentage}% 文件)"
                 else
                     echo -e "  ${gl_huang}${index}.${gl_bai} ${gl_bufan}${type}${gl_bai} (${percentage}% 文件)"
@@ -6461,7 +6531,8 @@ tv_rename_ultimate() {
         local season_count_array=()
 
         for file in "${files[@]}"; do
-            local filename=$(basename -- "$file")
+            local filename
+            filename=$(basename -- "$file")
             if [[ "$filename" =~ [Ss]([0-9]{1,2})[Ee] ]]; then
                 local season="${BASH_REMATCH[1]}"
 
@@ -6474,7 +6545,7 @@ tv_rename_ultimate() {
                     fi
                 done
 
-                if [ $found -eq 0 ]; then
+                if [ "$found" -eq 0 ]; then
                     season_array+=("$season")
                     season_count_array+=(1)
                 fi
@@ -6485,20 +6556,22 @@ tv_rename_ultimate() {
             local best_season=""
             local best_count=0
             for i in "${!season_array[@]}"; do
-                if [ ${season_count_array[i]} -gt $best_count ]; then
+                if [ "${season_count_array[i]}" -gt "$best_count" ]; then
                     best_count=${season_count_array[i]}
                     best_season="${season_array[i]}"
                 fi
             done
 
             if [ -n "$best_season" ]; then
-                local formatted_season=$(safe_printf "%02d" "$best_season")
+                local formatted_season
+                formatted_season=$(safe_printf "%02d" "$best_season")
                 plans+=("保持原季号|S${formatted_season}|检测到S${formatted_season}格式|高")
             fi
         fi
 
         if [ ${#files[@]} -gt 0 ]; then
-            local sample_file=$(basename -- "${files[0]}")
+            local sample_file
+            sample_file=$(basename -- "${files[0]}")
 
             if [[ "$sample_file" =~ ^([^0-9.-[:space:]]+)[^0-9]* ]]; then
                 local chinese_name="${BASH_REMATCH[1]}"
@@ -6615,8 +6688,10 @@ tv_rename_ultimate() {
             local example_array=()
             local count_array=()
             for file in "${files[@]}"; do
-                local filename=$(basename -- "$file")
-                local results=($(enhanced_extract_episode_info "$filename"))
+                local filename
+                filename=$(basename -- "$file")
+                local results
+                mapfile -t results < <(enhanced_extract_episode_info "$filename")
                 for result in "${results[@]}"; do
                     IFS=':' read -r pattern season episode type <<<"$result"
                     if [ "$type" != "未识别" ]; then
@@ -6628,7 +6703,7 @@ tv_rename_ultimate() {
                                 break
                             fi
                         done
-                        if [ $found -eq 0 ]; then
+                        if [ "$found" -eq 0 ]; then
                             pattern_array+=("$type")
                             example_array+=("$filename")
                             count_array+=(1)
@@ -6648,7 +6723,7 @@ tv_rename_ultimate() {
                     local example="${example_array[i]}"
                     local percentage=$((count * 100 / ${#files[@]}))
                     local index=$((i + 1))
-                    if [ $percentage -ge 50 ]; then
+                    if [ "$percentage" -ge 50 ]; then
                         echo -e "  ${gl_lv}${index}.${gl_bai} ${gl_bufan}${type}${gl_bai} (${percentage}% 文件)${gl_bai}"
                     else
                         echo -e "  ${gl_huang}${index}.${gl_bai} ${gl_bufan}${type}${gl_bai} (${percentage}% 文件)${gl_bai}"
@@ -6669,7 +6744,8 @@ tv_rename_ultimate() {
             local season_array=()
             local season_count_array=()
             for file in "${files[@]}"; do
-                local filename=$(basename -- "$file")
+                local filename
+                filename=$(basename -- "$file")
                 if [[ "$filename" =~ [Ss]([0-9]{1,2})[Ee] ]]; then
                     local season="${BASH_REMATCH[1]}"
                     local found=0
@@ -6680,7 +6756,7 @@ tv_rename_ultimate() {
                             break
                         fi
                     done
-                    if [ $found -eq 0 ]; then
+                    if [ "$found" -eq 0 ]; then
                         season_array+=("$season")
                         season_count_array+=(1)
                     fi
@@ -6690,18 +6766,20 @@ tv_rename_ultimate() {
                 local best_season=""
                 local best_count=0
                 for i in "${!season_array[@]}"; do
-                    if [ ${season_count_array[i]} -gt $best_count ]; then
+                    if [ "${season_count_array[i]}" -gt "$best_count" ]; then
                         best_count=${season_count_array[i]}
                         best_season="${season_array[i]}"
                     fi
                 done
                 if [ -n "$best_season" ]; then
-                    local formatted_season=$(safe_printf "%02d" "$best_season")
+                    local formatted_season
+                    formatted_season=$(safe_printf "%02d" "$best_season")
                     plans+=("保持原季号|S${formatted_season}|检测到S${formatted_season}格式|高")
                 fi
             fi
             if [ ${#files[@]} -gt 0 ]; then
-                local sample_file=$(basename -- "${files[0]}")
+                local sample_file
+                sample_file=$(basename -- "${files[0]}")
                 if [[ "$sample_file" =~ ^([^0-9.-[:space:]]+)[^0-9]* ]]; then
                     local chinese_name="${BASH_REMATCH[1]}"
                     chinese_name=$(echo "$chinese_name" | sed 's/^[[:space:][:punct:]]*//;s/[[:space:][:punct:]]*$//')
@@ -6755,9 +6833,11 @@ tv_rename_ultimate() {
             done
             while IFS= read -r file; do
                 if [ -f "$file" ]; then
-                    local filename=$(basename -- "$file")
+                    local filename
+                    filename=$(basename -- "$file")
                     local extension="${filename##*.}"
-                    local results=($(enhanced_extract_episode_info "$filename"))
+                    local results
+                    mapfile -t results < <(enhanced_extract_episode_info "$filename")
                     local found=0
                     for result in "${results[@]}"; do
                         IFS=':' read -r pattern season episode type <<<"$result"
@@ -6812,7 +6892,8 @@ tv_rename_ultimate() {
             echo -e "${gl_huang}找到 ${gl_lv}${#files[@]} ${gl_huang}个可识别文件:${gl_bai}"
             echo -e ""
             for ((i = 0; i < ${#files[@]}; i++)); do
-                local filename=$(basename -- "${files[$i]}")
+                local filename
+                filename=$(basename -- "${files[$i]}")
                 IFS=':' read -r episode season type <<<"${episode_info[$i]}"
                 echo -e "  ${gl_bufan}$(safe_printf "%02d" $((i + 1))).${gl_bai} E$(safe_printf "%02d" "$episode") [${type}] - $filename${gl_bai}"
             done
@@ -6848,7 +6929,7 @@ tv_rename_ultimate() {
                 echo -e "${gl_bufan}当前设置:${gl_bai}"
                 echo -e "  ${gl_bufan}剧集前缀:${gl_bai} $PREFIX${gl_bai}"
                 echo -e "  ${gl_bufan}起始季号:${gl_bai} S$SEASON${gl_bai}"
-                echo -e "  ${gl_bufan}起始集数:${gl_bai} E$(safe_printf "%02d" $START_EP)${gl_bai}"
+                echo -e "  ${gl_bufan}起始集数:${gl_bai} E$(safe_printf "%02d" "$START_EP")${gl_bai}"
                 if [ $auto_detected -eq 1 ]; then
                     echo -e "  ${gl_lv}✓ 智能检测已应用${gl_bai}"
                 fi
@@ -6885,11 +6966,13 @@ tv_rename_ultimate() {
                 extract_prefix_candidate() {
                     local filename="$1"
                     local basename="${filename%.*}"
-                    local results=($(enhanced_extract_episode_info "$filename"))
+                    local results
+                    mapfile -t results < <(enhanced_extract_episode_info "$filename")
                     if [ ${#results[@]} -gt 0 ]; then
                         IFS=':' read -r pattern season episode type <<<"${results[0]}"
                         if [ "$type" != "未识别" ] && [ -n "$pattern" ]; then
-                            local cleaned=$(echo "$basename" | sed -E "s/[._ -]*${pattern}[._ -]*//g")
+                            local cleaned
+                            cleaned=$(echo "$basename" | sed -E "s/[._ -]*${pattern}[._ -]*//g")
                             if [ -n "$cleaned" ]; then
                                 cleaned=$(echo "$cleaned" | sed 's/^[._ -]*//;s/[._ -]*$//')
                                 if [ -n "$cleaned" ] && [ ${#cleaned} -ge 2 ]; then
@@ -6899,7 +6982,8 @@ tv_rename_ultimate() {
                             fi
                         fi
                     fi
-                    local fallback=$(echo "$basename" | sed 's/^[._ -]*//;s/[._ -]*$//')
+                    local fallback
+                    fallback=$(echo "$basename" | sed 's/^[._ -]*//;s/[._ -]*$//')
                     if [ -n "$fallback" ] && [ ${#fallback} -ge 2 ]; then
                         echo "$fallback"
                     else
@@ -6910,8 +6994,10 @@ tv_rename_ultimate() {
                 local counts=()
                 local total_files=${#files[@]}
                 for file in "${files[@]}"; do
-                    local filename=$(basename -- "$file")
-                    local candidate=$(extract_prefix_candidate "$filename")
+                    local filename
+                    filename=$(basename -- "$file")
+                    local candidate
+                    candidate=$(extract_prefix_candidate "$filename")
                     if [ -z "$candidate" ]; then
                         continue
                     fi
@@ -6922,8 +7008,8 @@ tv_rename_ultimate() {
                             break
                         fi
                     done
-                    if [ $found -ge 0 ]; then
-                        counts[$found]=$((counts[$found] + 1))
+                    if [ "$found" -ge 0 ]; then
+                        counts[found]=$((counts[found] + 1))
                     else
                         candidates+=("$candidate")
                         counts+=(1)
@@ -6936,13 +7022,13 @@ tv_rename_ultimate() {
                 fi
                 for ((i = 0; i < ${#candidates[@]} - 1; i++)); do
                     for ((j = i + 1; j < ${#candidates[@]}; j++)); do
-                        if [ ${counts[$j]} -gt ${counts[$i]} ]; then
+                        if [ "${counts[$j]}" -gt "${counts[$i]}" ]; then
                             tmp_c="${candidates[$i]}"
                             tmp_n="${counts[$i]}"
-                            candidates[$i]="${candidates[$j]}"
-                            counts[$i]="${counts[$j]}"
-                            candidates[$j]="$tmp_c"
-                            counts[$j]="$tmp_n"
+                            candidates[i]="${candidates[$j]}"
+                            counts[i]="${counts[$j]}"
+                            candidates[j]="$tmp_c"
+                            counts[j]="$tmp_n"
                         fi
                     done
                 done
@@ -7098,10 +7184,12 @@ tv_rename_ultimate() {
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 for ((i = 0; i < ${#files[@]}; i++)); do
                     local file="${files[$i]}"
-                    local filename=$(basename -- "$file")
+                    local filename
+                    filename=$(basename -- "$file")
                     local extension="${filename##*.}"
                     IFS=':' read -r original_ep original_season type <<<"${episode_info[$i]}"
-                    local formatted_ep=$(safe_printf "%02d" "$current_ep")
+                    local formatted_ep
+                    formatted_ep=$(safe_printf "%02d" "$current_ep")
                     local new_name="${PREFIX}-S${SEASON}E${formatted_ep}.${extension}"
                     local found=0
                     for j in "${!summary_array[@]}"; do
@@ -7289,7 +7377,8 @@ tv_rename_ultimate() {
 
             echo -e "  ${gl_bufan}测试文件:${gl_bai} ${gl_hui}$filename${gl_bai}"
 
-            local results=($(enhanced_extract_episode_info "$filename"))
+            local results
+            mapfile -t results < <(enhanced_extract_episode_info "$filename")
             local first_result="${results[0]}"
             IFS=':' read -r pattern season episode type <<<"$first_result"
 
@@ -7316,7 +7405,7 @@ tv_rename_ultimate() {
 
         local accuracy=0
         local partial_accuracy=0
-        if [ $total_cases -gt 0 ]; then
+        if [ "$total_cases" -gt 0 ]; then
             accuracy=$((correct_cases * 100 / total_cases))
             partial_accuracy=$(((correct_cases + partially_correct) * 100 / total_cases))
         fi
@@ -7356,14 +7445,14 @@ tv_rename_ultimate() {
 
         log_info "${gl_bai}正在创建 ${gl_huang}$file_count ${gl_bai}个测试文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
-        for i in $(seq 1 $file_count); do
+        for i in $(seq 1 "$file_count"); do
             case $((i % 6)) in
-            0) filename="S01E$(printf "%02d" $i).2026.2160p.WEB-DL.mkv" ;;
-            1) filename="EP$(printf "%02d" $i)-剧情发展.mp4" ;;
-            2) filename="第$(printf "%d" $i)集.电视剧名.avi" ;;
-            3) filename="$(printf "%02d" $i)-剧集名.mov" ;;
-            4) filename="电视剧.S01E$(printf "%02d" $i).WEBRip.wmv" ;;
-            5) filename="test$(printf "%d" $i).480p.mpeg" ;;
+            0) filename="S01E$(printf "%02d" "$i").2026.2160p.WEB-DL.mkv" ;;
+            1) filename="EP$(printf "%02d" "$i")-剧情发展.mp4" ;;
+            2) filename="第$(printf "%d" "$i")集.电视剧名.avi" ;;
+            3) filename="$(printf "%02d" "$i")-剧集名.mov" ;;
+            4) filename="电视剧.S01E$(printf "%02d" "$i").WEBRip.wmv" ;;
+            5) filename="test$(printf "%d" "$i").480p.mpeg" ;;
             esac
 
             touch "$filename"
@@ -7439,7 +7528,8 @@ tv_rename_ultimate() {
         clear
         check_directory_empty "." "移动视频文件" "true" || return
 
-        local source_dir="$(pwd)"
+        local source_dir
+        source_dir="$(pwd)"
         echo -e "${gl_huang}>>> 当前目录文件列表：${gl_bai}(${gl_lv}${source_dir}${gl_bai})"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         show_current_files
@@ -7467,8 +7557,7 @@ tv_rename_ultimate() {
             read -r -e -p "$(echo -e "${gl_bai}目录不存在, 是否创建? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" create_dir
             case "$create_dir" in
             [Yy])
-                mkdir -p "$target_dir"
-                if [ $? -ne 0 ]; then
+                if ! mkdir -p "$target_dir"; then
                     log_error "创建目录失败！"
                     exit_animation
                     return 1
@@ -7583,8 +7672,9 @@ tv_rename_ultimate() {
             case "$open_dir" in
             [Yy])
                 clear
-                cd "$target_dir"
-                local source_dir="$(pwd)"
+                cd "$target_dir" || return
+                local source_dir
+                source_dir="$(pwd)"
                 echo -e "${gl_huang}>>> 当前目录文件列表：${gl_bai}(${gl_lv}${source_dir}${gl_bai})"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 show_current_files
@@ -7614,7 +7704,8 @@ tv_rename_ultimate() {
             echo -e "${gl_bufan}         └── ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e ""
-            local source_dir="$(pwd)"
+            local source_dir
+            source_dir="$(pwd)"
             echo -e "${gl_huang}>>> 当前目录文件列表：${gl_bai}(${gl_lv}${source_dir}${gl_bai})"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             show_current_files
@@ -7677,7 +7768,8 @@ format_and_copy_script() {
     echo -e "${gl_zi}>>> 开始格式化脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    local backup_path="${script_path}.backup.$(date +%Y%m%d%H%M%S)"
+    local backup_path
+    backup_path="${script_path}.backup.$(date +%Y%m%d%H%M%S)"
     if cp "$script_path" "$backup_path"; then
         echo -e "${gl_bai}原始脚本已备份到: ${gl_huang}${backup_path}${gl_bai}"
     else
@@ -7702,7 +7794,8 @@ format_and_copy_script() {
     if cp "$script_path" "$target_dir/"; then
         echo -e "${gl_lv}✓ 脚本已复制到 ${target_dir}/${gl_bai}"
 
-        local target_file="${target_dir}/$(basename "$script_path")"
+        local target_file
+        target_file="${target_dir}/$(basename "$script_path")"
         if [[ -f "$target_file" ]]; then
             echo -e "${gl_bai}目标文件信息:${gl_bai}"
             echo -e "  ${gl_bai}路径: ${gl_lv}${target_file}${gl_bai}"
@@ -7751,9 +7844,8 @@ format_and_copy_script() {
             done
             echo ""
 
-            sz "$script_path"
 
-            if [[ $? -eq 0 ]]; then
+            if sz "$script_path"; then
                 echo -e "${gl_lv}✓ 文件传输完成!${gl_bai}"
                 echo -e "${gl_bai}脚本已保存到Windows下载目录${gl_bai}"
             else
@@ -8459,8 +8551,10 @@ rz_check_zmodem_support() {
     read -r -e -p "$(echo -e "${gl_bai}是否创建测试文件? (${gl_lv}y${gl_bai}/${gl_hong}n${gl_bai}): ")" test_choice
     if [[ "$test_choice" == "y" || "$test_choice" == "Y" ]]; then
         echo "这是一个Zmodem传输测试文件，创建于: $(date)" > zmodem_test.txt
-        echo "文件大小: 1KB" >> zmodem_test.txt
-        echo "用于测试Zmodem文件传输功能" >> zmodem_test.txt
+        {
+            echo "文件大小: 1KB"
+            echo "用于测试Zmodem文件传输功能"
+        } >> zmodem_test.txt
         dd if=/dev/zero bs=1k count=1 2>/dev/null >> zmodem_test.txt
         log_ok "测试文件已创建: ${gl_huang}zmodem_test.txt${gl_bai}"
         echo -e "${gl_bai}使用命令测试: ${gl_zi}sz zmodem_test.txt${gl_bai}"
@@ -8657,7 +8751,8 @@ rz_create_test_files() {
         *) handle_invalid_input ;;
     esac
 
-    if [[ -f "test_"*".txt" ]]; then
+    # 注意：-f 不支持 glob，[[ -f "test_"*".txt" ]] 恒为假；改用 compgen 判断是否存在匹配文件
+    if compgen -G "test_*.txt" >/dev/null; then
         echo -e "${gl_bai}测试文件信息:${gl_bai}"
         ls -lh test_*.txt 2>/dev/null
 
@@ -8747,7 +8842,7 @@ file_transfer_manager() {
 # 清空临时目录
 clear_temp_directory() {
     local default_dir="/mnt/tmp"
-    cd "$default_dir"
+    cd "$default_dir" || return
     echo -e ""
     echo -e "${gl_zi}>>> 清空临时目录${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -8772,7 +8867,8 @@ clear_temp_directory() {
 # 返回上一级目录
 go_parent_directory() {
     if [[ "$(pwd)" != "/" ]]; then
-        local current_path="$(pwd)"
+        local current_path
+        current_path="$(pwd)"
         cd ..
         echo -e "${gl_lv}已返回上级目录: ${gl_huang}$(pwd) ${gl_bai}"
         exit_animation
@@ -8797,8 +8893,7 @@ temp_dir_menu() {
 
     if [ ! -d "$target_dir" ]; then
         echo -e "${gl_huang}目录不存在，尝试创建: $target_dir${gl_bai}"
-        mkdir -p "$target_dir"
-        if [ $? -ne 0 ]; then
+        if ! mkdir -p "$target_dir"; then
             echo -e "${gl_hong}错误：无法创建目录 $target_dir${gl_bai}"
             exit_animation
             return 1
@@ -8807,7 +8902,8 @@ temp_dir_menu() {
 
     local current_dir="$target_dir"
 
-    local original_dir="$(pwd)"
+    local original_dir
+    original_dir="$(pwd)"
 
     cd "$target_dir" 2>/dev/null || {
         log_error "无法进入目录: $target_dir"
@@ -8945,8 +9041,10 @@ file_chmod() {
             continue
         fi
 
-        local curr_oct=$(stat -c "%a" "$filename" 2>/dev/null || stat -f "%A" "$filename" 2>/dev/null)
-        local curr_sym=$(stat -c "%A" "$filename" 2>/dev/null || stat -f "%Sp" "$filename" 2>/dev/null)
+        local curr_oct
+        curr_oct=$(stat -c "%a" "$filename" 2>/dev/null || stat -f "%A" "$filename" 2>/dev/null)
+        local curr_sym
+        curr_sym=$(stat -c "%A" "$filename" 2>/dev/null || stat -f "%Sp" "$filename" 2>/dev/null)
 
         echo ""
         echo -e "${gl_huang}>>> 当前权限信息${gl_bai}"
@@ -8974,8 +9072,10 @@ file_chmod() {
         echo ""
         if chmod "$new_perm" "$filename" 2>/dev/null; then
             sync
-            local new_oct=$(stat -c "%a" "$filename" 2>/dev/null || stat -f "%A" "$filename" 2>/dev/null)
-            local new_sym=$(stat -c "%A" "$filename" 2>/dev/null || stat -f "%Sp" "$filename" 2>/dev/null)
+            local new_oct
+            new_oct=$(stat -c "%a" "$filename" 2>/dev/null || stat -f "%A" "$filename" 2>/dev/null)
+            local new_sym
+            new_sym=$(stat -c "%A" "$filename" 2>/dev/null || stat -f "%Sp" "$filename" 2>/dev/null)
 
             log_ok "权限修改成功！"
             echo ""
@@ -9094,8 +9194,7 @@ search_file_here() {
 
                     if [[ -r "$file" ]]; then
                         local file_info
-                        file_info=$(ls -lh "$file" 2>/dev/null)
-                        if [[ $? -eq 0 ]]; then
+                        if file_info=$(ls -lh "$file" 2>/dev/null); then
                             local size
                             size=$(echo "$file_info" | awk '{print $5}')
                             local time_info
@@ -9332,8 +9431,8 @@ install_add_docker_guanfang() {
     local country
     country=$(curl -s ipinfo.io/country)
     if [ "$country" = "CN" ]; then
-        cd ~
-        curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/install && chmod +x install
+        cd ~ || return
+        curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/install" && chmod +x install
         sh install --mirror Aliyun
         rm -f install
     else
@@ -9450,8 +9549,7 @@ docker_container_start() {
     echo -ne " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.5
     echo ""
-    docker start "$dockername"
-    if [ $? -eq 0 ]; then
+    if docker start "$dockername"; then
         echo -e "${gl_lv}容器启动成功！${gl_bai}"
     else
         echo -e "${gl_hong}容器启动失败！${gl_bai}"
@@ -9471,8 +9569,7 @@ docker_container_stop() {
     echo -ne " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.5
     echo ""
-    docker stop "$dockername"
-    if [ $? -eq 0 ]; then
+    if docker stop "$dockername"; then
         echo -e "${gl_lv}容器停止成功！${gl_bai}"
     else
         echo -e "${gl_hong}容器停止失败！${gl_bai}"
@@ -9496,8 +9593,7 @@ docker_container_remove() {
             echo -ne " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
             sleep_fractional 0.5
             echo ""
-            docker rm -f "$dockername"
-            if [ $? -eq 0 ]; then
+            if docker rm -f "$dockername"; then
                 echo -e "${gl_lv}删除成功！${gl_bai}"
             else
                 echo -e "${gl_hong}删除失败！${gl_bai}"
@@ -9525,8 +9621,7 @@ docker_container_restart() {
         echo -ne " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
         sleep_fractional 0.8
         echo ""
-        docker restart "$dockername"
-        if [ $? -eq 0 ]; then
+        if docker restart "$dockername"; then
             echo -e "${gl_lv}容器重启成功！${gl_bai}"
         else
             echo -e "${gl_hong}容器重启失败！${gl_bai}"
@@ -9578,8 +9673,7 @@ docker_container_stop_all() {
                 echo -ne " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
                 sleep_fractional 0.8
                 echo ""
-                docker stop $running_containers
-                if [ $? -eq 0 ]; then
+                if docker stop $running_containers; then
                     echo -e "${gl_lv}所有容器停止成功！${gl_bai}"
                 else
                     echo -e "${gl_hong}所有容器停止失败！${gl_bai}"
@@ -9605,8 +9699,7 @@ docker_container_remove_all() {
             echo -ne " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
             sleep_fractional 0.5
             echo ""
-            docker ps -a -q | xargs -r docker rm -f
-            if [ $? -eq 0 ]; then
+            if docker ps -a -q | xargs -r docker rm -f; then
                 echo -e "${gl_lv}所有容器删除成功！${gl_bai}"
             else
                 echo -e "${gl_hong}所有容器删除失败！${gl_bai}"
@@ -9713,7 +9806,8 @@ docker_container_close_port() {
     [ "$docker_name" = "0" ] && { cancel_return "容器操作"; return 1; }
     ip_address
     block_container_port "$docker_name" "$ipv4_address"
-    local docker_port=$(docker port "$docker_name" | awk -F'[:]' '/->/ {print $NF}' | uniq)
+    local docker_port
+    docker_port=$(docker port "$docker_name" | awk -F'[:]' '/->/ {print $NF}' | uniq)
     check_docker_app_ip
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -9786,7 +9880,7 @@ docker_image_cleanup_unused() {
     echo -e "${gl_zi}>>> 删除悬空 + 无用普通镜像 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_huang}即将删除未被任何容器使用的镜像！${gl_bai} 继续？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" sure
-    [[ "$sure" =~ ^[Yy]$ ]] || continue
+    [[ "$sure" =~ ^[Yy]$ ]] || return
     docker image prune -a -f && echo -e "${gl_lv}✓ 清理完成${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -9797,7 +9891,7 @@ docker_image_cleanup_system() {
     echo -e "${gl_zi}>>> 删除镜像+容器+网络+构建缓存 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_hong}终极清理：镜像+容器+网络+构建缓存！${gl_bai} 继续？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" sure
-    [[ "$sure" =~ ^[Yy]$ ]] || continue
+    [[ "$sure" =~ ^[Yy]$ ]] || return
     docker system prune -a -f && echo -e "${gl_lv}✓ 清理完成${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -9963,14 +10057,14 @@ docker_download_load() {
         fi
     fi
 
-    temp_dir=$(mktemp -d /tmp/docker_dl.XXXXXX)
-    if [[ $? -ne 0 ]]; then
+    if ! temp_dir=$(mktemp -d /tmp/docker_dl.XXXXXX); then
         echo -e "${gl_hong}✗ 错误: 无法创建临时目录${gl_bai}" >&2
         exit_animation
         return 1
     fi
 
-    local file_name=$(basename "$download_url" | sed 's/[?#].*$//')
+    local file_name
+    file_name=$(basename "$download_url" | sed 's/[?#].*$//')
     if [[ -z "$file_name" || "$file_name" == "/" ]]; then
         file_name="docker_image_$(date +%Y%m%d_%H%M%S).tar"
     fi
@@ -10126,7 +10220,8 @@ docker_download_load() {
     if [[ $load_status -eq 0 ]]; then
         echo -e "${gl_lv}✓ 镜像加载成功${gl_bai}"
 
-        local loaded_image=$(echo "$load_output" | grep -oP "Loaded image: \K.*" || echo "")
+        local loaded_image
+        loaded_image=$(echo "$load_output" | grep -oP "Loaded image: \K.*" || echo "")
         if [[ -n "$loaded_image" ]]; then
             echo -e "${gl_bai}加载的镜像: ${gl_huang}${loaded_image}${gl_bai}"
         fi
@@ -10353,9 +10448,12 @@ docker_image() {
 
             for i in "${!backup_files[@]}"; do
                 local file="${backup_files[i]}"
-                local file_name=$(basename "$file")
-                local file_size=$(du -h "$file" | cut -f1)
-                local mod_time=$(stat -c "%y" "$file" | cut -d' ' -f1,2 | cut -d'.' -f1)
+                local file_name
+                file_name=$(basename "$file")
+                local file_size
+                file_size=$(du -h "$file" | cut -f1)
+                local mod_time
+                mod_time=$(stat -c "%y" "$file" | cut -d' ' -f1,2 | cut -d'.' -f1)
                 local file_num=$((i + 1))
 
                 printf "${gl_huang}%3d${gl_bai}\t%-8s\t%s\t${gl_lv}%s${gl_bai}\n" \
@@ -10381,8 +10479,10 @@ docker_image() {
             fi
 
             local selected_file="${backup_files[$((file_num - 1))]}"
-            local file_size=$(du -h "$selected_file" | cut -f1)
-            local file_name=$(basename "$selected_file")
+            local file_size
+            file_size=$(du -h "$selected_file" | cut -f1)
+            local file_name
+            file_name=$(basename "$selected_file")
 
             echo -e ""
             echo -e "${gl_bai}选择的文件: ${gl_huang}${file_name}${gl_bai}"
@@ -10405,7 +10505,8 @@ docker_image() {
             done
             echo -n "]"
 
-            local load_output=$(docker load -i "$selected_file" 2>&1)
+            local load_output
+            load_output=$(docker load -i "$selected_file" 2>&1)
             local load_status=$?
 
             echo -ne "\r\033[K"
@@ -10413,7 +10514,8 @@ docker_image() {
             if [[ $load_status -eq 0 ]]; then
                 echo -e "${gl_lv}✓ 镜像加载成功${gl_bai}"
 
-                local loaded_image=$(echo "$load_output" | grep -oP "Loaded image: \K.*" || echo "")
+                local loaded_image
+                loaded_image=$(echo "$load_output" | grep -oP "Loaded image: \K.*" || echo "")
 
                 if [[ -n "$loaded_image" ]]; then
                     echo -e "${gl_bai}加载的镜像: ${gl_huang}${loaded_image}${gl_bai}"
@@ -10514,7 +10616,8 @@ docker_image() {
             echo -e "${gl_huang}注意: Windows Terminal 需安装lrzsz并配置${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-            local upload_dir="/tmp/docker_upload_$(date +%Y%m%d_%H%M%S)_$$"
+            local upload_dir
+            upload_dir="/tmp/docker_upload_$(date +%Y%m%d_%H%M%S)_$$"
             mkdir -p "$upload_dir"
 
             echo -e "${gl_huang}文件将上传到: ${gl_lv}${upload_dir}${gl_bai}"
@@ -10603,8 +10706,10 @@ docker_image() {
             local i=1
             local file_list=()
             for file in "${uploaded_files[@]}"; do
-                local file_name=$(basename "$file")
-                local file_size=$(du -h "$file" | cut -f1)
+                local file_name
+                file_name=$(basename "$file")
+                local file_size
+                file_size=$(du -h "$file" | cut -f1)
                 file_list+=("$file")
                 printf "${gl_lv}%2d${gl_bai}\t%-8s\t${gl_huang}%s${gl_bai}\n" "$i" "$file_size" "$file_name"
                 ((i++))
@@ -10640,8 +10745,10 @@ docker_image() {
             fi
 
             local selected_file="${file_list[$((selected_idx - 1))]}"
-            local file_name=$(basename "$selected_file")
-            local file_size=$(du -h "$selected_file" | cut -f1)
+            local file_name
+            file_name=$(basename "$selected_file")
+            local file_size
+            file_size=$(du -h "$selected_file" | cut -f1)
 
             echo -e ""
             echo -e "${gl_bai}选择的文件: ${gl_huang}${file_name}${gl_bai}"
@@ -10710,7 +10817,8 @@ docker_image() {
             if [[ $load_status -eq 0 ]]; then
                 log_ok "镜像加载成功!"
 
-                local loaded_image=$(echo "$load_output" | grep -oP "Loaded image: \K.*" || echo "")
+                local loaded_image
+                loaded_image=$(echo "$load_output" | grep -oP "Loaded image: \K.*" || echo "")
                 if [[ -n "$loaded_image" ]]; then
                     echo -e "${gl_bai}加载的镜像: ${gl_lv}${loaded_image}${gl_bai}"
                 fi
@@ -11346,11 +11454,11 @@ ldnmp_v() {
 install_ldnmp_conf() {
 
     cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx && touch web/docker-compose.yml
-    wget -O /etc/nginx/nginx.conf ${gh_proxy}gitee.com/meimolihan/script/raw/master/nginx/nginx.conf
+    wget -O /etc/nginx/nginx.conf "${gh_proxy}gitee.com/meimolihan/script/raw/master/nginx/nginx.conf"
 
     default_server_ssl
 
-    wget -O /etc/nginx/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+    wget -O /etc/nginx/docker-compose.yml "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml"
     dbrootpasswd=$(openssl rand -base64 16)
     dbuse=$(openssl rand -hex 4)
     dbusepasswd=$(openssl rand -base64 8)
@@ -11366,7 +11474,7 @@ update_docker_compose_with_db_creds() {
     cp /etc/nginx/docker-compose.yml /etc/nginx/docker-compose1.yml
 
     if ! grep -q "stream" /etc/nginx/docker-compose.yml; then
-        wget -O /etc/nginx/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+        wget -O /etc/nginx/docker-compose.yml "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml"
 
         dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /etc/nginx/docker-compose1.yml | tr -d '[:space:]')
         dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /etc/nginx/docker-compose1.yml | tr -d '[:space:]')
@@ -11424,7 +11532,7 @@ install_ldnmp() {
     fix_phpfpm_conf php
     fix_phpfpm_conf php74
 
-    wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
+    wget -O /home/custom_mysql_config.cnf "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf"
     docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
     rm -rf /home/custom_mysql_config.cnf
 
@@ -11438,8 +11546,8 @@ install_ldnmp() {
 
 install_certbot() {
 
-    cd ~
-    curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
+    cd ~ || return
+    curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh"
     chmod +x auto_cert_renewal.sh
 
     check_crontab_installed
@@ -11455,7 +11563,7 @@ install_certbot() {
 install_ssltls() {
     docker stop nginx >/dev/null 2>&1
     check_port >/dev/null 2>&1
-    cd ~
+    cd ~ || return
 
     local file_path="/etc/letsencrypt/live/${yuming}/fullchain.pem"
     if [ ! -f "$file_path" ]; then
@@ -11576,8 +11684,7 @@ add_yuming() {
 }
 
 add_db() {
-    dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-    dbname="${dbname}"
+    dbname="${yuming//[^A-Za-z0-9]/_}"
 
     dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
     dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
@@ -11587,7 +11694,7 @@ add_db() {
 
 reverse_proxy() {
     ip_address
-    wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}gitee.com/meimolihan/script/raw/master/nginx/reverse-proxy.conf
+    wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}gitee.com/meimolihan/script/raw/master/nginx/reverse-proxy.conf"
     sed -i "s|yuming.com|${yuming}|g" "/etc/nginx/conf.d/${yuming}.conf"
     sed -i "s/0.0.0.0/$ipv4_address/g" /etc/nginx/conf.d/"$yuming".conf
     sed -i "s|0000|$duankou|g" /etc/nginx/conf.d/"$yuming".conf
@@ -11615,7 +11722,7 @@ restart_ldnmp() {
 
 nginx_upgrade() {
     local ldnmp_pods="nginx"
-    cd /etc/nginx/
+    cd /etc/nginx/ || return
     docker rm -f $ldnmp_pods >/dev/null 2>&1
     docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi >/dev/null 2>&1
     docker images --filter=reference="${ldnmp_pods}*" -q | xargs docker rmi >/dev/null 2>&1
@@ -11642,7 +11749,7 @@ phpmyadmin_upgrade() {
     dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
     local dbusepasswd
     dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
-    cd /etc/nginx/
+    cd /etc/nginx/ || return
     docker rm -f $ldnmp_pods >/dev/null 2>&1
     docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi >/dev/null 2>&1
     curl -sS -O https://raw.githubusercontent.com/kejilion/docker/refs/heads/main/docker-compose.phpmyadmin.yml
@@ -11713,7 +11820,7 @@ web_del() {
         rm "/etc/nginx/keyfile/${yuming}_key.pem" >/dev/null 2>&1
         rm "/etc/nginx/keyfile/${yuming}_cert.pem" >/dev/null 2>&1
 
-        dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+        dbname="${yuming//[^A-Za-z0-9]/_}"
         dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
 
         echo "正在删除数据库: $dbname"
@@ -11800,7 +11907,6 @@ patch_wp_memory_limit() {
 }
 
 patch_wp_debug() {
-    local DEBUG="${1:-false}"          # 第一个参数，默认false
     local DEBUG_DISPLAY="${2:-false}"  # 第二个参数，默认false
     local DEBUG_LOG="${3:-false}"      # 第三个参数，默认false
     local TARGET_DIR="/etc/nginx/html" # 路径写死
@@ -12069,7 +12175,6 @@ iptables_on() {
 
     local max_attempts=3
     local attempt=1
-    local service_started=0
 
     while [ $attempt -le $max_attempts ]; do
         if systemctl start "$service_name" 2>/dev/null; then
@@ -12079,7 +12184,6 @@ iptables_on() {
             sleep_fractional 2
             if systemctl is-active "$service_name" >/dev/null 2>&1; then
                 log_ok "iptables 服务确认已运行"
-                service_started=1
                 break
             else
                 log_warn "服务启动但状态检查未通过，重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -12089,7 +12193,6 @@ iptables_on() {
 
             if service "$service_name" start 2>/dev/null; then
                 log_ok "通过传统service命令启动成功"
-                service_started=1
                 break
             fi
         fi
@@ -12106,11 +12209,13 @@ iptables_on() {
         log_ok "IPv4 防火墙规则已保存"
     else
         echo "# Generated by iptables_on function" >/etc/iptables/rules.v4
-        echo "*filter" >>/etc/iptables/rules.v4
-        echo ":INPUT ACCEPT [0:0]" >>/etc/iptables/rules.v4
-        echo ":FORWARD ACCEPT [0:0]" >>/etc/iptables/rules.v4
-        echo ":OUTPUT ACCEPT [0:0]" >>/etc/iptables/rules.v4
-        echo "COMMIT" >>/etc/iptables/rules.v4
+        {
+            echo "*filter"
+            echo ":INPUT ACCEPT [0:0]"
+            echo ":FORWARD ACCEPT [0:0]"
+            echo ":OUTPUT ACCEPT [0:0]"
+            echo "COMMIT"
+        } >> /etc/iptables/rules.v4
         log_ok "创建基本防火墙规则文件"
     fi
 
@@ -12235,29 +12340,24 @@ check_iptables_status_enhanced() {
     local status=0
     local rule_count=0
     local service_status=""
-    local active_method=""
 
     sleep_fractional 1
 
     if systemctl is-active iptables &>/dev/null; then
         service_status="${gl_lv}服务运行中(systemctl-iptables)${gl_bai}"
-        active_method="iptables"
         status=0
     elif systemctl is-active netfilter-persistent &>/dev/null; then
         service_status="${gl_lv}服务运行中(netfilter-persistent)${gl_bai}"
-        active_method="netfilter-persistent"
         status=0
     elif systemctl status iptables 2>/dev/null | grep -q "active (exited)"; then
         service_status="${gl_lv}服务运行中(active-exited)${gl_bai}"
-        active_method="iptables"
         status=0
     elif service iptables status &>/dev/null; then
         service_status="${gl_lv}服务运行中(service)${gl_bai}"
-        active_method="service"
         status=0
     else
         rule_count=$(iptables-save 2>/dev/null | grep -c '^-A' || echo 0)
-        if [ $rule_count -gt 0 ]; then
+        if [ "$rule_count" -gt 0 ]; then
             service_status="${gl_huang}服务未运行但规则已加载${gl_bai}"
             status=1
         else
@@ -12286,7 +12386,7 @@ check_iptables_status_enhanced() {
         echo -e "${gl_huang}未找到持久化配置文件${gl_bai}"
     fi
 
-    if [ $rule_count -ne $persisted_rules ] && [ $persisted_rules -gt 0 ]; then
+    if [ "$rule_count" -ne "$persisted_rules" ] && [ "$persisted_rules" -gt 0 ]; then
         echo -e "${gl_huang}警告: 内存规则($rule_count)与持久化规则($persisted_rules)数量不一致${gl_bai}"
         status=2
     fi
@@ -12801,7 +12901,7 @@ fail2ban_clear_all_bans() {
     echo -e "${gl_zi}>>> 清空所有封禁的IP${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定清空所有封禁？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" sure
-    [[ $sure != y ]] && continue
+    [[ $sure != y ]] && return
     for jail in $(fail2ban-client status 2>/dev/null |
         sed -n '/Jail list:/ {s/.*Jail list://; s/,//g; p;}'); do
         for ip in $(fail2ban-client status "$jail" 2>/dev/null |
@@ -12871,14 +12971,14 @@ fail2ban_config_cloudflare() {
     read -r -e -p "输入CF的账号: " cfuser
     read -r -e -p "输入CF的Global API Key: " cftoken
 
-    wget -O /etc/nginx/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
+    wget -O /etc/nginx/conf.d/default.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf"
     docker exec nginx nginx -s reload
 
-    cd /etc/fail2ban/jail.d/
+    cd /etc/fail2ban/jail.d/ || return
     curl -sS -O https://gitee.com/meimolihan/fail2ban/raw/master/nginx-docker-cc.conf
 
-    cd /etc/fail2ban/action.d
-    curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
+    cd /etc/fail2ban/action.d || return
+    curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf"
 
     sed -i "s/kejilion@outlook.com/$cfuser/g" /etc/fail2ban/action.d/cloudflare-docker.conf
     sed -i "s/APIKEY00000/$cftoken/g" /etc/fail2ban/action.d/cloudflare-docker.conf
@@ -12908,10 +13008,10 @@ fail2ban_auto_under_attack() {
     [ "$cfzonID" = "0" ] && { cancel_return "上一级选单"; return 1; }
     [ -z "$cfzonID" ] && { cancel_empty "上一级选单"; return 1; }
 
-    cd ~
+    cd ~ || return
     install jq bc
     check_crontab_installed
-    curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
+    curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh"
     chmod +x CF-Under-Attack.sh
     sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
     sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
@@ -13052,7 +13152,7 @@ fail2ban_install() {
     log_info "下载 ${gl_bufan}Fail2Ban${gl_bai} 过滤器文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     log_warn "保存至： ${gl_bufan}/etc/fail2ban/filter.d${gl_bai} "
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    cd /etc/fail2ban/filter.d
+    cd /etc/fail2ban/filter.d || return
     wget -c https://gitee.com/meimolihan/sh/raw/master/f2b/filter.d/fail2ban-nginx-cc.conf
     wget -c https://gitee.com/meimolihan/sh/raw/master/f2b/filter.d/nginx-418.conf
     wget -c https://gitee.com/meimolihan/sh/raw/master/f2b/filter.d/nginx-403.conf
@@ -13065,10 +13165,10 @@ fail2ban_install() {
     mkdir -p /etc/nginx && touch /etc/nginx/nginx.conf
 
     echo -e ""
-    log_info "下载 ${gl_bufan}Fail2Ban${gl_bai} 的"监狱"配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    log_info "下载 ${gl_bufan}Fail2Ban${gl_bai} 的监狱配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     log_warn "保存至： ${gl_bufan}/etc/fail2ban/jail.d${gl_bai} "
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    cd /etc/fail2ban/jail.d
+    cd /etc/fail2ban/jail.d || return
     wget -c https://gitee.com/meimolihan/sh/raw/master/f2b/jail.d/sshd.local
     wget -c https://gitee.com/meimolihan/sh/raw/master/f2b/jail.d/nginx-cc.conf
     sed -i "/cloudflare/d" /etc/fail2ban/jail.d/nginx-cc.conf
@@ -13262,27 +13362,27 @@ web_optimization() {
         1)
             local cpu_cores
             cpu_cores=$(nproc)
-            local connections=$((1024 * ${cpu_cores}))
+            local connections=$((1024 * cpu_cores))
             sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /etc/nginx/nginx.conf
             sed -i "s/worker_connections.*/worker_connections ${connections};/" /etc/nginx/nginx.conf
 
-            wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
+            wget -O /home/optimized_php.ini "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini"
             docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
             docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
             rm -rf /home/optimized_php.ini
 
-            wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www-1.conf
+            wget -O /home/www.conf "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www-1.conf"
             docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
             docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
             rm -rf /home/www.conf
 
             patch_wp_memory_limit
-            patch_wp_debug "$some_value"
+            patch_wp_debug false false false
 
             fix_phpfpm_conf php
             fix_phpfpm_conf php74
 
-            wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
+            wget -O /home/custom_mysql_config.cnf "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf"
             docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
             rm -rf /home/custom_mysql_config.cnf
 
@@ -13296,27 +13396,27 @@ web_optimization() {
         2)
             local cpu_cores
             cpu_cores=$(nproc)
-            local connections=$((2048 * ${cpu_cores}))
+            local connections=$((2048 * cpu_cores))
             sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /etc/nginx/nginx.conf
             sed -i "s/worker_connections.*/worker_connections ${connections};/" /etc/nginx/nginx.conf
 
-            wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
+            wget -O /home/optimized_php.ini "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini"
             docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
             docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
             rm -rf /home/optimized_php.ini
 
-            wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www.conf
+            wget -O /home/www.conf "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www.conf"
             docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
             docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
             rm -rf /home/www.conf
 
             patch_wp_memory_limit 512M 512M
-            patch_wp_debug "$some_value"
+            patch_wp_debug false false false
 
             fix_phpfpm_conf php
             fix_phpfpm_conf php74
 
-            wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
+            wget -O /home/custom_mysql_config.cnf "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf"
             docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
             rm -rf /home/custom_mysql_config.cnf
 
@@ -13622,7 +13722,7 @@ docker_app() {
         clear
         mkdir -pm 755 /home/docker
         check_docker_app
-        check_docker_image_update $docker_name
+        check_docker_image_update "$docker_name"
         echo -e "$docker_name $check_docker $update_status"
         echo -e "$docker_describe"
         echo -e "$docker_url"
@@ -13635,11 +13735,13 @@ docker_app() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
             if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
-                local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+                local docker_port
+                docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
                 docker_port=${docker_port:-0000}
                 echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
             fi
-            local docker_port=$(cat "/home/docker/${docker_name}_port.conf")
+            local docker_port
+            docker_port=$(cat "/home/docker/${docker_name}_port.conf")
             check_docker_app_ip
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -13656,7 +13758,7 @@ docker_app() {
         case $choice in
         1)
             setup_docker_dir
-            check_disk_space $app_size /home/docker
+            check_disk_space "$app_size" /home/docker
             read -r -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
             [ "$app_port" = "0" ] && { cancel_return "上一级选单"; continue; }
             [ -z "$app_port" ] && { cancel_empty "上一级选单"; continue; }
@@ -13696,7 +13798,7 @@ docker_app() {
             docker rm -f "$docker_name"
             docker rmi -f "$docker_img"
             rm -rf "/home/docker/$docker_name"
-            rm -f /home/docker/${docker_name}_port.conf
+            rm -f "/home/docker/${docker_name}_port.conf"
 
             sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
             echo "应用已卸载"
@@ -13781,7 +13883,7 @@ docker_app_plus() {
         case $choice in
         1)
             setup_docker_dir
-            check_disk_space $app_size /home/docker
+            check_disk_space "$app_size" /home/docker
             read -r -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
             [ "$app_port" = "0" ] && { cancel_return "上一级选单"; continue; }
             [ -z "$app_port" ] && { cancel_empty "上一级选单"; continue; }
@@ -13799,7 +13901,7 @@ docker_app_plus() {
             ;;
         3)
             docker_app_uninstall
-            rm -f /home/docker/${docker_name}_port.conf
+            rm -f "/home/docker/${docker_name}_port.conf"
 
             sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
             ;;
@@ -13838,7 +13940,7 @@ prometheus_install() {
     chown -R 472:472 $GRAFANA_DIR
 
     if [ ! -f "$PROMETHEUS_DIR/prometheus.yml" ]; then
-        curl -o "$PROMETHEUS_DIR/prometheus.yml" ${gh_proxy}raw.githubusercontent.com/kejilion/config/refs/heads/main/prometheus/prometheus.yml
+        curl -o "$PROMETHEUS_DIR/prometheus.yml" "${gh_proxy}raw.githubusercontent.com/kejilion/config/refs/heads/main/prometheus/prometheus.yml"
     fi
 
     docker network create $NETWORK_NAME
@@ -13869,11 +13971,10 @@ prometheus_install() {
 }
 
 tmux_run() {
-    tmux has-session -t $SESSION_NAME 2>/dev/null
-    if [ $? != 0 ]; then
-        tmux new -s $SESSION_NAME
+    if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+        tmux new -s "$SESSION_NAME"
     else
-        tmux attach-session -t $SESSION_NAME
+        tmux attach-session -t "$SESSION_NAME"
     fi
 }
 
@@ -13882,7 +13983,7 @@ tmux_run_d() {
     local tmuxd_ID=1
 
     session_exists() {
-        tmux has-session -t $1 2>/dev/null
+        tmux has-session -t "$1" 2>/dev/null
     }
 
     while session_exists "$base_name-$tmuxd_ID"; do
@@ -13917,7 +14018,7 @@ f2b_install_sshd() {
     enable fail2ban
 
     if command -v dnf &>/dev/null; then
-        cd /etc/fail2ban/jail.d/
+        cd /etc/fail2ban/jail.d/ || return
         curl -sS -O https://gitee.com/meimolihan/sh/raw/master/f2b/centos-ssh.conf
     fi
 }
@@ -13988,7 +14089,8 @@ update_fail2ban() {
     echo -e "${gl_bai}当前fail2ban版本: ${gl_lv}$CURRENT_VERSION" | sudo tee -a "$LOG_FILE${gl_bai}"
 
     backup_fail2ban_config() {
-        local BACKUP_DIR="/etc/fail2ban/backup_$(date +%Y%m%d_%H%M%S)"
+        local BACKUP_DIR
+        BACKUP_DIR="/etc/fail2ban/backup_$(date +%Y%m%d_%H%M%S)"
         echo -e "${gl_bai}备份配置到: ${gl_lv}$BACKUP_DIR" | sudo tee -a "$LOG_FILE${gl_bai}"
 
         sudo mkdir -p "$BACKUP_DIR"
@@ -14124,7 +14226,7 @@ ldnmp_install_status_one() {
 }
 
 ldnmp_install_all() {
-    cd ~
+    cd ~ || return
     root_use
     clear
     echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -14139,7 +14241,7 @@ ldnmp_install_all() {
 }
 
 nginx_install_all() {
-    cd ~
+    cd ~ || return
     root_use
     clear
     echo -e "${gl_huang}nginx未安装，开始安装nginx环境 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -14199,15 +14301,15 @@ ldnmp_wp() {
     install_ssltls
     certs_status
     add_db
-    wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-    wget -O /etc/nginx/conf.d/"$yuming".conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
+    wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+    wget -O /etc/nginx/conf.d/"$yuming".conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf"
     sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/${yuming}.conf"
     nginx_http_on
 
-    cd /etc/nginx/html
+    cd /etc/nginx/html || return
     mkdir "$yuming"
-    cd "$yuming"
-    wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
+    cd "$yuming" || return
+    wget -O latest.zip "${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip"
     unzip latest.zip
     rm latest.zip
     echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379'); define('WP_REDIS_MAXTTL', 86400); define('WP_CACHE_KEY_SALT', '${yuming}_');" >>/etc/nginx/html/"$yuming"/wordpress/wp-config-sample.php
@@ -14247,8 +14349,8 @@ ldnmp_Proxy() {
     nginx_install_status
     install_ssltls
     certs_status
-    wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-    wget -O /etc/nginx/conf.d/"$yuming".conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+    wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+    wget -O /etc/nginx/conf.d/"$yuming".conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf"
     sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/${yuming}.conf"
     sed -i "s/0.0.0.0/$reverseproxy/g" /etc/nginx/conf.d/"$yuming".conf
     sed -i "s|0000|$port|g" "/etc/nginx/conf.d/${yuming}.conf"
@@ -14275,8 +14377,8 @@ ldnmp_Proxy_backend() {
     nginx_install_status
     install_ssltls
     certs_status
-    wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-    wget -O /etc/nginx/conf.d/"$yuming".conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+    wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+    wget -O /etc/nginx/conf.d/"$yuming".conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf"
 
     backend=$(tr -dc 'A-Za-z' </dev/urandom | head -c 8)
     sed -i "s/backend_yuming_com/backend_$backend/g" /etc/nginx/conf.d/"$yuming".conf
@@ -14445,7 +14547,7 @@ ldnmp_Proxy_backend_stream() {
     nginx_install_status
     cd /home && mkdir -p web/stream.d
     grep -q '^[[:space:]]*stream[[:space:]]*{' /etc/nginx/nginx.conf || echo -e '\nstream {\n    include /etc/nginx/stream.d/*.conf;\n}' | tee -a /etc/nginx/nginx.conf
-    wget -O /etc/nginx/stream.d/"$proxy_name".conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend-stream.conf
+    wget -O /etc/nginx/stream.d/"$proxy_name".conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend-stream.conf"
 
     backend=$(tr -dc 'A-Za-z' </dev/urandom | head -c 8)
     sed -i "s/backend_yuming_com/${proxy_name}_${backend}/g" /etc/nginx/stream.d/"$proxy_name".conf
@@ -15161,7 +15263,6 @@ yt_menu_pro() {
     local app_id="66"
     local VIDEO_DIR="/home/yt-dlp"
     local URL_FILE="$VIDEO_DIR/urls.txt"
-    local ARCHIVE_FILE="$VIDEO_DIR/archive.txt"
 
     mkdir -p "$VIDEO_DIR"
 
@@ -15466,13 +15567,17 @@ set_dns() {
     touch /etc/resolv.conf
 
     if [ -n "$ipv4_address" ]; then
-        echo "nameserver $dns1_ipv4" >>/etc/resolv.conf
-        echo "nameserver $dns2_ipv4" >>/etc/resolv.conf
+        {
+            echo "nameserver $dns1_ipv4"
+            echo "nameserver $dns2_ipv4"
+        } >> /etc/resolv.conf
     fi
 
     if [ -n "$ipv6_address" ]; then
-        echo "nameserver $dns1_ipv6" >>/etc/resolv.conf
-        echo "nameserver $dns2_ipv6" >>/etc/resolv.conf
+        {
+            echo "nameserver $dns1_ipv6"
+            echo "nameserver $dns2_ipv6"
+        } >> /etc/resolv.conf
     fi
 
     chattr +i /etc/resolv.conf
@@ -15775,7 +15880,7 @@ linux_add_sshpasswd() {
     rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 
     grep -E 'PermitRootLogin|PasswordAuthentication' /etc/ssh/sshd_config |
-        while read line; do
+        while read -r line; do
             colored_line=$(echo "$line" | sed -E \
                 -e 's/(Port 22)/\x1b[1;31m\1\x1b[0m/g' \
                 -e 's/(PermitRootLogin)/\x1b[1;32m\1\x1b[0m/g' \
@@ -15811,7 +15916,7 @@ linux_dd_xitong() {
     }
 
     dd_xitong_bin456789() {
-        curl -O ${gh_proxy}raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+        curl -O "${gh_proxy}raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh"
     }
 
     dd_xitong_1() {
@@ -16198,7 +16303,7 @@ clamav_scan() {
     done
 
     mkdir -p /home/docker/clamav/log/ >/dev/null 2>&1
-    >/home/docker/clamav/log/scan.log >/dev/null 2>&1
+    true >/home/docker/clamav/log/scan.log >/dev/null 2>&1
 
     docker run -it --rm \
         --name clamav \
@@ -16447,35 +16552,35 @@ linux_Kernel_optimize() {
         read -r -e -p "请输入你的选择: " sub_choice
         case $sub_choice in
         1)
-            cd ~
+            cd ~ || return
             clear
             local tiaoyou_moshi="高性能优化模式"
             optimize_high_performance
             ;;
         2)
-            cd ~
+            cd ~ || return
             clear
             optimize_balanced
             ;;
         3)
-            cd ~
+            cd ~ || return
             clear
             optimize_web_server
             ;;
         4)
-            cd ~
+            cd ~ || return
             clear
             local tiaoyou_moshi="直播优化模式"
             optimize_high_performance
             ;;
         5)
-            cd ~
+            cd ~ || return
             clear
             local tiaoyou_moshi="游戏服优化模式"
             optimize_high_performance
             ;;
         6)
-            cd ~
+            cd ~ || return
             clear
             restore_defaults
             ;;
@@ -16698,12 +16803,13 @@ linux_trash() {
 # 命令收藏夹
 linux_fav() {
     clear
-    bash <(curl -l -s ${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh)
+    bash <(curl -l -s "${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh")
 }
 
 # 创建备份
 create_backup() {
-    local TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+    local TIMESTAMP
+    TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 
     echo -e "${gl_zi}>>> 创建备份${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -16714,7 +16820,7 @@ create_backup() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入要备份的目录 (多个目录用空格分隔，直接回车则使用默认目录) (${gl_huang}0${gl_bai}返回): ")" input
 
-    [[ "$input" == "0" ]] && { cancel_return "上一级选单"; break; }
+    [[ "$input" == "0" ]] && { cancel_return "上一级选单"; return; }
 
     if [[ -z "$input" ]]; then
         BACKUP_PATHS=(
@@ -16743,9 +16849,8 @@ create_backup() {
 
     log_info "正在创建备份 ${gl_bufan}$BACKUP_NAME${gl_bai} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     install tar
-    tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"
 
-    if [[ $? -eq 0 ]]; then
+    if tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"; then
         log_ok "备份创建成功: $BACKUP_DIR/$BACKUP_NAME"
     else
         log_error "备份创建失败！"
@@ -16768,7 +16873,7 @@ restore_backup() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入要恢复的备份文件名 (${gl_huang}0${gl_bai}返回): ")" BACKUP_NAME
 
-    [[ "$BACKUP_NAME" == "0" ]] && { cancel_return "上一级选单"; break; }
+    [[ "$BACKUP_NAME" == "0" ]] && { cancel_return "上一级选单"; return; }
 
     if [[ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]]; then
         log_error "备份文件不存在！"
@@ -16780,9 +16885,8 @@ restore_backup() {
     case "$choice" in
     y | Y)
         log_info "正在恢复备份 ${gl_bufan}$BACKUP_NAME${gl_bai} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        tar -xzvf "$BACKUP_DIR/$BACKUP_NAME" -C /
 
-        if [[ $? -eq 0 ]]; then
+        if tar -xzvf "$BACKUP_DIR/$BACKUP_NAME" -C /; then
             log_ok "备份恢复成功！"
         else
             log_error "备份恢复失败！"
@@ -16825,7 +16929,7 @@ delete_backup() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入要删除的备份文件名 (${gl_huang}0${gl_bai}返回): ")" BACKUP_NAME
 
-    [[ "$BACKUP_NAME" == "0" ]] && { cancel_return "上一级选单"; break; }
+    [[ "$BACKUP_NAME" == "0" ]] && { cancel_return "上一级选单"; return; }
 
     if [[ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]]; then
         log_error "备份文件不存在！"
@@ -16836,9 +16940,8 @@ delete_backup() {
     read -r -e -p "$(echo -e "${gl_bai}确认要删除备份 ${gl_bufan}$BACKUP_NAME${gl_bai} 吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
     case "$choice" in
     y | Y)
-        rm -f "$BACKUP_DIR/$BACKUP_NAME"
 
-        if [[ $? -eq 0 ]]; then
+        if rm -f "$BACKUP_DIR/$BACKUP_NAME"; then
             log_ok "备份删除成功！"
         else
             log_error "备份删除失败！"
@@ -16999,8 +17102,7 @@ use_connection() {
 
     echo -e "正在连接到 $name ($ip) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     if [[ -f "$password_or_key" ]]; then
-        ssh -o StrictHostKeyChecking=no -i "$password_or_key" -p "$port" "$user@$ip"
-        if [[ $? -ne 0 ]]; then
+        if ! ssh -o StrictHostKeyChecking=no -i "$password_or_key" -p "$port" "$user@$ip"; then
             echo "连接失败！请检查以下内容："
             echo -e "${gl_bufan}1. ${gl_bai}密钥文件路径是否正确：$password_or_key"
             echo -e "${gl_bufan}2. ${gl_bai}密钥文件权限是否正确（应为 600）。"
@@ -17018,8 +17120,7 @@ use_connection() {
             break_end
             return
         fi
-        sshpass -p "$password_or_key" ssh -o StrictHostKeyChecking=no -p "$port" "$user@$ip"
-        if [[ $? -ne 0 ]]; then
+        if ! sshpass -p "$password_or_key" ssh -o StrictHostKeyChecking=no -p "$port" "$user@$ip"; then
             echo -e "${gl_bufan}连接失败！请检查以下内容：${gl_bai}"
             echo -e "${gl_bufan}1. ${gl_bai}用户名和密码是否正确。"
             echo -e "${gl_bufan}2. ${gl_bai}目标服务器是否允许密码登录。"
@@ -17229,9 +17330,8 @@ mount_partition() {
 
     mkdir -p "$MOUNT_POINT"
 
-    mount "/dev/$PARTITION" "$MOUNT_POINT"
 
-    if [ $? -eq 0 ]; then
+    if mount "/dev/$PARTITION" "$MOUNT_POINT"; then
         log_ok "分区挂载成功: $MOUNT_POINT"
         echo -e ""
         echo -e "${gl_bai}挂载信息：${gl_bai}"
@@ -17244,8 +17344,7 @@ mount_partition() {
         local mounted=false
 
         for fs_type in "${FS_TYPES[@]}"; do
-            mount -t "$fs_type" "/dev/$PARTITION" "$MOUNT_POINT" 2>/dev/null
-            if [ $? -eq 0 ]; then
+            if mount -t "$fs_type" "/dev/$PARTITION" "$MOUNT_POINT" 2>/dev/null; then
                 log_ok "分区挂载成功 (使用 $fs_type 文件系统): $MOUNT_POINT"
                 mounted=true
                 break
@@ -17300,10 +17399,10 @@ unmount_partition() {
 
         size=$(lsblk -dno SIZE "$dev" | tr -d ' ')
 
-        DEV_ARR[$i]="$dev"
-        MP_ARR[$i]="$mp"
-        FS_ARR[$i]="$fs"
-        SIZE_ARR[$i]="$size"
+        DEV_ARR[i]="$dev"
+        MP_ARR[i]="$mp"
+        FS_ARR[i]="$fs"
+        SIZE_ARR[i]="$size"
 
         printf "${gl_huang}%-4s${gl_bai}    %-10s    %-9s    %-35s    %s\n" \
           "${i}." "$dev" "$size" "$mp" "$fs"
@@ -17334,7 +17433,8 @@ unmount_partition() {
         return
     fi
 
-    local target_mp=$(mount | grep -w "$target_dev" | awk '{print $3}')
+    local target_mp
+    target_mp=$(mount | grep -w "$target_dev" | awk '{print $3}')
     if [ -z "$target_mp" ]; then
         log_warn "该设备未挂载！"
         exit_animation
@@ -17349,9 +17449,8 @@ unmount_partition() {
     [[ ! "$confirm" =~ ^[Yy]$ ]] && { log_info "已取消"; exit_animation; return; }
 
     echo ""
-    umount "$target_dev" 2>/dev/null
 
-    if [ $? -eq 0 ]; then
+    if umount "$target_dev" 2>/dev/null; then
         log_ok "卸载成功：$target_mp"
         rmdir "$target_mp" 2>/dev/null
     else
@@ -17372,18 +17471,19 @@ check_partition() {
     echo -e "${gl_hui}序号 分区名称   大小      文件系统  挂载点  类型${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    local PARTITION_LIST=()
     local PARTITION_NAMES=()
     local i=1
 
     while IFS= read -r line; do
         if [ -n "$line" ]; then
-            local cleaned_line=$(echo "$line" | sed 's/^[[:space:]]*[├└─]*[[:space:]]*//')
-            local partition_name=$(echo "$cleaned_line" | awk '{print $1}')
+            local cleaned_line
+            cleaned_line=$(echo "$line" | sed 's/^[[:space:]]*[├└─]*[[:space:]]*//')
+            local partition_name
+            partition_name=$(echo "$cleaned_line" | awk '{print $1}')
 
             if [[ "$cleaned_line" =~ part$ ]] && [[ ! "$partition_name" =~ ^trim_ ]]; then
                 echo -e "${gl_huang}  $i.${gl_bai}  $cleaned_line"
-                PARTITION_NAMES[$i]="$partition_name"
+                PARTITION_NAMES[i]="$partition_name"
                 ((i++))
             fi
         fi
@@ -17524,9 +17624,8 @@ mount_fnos_partition() {
     MOUNT_POINT="/vol2/1000/mydisk/Video"
     mkdir -p "$MOUNT_POINT"
 
-    mount "/dev/$PARTITION" "$MOUNT_POINT"
 
-    if [ $? -eq 0 ]; then
+    if mount "/dev/$PARTITION" "$MOUNT_POINT"; then
         log_ok "分区挂载成功: $MOUNT_POINT"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     else
@@ -17630,9 +17729,8 @@ mount_usb_partition() {
     MOUNT_POINT="/vol2/1000/mydisk/USB"
     mkdir -p "$MOUNT_POINT"
 
-    mount "/dev/$PARTITION" "$MOUNT_POINT"
 
-    if [ $? -eq 0 ]; then
+    if mount "/dev/$PARTITION" "$MOUNT_POINT"; then
         log_ok "分区挂载成功: $MOUNT_POINT"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     else
@@ -17669,9 +17767,8 @@ unmount_by_path() {
         return
     fi
 
-    umount "$MOUNT_POINT" 2>/dev/null
 
-    if [ $? -eq 0 ]; then
+    if umount "$MOUNT_POINT" 2>/dev/null; then
         log_ok "卸载成功: $MOUNT_POINT"
         rmdir "$MOUNT_POINT" 2>/dev/null
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -17744,9 +17841,7 @@ format_partition() {
     fi
 
     echo -e "正在格式化分区 ${gl_huang}/dev/$PARTITION${gl_bai} 为 ${gl_lv}$FS_TYPE ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    mkfs.$FS_TYPE "/dev/$PARTITION"
-
-    if cmd; then
+    if mkfs."$FS_TYPE" "/dev/$PARTITION"; then
         log_ok "分区格式化成功！"
     else
         log_error "分区格式化失败！"
@@ -17939,8 +18034,7 @@ format_disk() {
     echo -e "${gl_bai}步骤2: 创建新分区表 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
     echo -e "正在清除磁盘签名 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    wipefs -a "/dev/$DISK" 2>/dev/null
-    if [ $? -ne 0 ]; then
+    if ! wipefs -a "/dev/$DISK" 2>/dev/null; then
         echo -e "  ${gl_hong}wipefs 失败，尝试使用 dd 清除 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         dd if=/dev/zero of="/dev/$DISK" bs=1M count=100 2>/dev/null
     fi
@@ -18132,17 +18226,15 @@ format_disk() {
             MOUNT_POINT=${MOUNT_POINT:-$DEFAULT_MOUNT}
 
             if [ -n "$MOUNT_POINT" ]; then
-                mkdir -p "$MOUNT_POINT" 2>/dev/null
 
-                if [ $? -ne 0 ]; then
+                if ! mkdir -p "$MOUNT_POINT" 2>/dev/null; then
                     echo -e "${gl_hong}无法创建目录 $MOUNT_POINT，尝试使用sudo ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
                     sudo mkdir -p "$MOUNT_POINT" 2>/dev/null
                 fi
 
                 echo -e "挂载分区到 ${gl_huang}$MOUNT_POINT ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                mount "/dev/$NEW_PARTITION" "$MOUNT_POINT" 2>/dev/null
 
-                if [ $? -eq 0 ]; then
+                if mount "/dev/$NEW_PARTITION" "$MOUNT_POINT" 2>/dev/null; then
                     echo -e "${gl_lv}✓ 分区已成功挂载到 $MOUNT_POINT${gl_bai}"
 
                     echo ""
@@ -18168,8 +18260,7 @@ format_disk() {
                 else
                     log_error "挂载失败，请检查！"
                     echo -e "${gl_bai}尝试使用sudo挂载 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                    sudo mount "/dev/$NEW_PARTITION" "$MOUNT_POINT" 2>/dev/null
-                    if [ $? -eq 0 ]; then
+                    if sudo mount "/dev/$NEW_PARTITION" "$MOUNT_POINT" 2>/dev/null; then
                         echo -e "${gl_lv}✓ 分区已成功挂载到 $MOUNT_POINT${gl_bai}"
                     else
                         echo -e "${gl_hong}挂载失败，请手动挂载：${gl_bai}"
@@ -18217,8 +18308,7 @@ add_to_fstab() {
         mkdir -p "$MOUNT_POINT" 2>/dev/null
 
         echo -e "正在挂载分区 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        mount "/dev/$PARTITION" "$MOUNT_POINT" 2>/dev/null
-        if [ $? -ne 0 ]; then
+        if ! mount "/dev/$PARTITION" "$MOUNT_POINT" 2>/dev/null; then
             log_error "挂载失败，请检查分区状态！"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             exit_animation
@@ -18286,16 +18376,17 @@ add_to_fstab() {
     cp /etc/fstab "$FSTAB_BACKUP"
     echo -e "${gl_bai}已备份 /etc/fstab 到 $FSTAB_BACKUP"
 
-    echo "" >>/etc/fstab
-    echo "# Added by disk_manager script on $(date)" >>/etc/fstab
-    echo "UUID=$UUID  $MOUNT_POINT  $FSTYPE  $MOUNT_OPTS  0  2" >>/etc/fstab
+    {
+        echo ""
+        echo "# Added by disk_manager script on $(date)"
+        echo "UUID=$UUID  $MOUNT_POINT  $FSTYPE  $MOUNT_OPTS  0  2"
+    } >> /etc/fstab
 
     if [ $? -eq 0 ]; then
         log_ok "已成功添加到 /etc/fstab！"
 
         echo -e "${gl_bai}测试挂载配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        mount -a 2>/dev/null
-        if [ $? -eq 0 ]; then
+        if mount -a 2>/dev/null; then
             log_ok "fstab配置测试通过！"
         else
             log_warn "fstab配置测试失败，请检查配置！"
@@ -18466,8 +18557,8 @@ remote_add_task() {
     echo -e "${gl_bufan}0. ${gl_bai}返回"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "请输入你的选择: " auth_choice
-    [[ -z "$auth_choice" ]] && { cancel_empty "上一级选单"; continue; }
-    [[ "$auth_choice" == "0" ]] && { cancel_return "上一级选单"; continue; }
+    [[ -z "$auth_choice" ]] && { cancel_empty "上一级选单"; return; }
+    [[ "$auth_choice" == "0" ]] && { cancel_return "上一级选单"; return; }
 
     case $auth_choice in
     1)
@@ -18573,7 +18664,6 @@ remote_run_task() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     CONFIG_FILE="$HOME/.remote_rsync_tasks"
-    CRON_FILE="$HOME/.remote_rsync_cron"
 
     local direction="push"
     local num
@@ -18590,7 +18680,8 @@ remote_run_task() {
     [ "$num" = "0" ] && { cancel_return "Rsync远程同步工具"; return 1; }
     [ -z "$num" ] && { cancel_empty "上一级选单"; return 1; }
 
-    local task=$(sed -n "${num}p" "$CONFIG_FILE")
+    local task
+    task=$(sed -n "${num}p" "$CONFIG_FILE")
     if [[ -z "$task" ]]; then
         echo -e "${gl_hong}错误: 未找到该任务!${gl_bai}"
         return
@@ -18616,10 +18707,10 @@ remote_run_task() {
 
     if [[ "$auth_method" == "password" ]]; then
         if ! command -v sshpass &>/dev/null; then
-            echo -e "${gl_hong}错误：未安装 ${gl_haung}sshpass${gl_hong}，请先安装 ${gl_haung}sshpass${gl_hong}。${gl_bai}"
+            echo -e "${gl_hong}错误：未安装 ${gl_huang}sshpass${gl_hong}，请先安装 ${gl_huang}sshpass${gl_hong}。${gl_bai}"
             echo "安装方法："
-            echo -e "  - ${gl_haung}Ubuntu/Debian: ${gl_lv}apt install sshpass${gl_bai}"
-            echo -e "  - ${gl_haung}CentOS/RHEL: ${gl_lv}yum install sshpass${gl_bai}"
+            echo -e "  - ${gl_huang}Ubuntu/Debian: ${gl_lv}apt install sshpass${gl_bai}"
+            echo -e "  - ${gl_huang}CentOS/RHEL: ${gl_lv}yum install sshpass${gl_bai}"
             exit_animation
             return
         fi
@@ -18748,7 +18839,8 @@ view_tasks() {
 
         if [[ "$line" == *"m remote_rsync_run"* ]]; then
             ((task_count++))
-            local task_num=$(echo "$line" | grep -oE "m remote_rsync_run [0-9]+" | awk '{print $3}')
+            local task_num
+            task_num=$(echo "$line" | grep -oE "m remote_rsync_run [0-9]+" | awk '{print $3}')
 
             local task_name=""
             local local_path=""
@@ -18756,13 +18848,15 @@ view_tasks() {
             local remote_path=""
             local options=""
 
-            local prev_line=$(echo "$crontab_content" | sed -n "/^#.*远程Rsync定时任务:.*任务编号: $task_num\$/p" | head -1)
+            local prev_line
+            prev_line=$(echo "$crontab_content" | sed -n "/^#.*远程Rsync定时任务:.*任务编号: $task_num\$/p" | head -1)
             if [[ -n "$prev_line" ]]; then
                 task_name=$(echo "$prev_line" | sed -n 's/^#.*远程Rsync定时任务: \(.*\) (任务编号: [0-9]*)$/\1/p')
             fi
 
             if [[ -z "$task_name" ]] && [[ -n "$task_num" ]] && [[ -f "$CONFIG_FILE" ]]; then
-                local task_line=$(sed -n "${task_num}p" "$CONFIG_FILE" 2>/dev/null)
+                local task_line
+                task_line=$(sed -n "${task_num}p" "$CONFIG_FILE" 2>/dev/null)
                 if [[ -n "$task_line" ]]; then
                     IFS='|' read -r task_name local_path remote remote_path port options auth_method password_or_key <<<"$task_line"
                 fi
@@ -18859,7 +18953,8 @@ remote_delete_task_schedule() {
                 target_line="$line"
                 if [[ $line_num -gt 1 ]]; then
                     local prev_line_num=$((line_num - 1))
-                    local prev_line=$(echo "$crontab_content" | sed -n "${prev_line_num}p")
+                    local prev_line
+                    prev_line=$(echo "$crontab_content" | sed -n "${prev_line_num}p")
                     if [[ "$prev_line" =~ ^#.*远程Rsync定时任务 ]]; then
                         target_comment_line="$prev_line"
                     fi
@@ -18956,7 +19051,8 @@ remote_show_task_details() {
             elif [[ "$auth_method" == "key" ]]; then
                 echo -e "  ${gl_bai}密钥文件: ${gl_lv}$password_or_key${gl_bai}"
                 if [[ -f "$password_or_key" ]]; then
-                    local key_perms=$(stat -c "%a" "$password_or_key" 2>/dev/null)
+                    local key_perms
+                    key_perms=$(stat -c "%a" "$password_or_key" 2>/dev/null)
                     echo -e "  ${gl_bai}密钥权限: ${gl_bai}${key_perms}"
 
                     if [[ "$key_perms" != "600" ]]; then
@@ -18968,7 +19064,8 @@ remote_show_task_details() {
             fi
 
             if [[ -d "$local_path" ]]; then
-                local local_size=$(du -sh "$local_path" 2>/dev/null | cut -f1)
+                local local_size
+                local_size=$(du -sh "$local_path" 2>/dev/null | cut -f1)
                 echo -e "  ${gl_bai}本地目录大小: ${gl_bai}${local_size:-未知}"
             else
                 echo -e "  ${gl_hong}警告: 本地目录不存在!${gl_bai}"
@@ -18981,7 +19078,8 @@ remote_show_task_details() {
         echo -e "${gl_lv}共找到 $((line_num-1)) 个同步任务${gl_bai}"
 
     else
-        local task=$(sed -n "${num}p" "$CONFIG_FILE" 2>/dev/null)
+        local task
+        task=$(sed -n "${num}p" "$CONFIG_FILE" 2>/dev/null)
         if [[ -z "$task" ]]; then
             echo -e "${gl_hong}错误: 未找到任务 #$num${gl_bai}"
             exit_animation
@@ -19006,7 +19104,8 @@ remote_show_task_details() {
         elif [[ "$auth_method" == "key" ]]; then
             echo -e "  ${gl_bai}密钥文件: ${gl_lv}$password_or_key${gl_bai}"
             if [[ -f "$password_or_key" ]]; then
-                local key_perms=$(stat -c "%a" "$password_or_key" 2>/dev/null)
+                local key_perms
+                key_perms=$(stat -c "%a" "$password_or_key" 2>/dev/null)
                 echo -e "  ${gl_bai}密钥权限: ${gl_bai}${key_perms}"
 
                 if [[ "$key_perms" != "600" ]]; then
@@ -19034,8 +19133,10 @@ remote_show_task_details() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "  ${gl_bai}本地目录检查:${gl_bai}"
         if [[ -d "$local_path" ]]; then
-            local local_size=$(du -sh "$local_path" 2>/dev/null | cut -f1)
-            local file_count=$(find "$local_path" -type f 2>/dev/null | wc -l)
+            local local_size
+            local_size=$(du -sh "$local_path" 2>/dev/null | cut -f1)
+            local file_count
+            file_count=$(find "$local_path" -type f 2>/dev/null | wc -l)
             echo -e "  ${gl_bai}  - 存在: ${gl_lv}是${gl_bai}"
             echo -e "  ${gl_bai}  - 大小: ${gl_bai}${local_size:-未知}"
             echo -e "  ${gl_bai}  - 文件数: ${gl_bai}${file_count}"
@@ -19108,7 +19209,8 @@ remote_run_all_tasks_push() {
         return 0
     fi
 
-    local total_tasks=$(wc -l <"$CONFIG_FILE")
+    local total_tasks
+    total_tasks=$(wc -l <"$CONFIG_FILE")
     echo -e "${gl_bai}找到 ${gl_huang}${total_tasks} ${gl_bai}个同步任务${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
@@ -19219,7 +19321,6 @@ remote_run_all_tasks_push() {
 remote_rsync_manager() {
     local menu_name="${1:-上一级选单}"
     CONFIG_FILE="$HOME/.remote_rsync_tasks"
-    CRON_FILE="$HOME/.remote_rsync_cron"
     install sshpass rsync
     while true; do
         clear
@@ -19262,7 +19363,6 @@ remote_rsync_manager() {
 fix_nano_config() {
     local nano_version nano_vendor
     local distro_id distro_version
-    local env_files_updated="0"
 
     echo -e ""
     echo -e "${gl_zi}开始修复 nano 配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -19309,36 +19409,46 @@ fix_nano_config() {
     sed -i '/^export LC_ALL=.*/d' ~/.bashrc 2>/dev/null
     sed -i '/^# Nano.*/d' ~/.bashrc 2>/dev/null
 
-    echo -e "" >>~/.profile
-    echo -e "# Nano 中文环境设置（由 fix_nano_config 添加）" >>~/.profile
-    echo 'export LANG=zh_CN.UTF-8' >>~/.profile
-    echo 'export LANGUAGE=zh_CN:zh' >>~/.profile
-    echo 'export LC_ALL=zh_CN.UTF-8' >>~/.profile
+    {
+        echo -e ""
+        echo -e "# Nano 中文环境设置（由 fix_nano_config 添加）"
+        echo 'export LANG=zh_CN.UTF-8'
+        echo 'export LANGUAGE=zh_CN:zh'
+        echo 'export LC_ALL=zh_CN.UTF-8'
+    } >> ~/.profile
 
-    echo -e "" >>~/.bash_profile
-    echo -e "# Nano 中文环境设置（由 fix_nano_config 添加）" >>~/.bash_profile
-    echo 'export LANG=zh_CN.UTF-8' >>~/.bash_profile
-    echo 'export LANGUAGE=zh_CN:zh' >>~/.bash_profile
-    echo 'export LC_ALL=zh_CN.UTF-8' >>~/.bash_profile
+    {
+        echo -e ""
+        echo -e "# Nano 中文环境设置（由 fix_nano_config 添加）"
+        echo 'export LANG=zh_CN.UTF-8'
+        echo 'export LANGUAGE=zh_CN:zh'
+        echo 'export LC_ALL=zh_CN.UTF-8'
+    } >> ~/.bash_profile
 
-    echo -e "" >>~/.bashrc
-    echo -e "# Nano 中文环境设置（由 fix_nano_config 添加）" >>~/.bashrc
-    echo 'export LANG=zh_CN.UTF-8' >>~/.bashrc
-    echo 'export LANGUAGE=zh_CN:zh' >>~/.bashrc
-    echo 'export LC_ALL=zh_CN.UTF-8' >>~/.bashrc
+    {
+        echo -e ""
+        echo -e "# Nano 中文环境设置（由 fix_nano_config 添加）"
+        echo 'export LANG=zh_CN.UTF-8'
+        echo 'export LANGUAGE=zh_CN:zh'
+        echo 'export LC_ALL=zh_CN.UTF-8'
+    } >> ~/.bashrc
 
     if ! grep -q "\. ~/.bashrc" ~/.profile 2>/dev/null && ! grep -q "source ~/.bashrc" ~/.profile 2>/dev/null; then
-        echo 'if [ -n "$BASH_VERSION" ]; then' >>~/.profile
-        echo '    if [ -f "$HOME/.bashrc" ]; then' >>~/.profile
-        echo '        . "$HOME/.bashrc"' >>~/.profile
-        echo '    fi' >>~/.profile
-        echo 'fi' >>~/.profile
+        {
+            echo 'if [ -n "$BASH_VERSION" ]; then'
+            echo '    if [ -f "$HOME/.bashrc" ]; then'
+            echo '        . "$HOME/.bashrc"'
+            echo '    fi'
+            echo 'fi'
+        } >> ~/.profile
     fi
 
     if ! grep -q "\. ~/.bashrc" ~/.bash_profile 2>/dev/null && ! grep -q "source ~/.bashrc" ~/.bash_profile 2>/dev/null; then
-        echo 'if [ -f ~/.bashrc ]; then' >>~/.bash_profile
-        echo '    . ~/.bashrc' >>~/.bash_profile
-        echo 'fi' >>~/.bash_profile
+        {
+            echo 'if [ -f ~/.bashrc ]; then'
+            echo '    . ~/.bashrc'
+            echo 'fi'
+        } >> ~/.bash_profile
     fi
 
     export LANG=zh_CN.UTF-8
@@ -19664,7 +19774,7 @@ tools_install_ranger() {
     cd /
     clear
     ranger
-    cd ~
+    cd ~ || return
 }
 
 # 13. ncdu磁盘占用查看
@@ -19676,7 +19786,7 @@ tools_install_ncdu() {
     cd /
     clear
     ncdu
-    cd ~
+    cd ~ || return
 }
 
 # 14. fzf全局搜索工具
@@ -19688,7 +19798,7 @@ tools_install_fzf() {
     cd /
     clear
     fzf
-    cd ~
+    cd ~ || return
 }
 
 # 15. vim文本编辑器
@@ -19829,7 +19939,7 @@ tools_remove_all() {
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
         exit_animation
-        continue
+        return
     fi
     clear
     remove htop iftop tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
@@ -20179,8 +20289,10 @@ linux_bbr() {
     if [ -f "/etc/alpine-release" ]; then
         while true; do
             clear
-            local congestion_algorithm=$(sysctl -n net.ipv4.tcp_congestion_control)
-            local queue_algorithm=$(sysctl -n net.core.default_qdisc)
+            local congestion_algorithm
+            congestion_algorithm=$(sysctl -n net.ipv4.tcp_congestion_control)
+            local queue_algorithm
+            queue_algorithm=$(sysctl -n net.core.default_qdisc)
             echo "当前TCP阻塞算法: $congestion_algorithm $queue_algorithm"
             echo ""
             echo -e "${gl_zi}>>> BBR管理${gl_bai}"
@@ -20205,7 +20317,7 @@ linux_bbr() {
         done
     else
         install wget
-        wget --no-check-certificate -O tcpx.sh ${gh_proxy}raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
+        wget --no-check-certificate -O tcpx.sh "${gh_proxy}raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh"
         chmod +x tcpx.sh
         ./tcpx.sh
     fi
@@ -20227,7 +20339,7 @@ docker_ssh_migration() {
 
         echo -e "${gl_zi}>>> 备份 Docker 容器 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        docker ps --format '{{.Names}}' | while read name; do printf "\033[32m%s\033[0m\n" "$name"; done
+        docker ps --format '{{.Names}}' | while read -r name; do printf "\033[32m%s\033[0m\n" "$name"; done
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入要备份的容器名（多个空格分隔，回车备份全部运行中容器）(${gl_huang}0${gl_bai}返回)"：)" containers
         [ "$containers" = "0" ] && { cancel_return "上一级选单"; return 1; }
@@ -20237,7 +20349,8 @@ docker_ssh_migration() {
         install_docker
 
         local BACKUP_ROOT="/tmp"
-        local DATE_STR=$(date +%Y%m%d_%H%M%S)
+        local DATE_STR
+        DATE_STR=$(date +%Y%m%d_%H%M%S)
         local TARGET_CONTAINERS=()
         if [ -z "$containers" ]; then
             mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
@@ -20254,8 +20367,10 @@ docker_ssh_migration() {
 
         local RESTORE_SCRIPT="${BACKUP_DIR}/docker_restore.sh"
         echo "#!/bin/bash" >"$RESTORE_SCRIPT"
-        echo "set -e" >>"$RESTORE_SCRIPT"
-        echo "# 自动生成的还原脚本" >>"$RESTORE_SCRIPT"
+        {
+            echo "set -e"
+            echo "# 自动生成的还原脚本"
+        } >> "$RESTORE_SCRIPT"
 
         declare -A PACKED_COMPOSE_PATHS=()
 
@@ -20266,8 +20381,10 @@ docker_ssh_migration() {
 
             if is_compose_container "$c"; then
                 echo -e "${gl_bufan}检测到 $c 是 docker-compose 容器${gl_bai}"
-                local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
-                local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
+                local project_dir
+                project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
+                local project_name
+                project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
                 if [ -z "$project_dir" ]; then
                     read -r -e -p "未检测到 compose 目录，请手动输入路径: " project_dir
@@ -20283,8 +20400,10 @@ docker_ssh_migration() {
                     echo "compose" >"${BACKUP_DIR}/backup_type_${project_name}"
                     echo "$project_dir" >"${BACKUP_DIR}/compose_path_${project_name}.txt"
                     tar -czf "${BACKUP_DIR}/compose_project_${project_name}.tar.gz" -C "$project_dir" .
-                    echo "# docker-compose 恢复: $project_name" >>"$RESTORE_SCRIPT"
-                    echo "cd \"$project_dir\" && docker compose up -d" >>"$RESTORE_SCRIPT"
+                    {
+                        echo "# docker-compose 恢复: $project_name"
+                        echo "cd \"$project_dir\" && docker compose up -d"
+                    } >> "$RESTORE_SCRIPT"
                     PACKED_COMPOSE_PATHS["$project_dir"]=1
                     echo -e "${gl_lv}Compose 项目 [$project_name] 已打包: ${project_dir}${gl_bai}"
                 else
@@ -20312,8 +20431,10 @@ docker_ssh_migration() {
                 local IMAGE
                 IMAGE=$(jq -r '.[0].Config.Image' "$inspect_file")
 
-                echo -e "\n# 还原容器: $c" >>"$RESTORE_SCRIPT"
-                echo "docker run -d --name $c $PORT_ARGS $VOL_ARGS $ENV_VARS $IMAGE" >>"$RESTORE_SCRIPT"
+                {
+                    echo -e "\n# 还原容器: $c"
+                    echo "docker run -d --name $c $PORT_ARGS $VOL_ARGS $ENV_VARS $IMAGE"
+                } >> "$RESTORE_SCRIPT"
             fi
         done
 
@@ -20519,14 +20640,14 @@ check_top3_docker_layers() {
     mkdir -p "$tmp_dir"
 
     log_info "正在扫描 overlay2 存储层 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    du -sh /vol1/docker/overlay2/*/ 2>/dev/null | sort -rh | head -3 | while read size layer_path; do
+    du -sh /vol1/docker/overlay2/*/ 2>/dev/null | sort -rh | head -3 | while read -r size layer_path; do
         layer_id=$(basename "$layer_path")
         echo "$size $layer_id" >>"$tmp_dir/top_layers.txt"
     done
 
     echo -e "${gl_huang}>>> overlay2 存储层 TOP 3${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    nl "$tmp_dir/top_layers.txt" | while read rank size layer_id; do
+    nl "$tmp_dir/top_layers.txt" | while read -r rank size layer_id; do
         echo -e "${gl_zi}$rank.${gl_bai} 层ID: ${gl_huang}${layer_id:0:12} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} 大小: ${gl_hong}$size${gl_bai}"
 
         container_info=$(docker inspect $(docker ps -q) --format '{{.Name}}: {{.GraphDriver.Data.LowerDir}} {{.GraphDriver.Data.UpperDir}}' 2>/dev/null | grep "$layer_id" | head -1)
@@ -20542,7 +20663,7 @@ check_top3_docker_layers() {
     echo -e "${gl_huang}>>> TOP 3 详细存储分析${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    while read size layer_id; do
+    while read -r size layer_id; do
         echo -e "${gl_bai}层ID: ${gl_huang}$layer_id${gl_bai} 大小: ${gl_hong}$size${gl_bai}"
 
         container_match=$(docker inspect $(docker ps -q) --format '{{.Name}} {{.GraphDriver.Data.LowerDir}} {{.GraphDriver.Data.UpperDir}} {{.Id}}' 2>/dev/null | grep "$layer_id" | head -1)
@@ -20578,7 +20699,7 @@ check_top3_docker_layers() {
 
                 upper_dir=$(docker inspect "$full_container" --format '{{.GraphDriver.Data.UpperDir}}' 2>/dev/null)
                 if [ -n "$upper_dir" ]; then
-                    upper_layer=$(basename $(dirname "$upper_dir"))
+                    upper_layer=$(basename "$(dirname "$upper_dir")")
                     upper_size=$(du -sh "$upper_dir" 2>/dev/null | awk '{print $1}')
                     if [ "$upper_layer" = "$layer_id" ]; then
                         echo -e "  ${gl_hong}*${upper_layer:0:12} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} ${gl_lv}UpperDir${gl_bai}  ${gl_huang}$upper_size${gl_bai} ${gl_hong}<<< 当前层${gl_bai}"
@@ -20587,9 +20708,9 @@ check_top3_docker_layers() {
                     fi
                 fi
 
-                docker inspect "$full_container" --format '{{.GraphDriver.Data.LowerDir}}' 2>/dev/null | tr ':' '\n' | while read dir; do
+                docker inspect "$full_container" --format '{{.GraphDriver.Data.LowerDir}}' 2>/dev/null | tr ':' '\n' | while read -r dir; do
                     if [ -d "$dir" ]; then
-                        lower_layer=$(basename $(dirname "$dir"))
+                        lower_layer=$(basename "$(dirname "$dir")")
                         lower_size=$(du -sh "$dir" 2>/dev/null | awk '{print $1}')
                         if [ "$lower_layer" = "$layer_id" ]; then
                             echo -e "  ${gl_hong}*${lower_layer:0:12} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} ${gl_lan}LowerDir${gl_bai}  ${gl_huang}$lower_size${gl_bai} ${gl_hong}<<< 当前层${gl_bai}"
@@ -20648,7 +20769,7 @@ add_user_to_docker() {
     [Yy])
         echo -e "${gl_bai}正在执行添加操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         ;;
-    *) handle_y_n; return 1 ;;*) handle_invalid_input ;;
+    *) handle_y_n; return 1 ;;
     esac
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -20712,7 +20833,7 @@ remove_user_from_docker() {
     [Yy])
         echo -e "${gl_bai}正在执行移除操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         ;;
-    *) handle_y_n; return 1 ;;*) handle_invalid_input ;;
+    *) handle_y_n; return 1 ;;
     esac
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -20836,7 +20957,7 @@ show_docker_disk_usage() {
     else
         echo -e "${gl_hong}overlay2目录不存在: /vol1/docker/overlay2${gl_bai}"
         log_info "尝试查找Docker目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        find / -name "docker" -type d 2>/dev/null | head -5 | while read dir; do
+        find / -name "docker" -type d 2>/dev/null | head -5 | while read -r dir; do
             echo -e "${gl_hui}发现: ${gl_lv}$dir${gl_bai}"
         done
     fi
@@ -21209,10 +21330,14 @@ linux_docker() {
 
 docker_tato() {
 
-    local container_count=$(docker ps -a -q 2>/dev/null | wc -l)
-    local image_count=$(docker images -q 2>/dev/null | wc -l)
-    local network_count=$(docker network ls -q 2>/dev/null | wc -l)
-    local volume_count=$(docker volume ls -q 2>/dev/null | wc -l)
+    local container_count
+    container_count=$(docker ps -a -q 2>/dev/null | wc -l)
+    local image_count
+    image_count=$(docker images -q 2>/dev/null | wc -l)
+    local network_count
+    network_count=$(docker network ls -q 2>/dev/null | wc -l)
+    local volume_count
+    volume_count=$(docker volume ls -q 2>/dev/null | wc -l)
 
     if command -v docker &>/dev/null; then
         echo -e "${gl_bai}容器: ${gl_lv}$container_count${gl_bai}  镜像: ${gl_lv}$image_count${gl_bai}  网络: ${gl_lv}$network_count${gl_bai}  卷: ${gl_lv}$volume_count${gl_bai}"
@@ -21226,7 +21351,8 @@ ldnmp_tato() {
 
     local db_count=0
     if command -v mysql &>/dev/null; then
-        local dbrootpasswd=$(grep -oP 'password=\K.*' /root/.my.cnf 2>/dev/null)
+        local dbrootpasswd
+        dbrootpasswd=$(grep -oP 'password=\K.*' /root/.my.cnf 2>/dev/null)
         db_count=$(mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -e 'SHOW DATABASES;' 2>/dev/null |
             grep -Ev 'Database|information_schema|mysql|performance_schema|sys' | wc -l)
     fi
@@ -21339,7 +21465,7 @@ docker_install_npm() {
             -v /home/docker/npm/data:/data \
             -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
             --restart=always \
-            $docker_img
+            "$docker_img"
     }
 
     local docker_describe="一个Nginx反向代理工具面板，不支持添加域名访问。"
@@ -21453,8 +21579,9 @@ docker_install_nezha() {
             check_disk_space 1
             install unzip jq
             docker_install_docker
-            curl -sL ${gh_proxy}raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
-            local docker_port=$(docker port "$docker_name" | awk -F'[:]' '/->/ {print $NF}' | uniq)
+            curl -sL "${gh_proxy}raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh" -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
+            local docker_port
+            docker_port=$(docker port "$docker_name" | awk -F'[:]' '/->/ {print $NF}' | uniq)
             check_docker_app_ip
             ;;
         0) cancel_return; break ;;
@@ -21478,9 +21605,9 @@ docker_install_qbittorrent() {
             -e PUID=1000 \
             -e PGID=1000 \
             -e TZ=Etc/UTC \
-            -e WEBUI_PORT=${docker_port} \
+            -e "WEBUI_PORT=${docker_port}" \
             -e TORRENTING_PORT=56881 \
-            -p ${docker_port}:${docker_port} \
+            -p "${docker_port}:${docker_port}" \
             -p 56881:56881 \
             -p 56881:56881/udp \
             -v /home/docker/qbittorrent/config:/config \
@@ -21550,10 +21677,10 @@ docker_install_mailserver() {
             ip_address
             echo "先解析这些DNS记录"
             echo "A           mail            $ipv4_address"
-            echo "CNAME       imap            "$yuming""
-            echo "CNAME       pop             "$yuming""
-            echo "CNAME       smtp            "$yuming""
-            echo "MX          @               "$yuming""
+            echo "CNAME       imap            $yuming"
+            echo "CNAME       pop             $yuming"
+            echo "CNAME       smtp            $yuming"
+            echo "MX          @               $yuming"
             echo "TXT         @               v=spf1 mx ~all"
             echo "TXT         ?               ?"
             echo ""
@@ -21733,9 +21860,9 @@ docker_install_cloudreve() {
 
     docker_app_install() {
         cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-        curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+        curl -o /home/docker/cloud/docker-compose.yml "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml"
         sed -i "s/5212:5212/${docker_port}:5212/g" /home/docker/cloud/docker-compose.yml
-        cd /home/docker/cloud/
+        cd /home/docker/cloud/ || return
         docker compose up -d
         clear
         echo "已经安装完成"
@@ -21936,7 +22063,7 @@ docker_install_safeline() {
             docker exec safeline-mgt resetadmin
             ;;
         4)
-            cd /data/safeline
+            cd /data/safeline || return
             docker compose down --rmi all
 
             sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
@@ -22195,7 +22322,8 @@ docker_install_photoprism() {
     local docker_name="photoprism"
     local docker_img="photoprism/photoprism:latest"
     local docker_port=8030
-    local rootpasswd=$(tr </dev/urandom -dc _A-Z-a-z-0-9 | head -c16)
+    local rootpasswd
+    rootpasswd=$(tr </dev/urandom -dc _A-Z-a-z-0-9 | head -c16)
 
     docker_rum() {
         docker run -d \
@@ -22402,7 +22530,7 @@ docker_install_bililive() {
     local app_id="39"
     if [ ! -d /home/docker/bililive-go/ ]; then
         mkdir -p /home/docker/bililive-go/ >/dev/null 2>&1
-        wget -O /home/docker/bililive-go/config.yml ${gh_proxy}raw.githubusercontent.com/hr3lxphr6j/bililive-go/master/config.yml >/dev/null 2>&1
+        wget -O /home/docker/bililive-go/config.yml "${gh_proxy}raw.githubusercontent.com/hr3lxphr6j/bililive-go/master/config.yml" >/dev/null 2>&1
     fi
 
     local docker_name="bililive-go"
@@ -22451,10 +22579,10 @@ docker_install_haozi_panel() {
     local panelurl="官方地址: ${gh_proxy}github.com/TheTNB/panel | 快速安装脚本: https://dl.acepanel.net/helper.sh"
 
     panel_app_install() {
-        mkdir -p ~/haozi && cd ~/haozi
+        mkdir -p ~/haozi && cd ~/haozi || return
         curl -fsLm 10 -o install.sh https://dl.acepanel.net/helper.sh
         bash install.sh
-        cd ~
+        cd ~ || return
     }
 
     panel_app_manage() {
@@ -22462,9 +22590,9 @@ docker_install_haozi_panel() {
     }
 
     panel_app_uninstall() {
-        mkdir -p ~/haozi && cd ~/haozi
+        mkdir -p ~/haozi && cd ~/haozi || return
         curl -fsLm 10 -o uninstall.sh https://dl.cdn.haozi.net/panel/uninstall.sh && bash uninstall.sh
-        cd ~
+        cd ~ || return
     }
     install_panel
 }
@@ -22684,7 +22812,7 @@ docker_install_changedetection() {
 docker_install_pve() {
     clear
     check_disk_space 1
-    curl -L ${gh_proxy}raw.githubusercontent.com/oneclickvirt/pve/main/scripts/docker_install_pve.sh -o docker_install_pve.sh && chmod +x docker_install_pve.sh && bash docker_install_pve.sh
+    curl -L "${gh_proxy}raw.githubusercontent.com/oneclickvirt/pve/main/scripts/docker_install_pve.sh" -o docker_install_pve.sh && chmod +x docker_install_pve.sh && bash docker_install_pve.sh
 }
 
 # 安装Dpanel Docker可视化面板
@@ -22735,7 +22863,7 @@ docker_install_amh() {
     local panelurl="官方地址: https://amh.sh"
 
     panel_app_install() {
-        cd ~
+        cd ~ || return
         wget https://dl.amh.sh/amh.sh && bash amh.sh
     }
 
@@ -22790,7 +22918,7 @@ docker_install_dify() {
 
     docker_app_install() {
         install git
-        mkdir -p /home/docker/ && cd /home/docker/ && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+        mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env || return
         sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
         docker compose up -d
         clear
@@ -22800,7 +22928,7 @@ docker_install_dify() {
 
     docker_app_update() {
         cd /home/docker/dify/docker/ && docker compose down --rmi all
-        cd /home/docker/dify/
+        cd /home/docker/dify/ || return
         git pull origin main
         sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
         cd /home/docker/dify/docker/ && docker compose up -d
@@ -22827,7 +22955,7 @@ docker_install_new_api() {
 
     docker_app_install() {
         install git
-        mkdir -p /home/docker/ && cd /home/docker/ && git clone https://github.com/Calcium-Ion/new-api.git && cd new-api
+        mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/Calcium-Ion/new-api.git && cd new-api || return
         sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
             -e 's/container_name: redis/container_name: redis-new-api/g' \
             -e 's/container_name: mysql/container_name: mysql-new-api/g' \
@@ -22840,7 +22968,7 @@ docker_install_new_api() {
 
     docker_app_update() {
         cd /home/docker/new-api/ && docker compose down --rmi all
-        cd /home/docker/new-api/
+        cd /home/docker/new-api/ || return
         git pull origin main
         sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
             -e 's/container_name: redis/container_name: redis-new-api/g' \
@@ -22872,7 +23000,7 @@ docker_install_jumpserver() {
     local app_size="2"
 
     docker_app_install() {
-        curl -sSL ${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh | bash
+        curl -sSL "${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh" | bash
         clear
         echo "已经安装完成"
         check_docker_app_ip
@@ -22881,15 +23009,15 @@ docker_install_jumpserver() {
     }
 
     docker_app_update() {
-        cd /opt/jumpserver-installer*/
+        cd /opt/jumpserver-installer*/ || return
         ./jmsctl.sh upgrade
         echo "应用已更新"
     }
 
     docker_app_uninstall() {
-        cd /opt/jumpserver-installer*/
+        cd /opt/jumpserver-installer*/ || return
         ./jmsctl.sh uninstall
-        cd /opt
+        cd /opt || return
         rm -rf jumpserver-installer*/
         rm -rf jumpserver
         echo "应用已卸载"
@@ -22932,7 +23060,7 @@ docker_install_ragflow() {
 
     docker_app_install() {
         install git
-        mkdir -p /home/docker/ && cd /home/docker/ && git clone https://github.com/infiniflow/ragflow.git && cd ragflow/docker
+        mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/infiniflow/ragflow.git && cd ragflow/docker || return
         sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
         docker compose up -d
         clear
@@ -22942,9 +23070,9 @@ docker_install_ragflow() {
 
     docker_app_update() {
         cd /home/docker/ragflow/docker/ && docker compose down --rmi all
-        cd /home/docker/ragflow/
+        cd /home/docker/ragflow/ || return
         git pull origin main
-        cd /home/docker/ragflow/docker/
+        cd /home/docker/ragflow/docker/ || return
         sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
         docker compose up -d
     }
@@ -23138,7 +23266,7 @@ docker_install_navidrome() {
         docker run -d \
             --name navidrome \
             --restart=always \
-            --user $(id -u):$(id -g) \
+            --user "$(id -u)":"$(id -g)" \
             -v /home/docker/navidrome/music:/music \
             -v /home/docker/navidrome/data:/data \
             -p "${docker_port}":4533 \
@@ -23217,13 +23345,13 @@ docker_install_moontv() {
         mkdir -p /home/docker/moontv
         mkdir -p /home/docker/moontv/config
         mkdir -p /home/docker/moontv/data
-        cd /home/docker/moontv
-        curl -o /home/docker/moontv/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/moontv-docker-compose.yml
+        cd /home/docker/moontv || return
+        curl -o /home/docker/moontv/docker-compose.yml "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/moontv-docker-compose.yml"
         sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/moontv/docker-compose.yml
         sed -i "s|admin_password|${admin_password}|g" /home/docker/moontv/docker-compose.yml
         sed -i "s|admin|${admin}|g" /home/docker/moontv/docker-compose.yml
         sed -i "s|shouquanma|${shouquanma}|g" /home/docker/moontv/docker-compose.yml
-        cd /home/docker/moontv/
+        cd /home/docker/moontv/ || return
         docker compose up -d
         clear
         echo "已经安装完成"
@@ -23378,9 +23506,9 @@ docker_install_linkwarden() {
 
     docker_app_install() {
         install git openssl
-        mkdir -p /home/docker/linkwarden && cd /home/docker/linkwarden
-        curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
-        curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env"
+        mkdir -p /home/docker/linkwarden && cd /home/docker/linkwarden || return
+        curl -O "${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml"
+        curl -L "${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample" -o ".env"
         local ADMIN_EMAIL="admin@example.com"
         local ADMIN_PASSWORD
         ADMIN_PASSWORD=$(openssl rand -hex 8)
@@ -23388,8 +23516,10 @@ docker_install_linkwarden() {
         sed -i "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=$(openssl rand -hex 32)|g" .env
         sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 16)|g" .env
         sed -i "s|^MEILI_MASTER_KEY=.*|MEILI_MASTER_KEY=$(openssl rand -hex 32)|g" .env
-        echo "ADMIN_EMAIL=${ADMIN_EMAIL}" >>.env
-        echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}" >>.env
+        {
+            echo "ADMIN_EMAIL=${ADMIN_EMAIL}"
+            echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}"
+        } >> .env
         sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
         docker compose up -d
         clear
@@ -23399,16 +23529,18 @@ docker_install_linkwarden() {
 
     docker_app_update() {
         cd /home/docker/linkwarden && docker compose down --rmi all
-        curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
-        curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env.new"
+        curl -O "${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml"
+        curl -L "${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample" -o ".env.new"
         source .env
         mv .env.new .env
-        echo "NEXTAUTH_URL=$NEXTAUTH_URL" >>.env
-        echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >>.env
-        echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >>.env
-        echo "MEILI_MASTER_KEY=$MEILI_MASTER_KEY" >>.env
-        echo "ADMIN_EMAIL=$ADMIN_EMAIL" >>.env
-        echo "ADMIN_PASSWORD=$ADMIN_PASSWORD" >>.env
+        {
+            echo "NEXTAUTH_URL=$NEXTAUTH_URL"
+            echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET"
+            echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
+            echo "MEILI_MASTER_KEY=$MEILI_MASTER_KEY"
+            echo "ADMIN_EMAIL=$ADMIN_EMAIL"
+            echo "ADMIN_PASSWORD=$ADMIN_PASSWORD"
+        } >> .env
         sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
         docker compose up -d
     }
@@ -23433,30 +23565,30 @@ docker_install_jitsi() {
 
     docker_app_install() {
         add_yuming
-        mkdir -p /home/docker/jitsi && cd /home/docker/jitsi
+        mkdir -p /home/docker/jitsi && cd /home/docker/jitsi || return
         wget "$(wget -q -O - https://api.github.com/repos/jitsi/docker-jitsi-meet/releases/latest | grep zip | cut -d\" -f4)"
         unzip "$(ls -t | head -n 1)"
-        cd "$(find . -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+        cd "$(find . -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)" || return
         cp env.example .env
         ./gen-passwords.sh
         mkdir -p ~/.jitsi-meet-cfg/{web,transcripts,prosody/config,prosody/prosody-plugins-custom,jicofo,jvb,jigasi,jibri}
         sed -i "s|^HTTP_PORT=.*|HTTP_PORT=${docker_port}|" .env
-        sed -i "s|^#PUBLIC_URL=https://meet.example.com:\${HTTPS_PORT}|PUBLIC_URL=https://"$yuming":443|" .env
+        sed -i "s|^#PUBLIC_URL=https://meet.example.com:\${HTTPS_PORT}|PUBLIC_URL=https://$yuming:443|" .env
         docker compose up -d
         ldnmp_Proxy "${yuming}" 127.0.0.1 "${docker_port}"
         block_container_port "$docker_name" "$ipv4_address"
     }
 
     docker_app_update() {
-        cd /home/docker/jitsi
-        cd "$(find . -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+        cd /home/docker/jitsi || return
+        cd "$(find . -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)" || return
         docker compose down --rmi all
         docker compose up -d
     }
 
     docker_app_uninstall() {
-        cd /home/docker/jitsi
-        cd "$(find . -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+        cd /home/docker/jitsi || return
+        cd "$(find . -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)" || return
         docker compose down --rmi all
         rm -rf /home/docker/jitsi
         echo "应用已卸载"
@@ -23551,10 +23683,10 @@ docker_install_immich() {
 
     docker_app_install() {
         install git openssl wget
-        mkdir -p /home/docker/${docker_name} && cd /home/docker/${docker_name}
-        wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
-        wget -O .env ${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env
-        sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/${docker_name}/docker-compose.yml
+        mkdir -p "/home/docker/${docker_name}" && cd "/home/docker/${docker_name}" || return
+        wget -O docker-compose.yml "${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml"
+        wget -O .env "${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env"
+        sed -i "s/2283:2283/${docker_port}:2283/g" "/home/docker/${docker_name}/docker-compose.yml"
         docker compose up -d
         clear
         echo "已经安装完成"
@@ -23562,13 +23694,13 @@ docker_install_immich() {
     }
 
     docker_app_update() {
-        cd /home/docker/${docker_name} && docker compose down --rmi all
+        cd "/home/docker/${docker_name}" && docker compose down --rmi all
         docker_app_install
     }
 
     docker_app_uninstall() {
-        cd /home/docker/${docker_name} && docker compose down --rmi all
-        rm -rf /home/docker/${docker_name}
+        cd "/home/docker/${docker_name}" && docker compose down --rmi all
+        rm -rf "/home/docker/${docker_name}"
         echo "应用已卸载"
     }
     docker_app_plus
@@ -23731,10 +23863,10 @@ docker_install_gitea() {
         mkdir -p /home/docker/gitea/gitea
         mkdir -p /home/docker/gitea/data
         mkdir -p /home/docker/gitea/postgres
-        cd /home/docker/gitea
-        curl -o /home/docker/gitea/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/gitea-docker-compose.yml
+        cd /home/docker/gitea || return
+        curl -o /home/docker/gitea/docker-compose.yml "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/gitea-docker-compose.yml"
         sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/gitea/docker-compose.yml
-        cd /home/docker/gitea/
+        cd /home/docker/gitea/ || return
         docker compose up -d
         clear
         echo "已经安装完成"
@@ -23789,11 +23921,11 @@ docker_install_dufs() {
 
     docker_rum() {
         docker run -d \
-            --name ${docker_name} \
+            --name "${docker_name}" \
             --restart=always \
-            -v /home/docker/${docker_name}:/data \
+            -v "/home/docker/${docker_name}:/data" \
             -p "${docker_port}":5000 \
-            ${docker_img} /data -A
+            "${docker_img}" /data -A
     }
     local docker_describe="极简静态文件服务器，支持上传下载、WebDAV、访问控制、压缩下载等功能。"
     local docker_url="${gl_bai}官网介绍: ${gl_lv}${gh_proxy}github.com/sigoden/dufs${gl_bai}"
@@ -23814,12 +23946,12 @@ docker_install_gopeed() {
         read -r -e -p "设置登录用户名: " app_use
         read -r -e -p "设置登录密码: " app_passwd
         docker run -d \
-            --name ${docker_name} \
+            --name "${docker_name}" \
             --restart=always \
-            -v /home/docker/${docker_name}/downloads:/app/Downloads \
-            -v /home/docker/${docker_name}/storage:/app/storage \
+            -v "/home/docker/${docker_name}/downloads:/app/Downloads" \
+            -v "/home/docker/${docker_name}/storage:/app/storage" \
             -p "${docker_port}":9999 \
-            ${docker_img} -u "${app_use}" -p "${app_passwd}"
+            "${docker_img}" -u "${app_use}" -p "${app_passwd}"
     }
     local docker_describe="分布式高速下载工具，支持多种协议（HTTP、BitTorrent、Magnet），支持跨平台和浏览器扩展。"
     local docker_url="${gl_bai}官网介绍: ${gl_lv}${gh_proxy}github.com/GopeedLab/gopeed${gl_bai}"
@@ -23843,11 +23975,11 @@ docker_install_paperless() {
         mkdir -p /home/docker/paperless
         mkdir -p /home/docker/paperless/export
         mkdir -p /home/docker/paperless/consume
-        cd /home/docker/paperless
-        curl -o /home/docker/paperless/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/docker-compose.postgres-tika.yml
-        curl -o /home/docker/paperless/docker-compose.env ${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/.env
+        cd /home/docker/paperless || return
+        curl -o /home/docker/paperless/docker-compose.yml "${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/docker-compose.postgres-tika.yml"
+        curl -o /home/docker/paperless/docker-compose.env "${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/.env"
         sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/paperless/docker-compose.yml
-        cd /home/docker/paperless
+        cd /home/docker/paperless || return
         docker compose up -d
         clear
         echo "已经安装完成"
@@ -23883,11 +24015,11 @@ docker_install_2fauth() {
         mkdir -p /home/docker/2fauth
         mkdir -p /home/docker/2fauth/data
         chmod -R 777 /home/docker/2fauth/
-        cd /home/docker/2fauth
-        curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
+        cd /home/docker/2fauth || return
+        curl -o /home/docker/2fauth/docker-compose.yml "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml"
         sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
         sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml
-        cd /home/docker/2fauth
+        cd /home/docker/2fauth || return
         docker compose up -d
         ldnmp_Proxy "${yuming}" 127.0.0.1 "${docker_port}"
         block_container_port "$docker_name" "$ipv4_address"
@@ -24042,12 +24174,12 @@ docker_install_dsm() {
         mkdir -p /home/docker/dsm
         mkdir -p /home/docker/dsm/dev
         chmod -R 777 /home/docker/dsm/
-        cd /home/docker/dsm
-        curl -o /home/docker/dsm/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/dsm-docker-compose.yml
+        cd /home/docker/dsm || return
+        curl -o /home/docker/dsm/docker-compose.yml "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/dsm-docker-compose.yml"
         sed -i "s/5000:5000/${docker_port}:5000/g" /home/docker/dsm/docker-compose.yml
         sed -i "s|CPU_CORES: \"2\"|CPU_CORES: \"${CPU_CORES}\"|g" /home/docker/dsm/docker-compose.yml
         sed -i "s|RAM_SIZE: \"2G\"|RAM_SIZE: \"${RAM_SIZE}G\"|g" /home/docker/dsm/docker-compose.yml
-        cd /home/docker/dsm
+        cd /home/docker/dsm || return
         docker compose up -d
         clear
         echo "已经安装完成"
@@ -24107,7 +24239,7 @@ docker_install_moneyprinterturbo() {
 
     docker_app_install() {
         install git
-        mkdir -p /home/docker/ && cd /home/docker/ && git clone https://github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
+        mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/ || return
         sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
         docker compose up -d
         clear
@@ -24117,7 +24249,7 @@ docker_install_moneyprinterturbo() {
 
     docker_app_update() {
         cd /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
-        cd /home/docker/MoneyPrinterTurbo/
+        cd /home/docker/MoneyPrinterTurbo/ || return
         git pull origin main
         sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
         cd /home/docker/MoneyPrinterTurbo/ && docker compose up -d
@@ -24166,7 +24298,7 @@ docker_install_umami() {
 
     docker_app_install() {
         install git
-        mkdir -p /home/docker/ && cd /home/docker/ && git clone https://github.com/umami-software/umami.git && cd umami
+        mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/umami-software/umami.git && cd umami || return
         sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/umami/docker-compose.yml
         docker compose up -d
         clear
@@ -24178,7 +24310,7 @@ docker_install_umami() {
 
     docker_app_update() {
         cd /home/docker/umami/ && docker compose down --rmi all
-        cd /home/docker/umami/
+        cd /home/docker/umami/ || return
         git pull origin main
         sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/umami/docker-compose.yml
         cd /home/docker/umami/ && docker compose up -d
@@ -24285,7 +24417,7 @@ docker_install_langbot() {
 
     docker_app_install() {
         install git
-        mkdir -p /home/docker/ && cd /home/docker/ && git clone https://github.com/langbot-app/LangBot && cd LangBot/docker
+        mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/langbot-app/LangBot && cd LangBot/docker || return
         sed -i "s/5300:5300/${docker_port}:5300/g" /home/docker/LangBot/docker/docker-compose.yaml
         docker compose up -d
         clear
@@ -24295,7 +24427,7 @@ docker_install_langbot() {
 
     docker_app_update() {
         cd /home/docker/LangBot/docker && docker compose down --rmi all
-        cd /home/docker/LangBot/
+        cd /home/docker/LangBot/ || return
         git pull origin main
         sed -i "s/5300:5300/${docker_port}:5300/g" /home/docker/LangBot/docker/docker-compose.yaml
         cd /home/docker/LangBot/docker/ && docker compose up -d
@@ -24362,7 +24494,7 @@ docker_install_xiaomusic() {
         fi
     }
     mkdir -p /home/docker/xiaomusic/music
-    cd /home/docker/xiaomusic/music
+    cd /home/docker/xiaomusic/music || return
     safe_wget 海边探戈-王鹤棣.mp3
     safe_wget 生活没有说明书-洛什么洛.mp3
 
@@ -24466,7 +24598,7 @@ docker_install_vert() {
         docker run -d \
             -v /home/docker/vert/data:/app/data \
             -p "${docker_port}":80 \
-            -e PUB_HOSTNAME=$ipv4_address:${docker_port} \
+            -e "PUB_HOSTNAME=$ipv4_address:${docker_port}" \
             -e PUB_PLAUSIBLE_URL= \
             -e PUB_ENV=production \
             -e PUB_VERTD_URL=http://vertd:24153 \
@@ -24564,14 +24696,14 @@ docker_install_random() {
         fi
     }
     mkdir -p /home/docker/random/{portrait,landscape,photos}
-    cd /home/docker/random
+    cd /home/docker/random || return
     safe_wget gitee.com/meimolihan/script/raw/master/nginx/random/index.php
     safe_wget gitee.com/meimolihan/script/raw/master/nginx/random/classify.py
-    cd portrait
+    cd portrait || return
     safe_wget gitee.com/meimolihan/script/raw/master/nginx/random/portrait/index.php
     safe_wget gitee.com/meimolihan/script/raw/master/nginx/random/portrait/sj-001.webp
     safe_wget gitee.com/meimolihan/script/raw/master/nginx/random/portrait/sj-002.webp
-    cd ../landscape
+    cd ../landscape || return
     safe_wget gitee.com/meimolihan/script/raw/master/nginx/random/landscape/index.php
     safe_wget gitee.com/meimolihan/script/raw/master/nginx/random/landscape/pc-001.webp
     safe_wget gitee.com/meimolihan/script/raw/master/nginx/random/landscape/pc-002.webp
@@ -24690,7 +24822,7 @@ docker_install_firefox() {
     local docker_port=8113
 
     docker_rum() {
-        read -e -p "设置登录密码: " admin_password
+        read -r -e -p "设置登录密码: " admin_password
         docker run -d --name="${docker_name}" --restart=always \
             -p "${docker_port}":5800 \
             -v /home/docker/firefox:/config:rw \
@@ -24715,10 +24847,10 @@ docker_install_convertx() {
     local docker_port=8111
 
     docker_rum() {
-        docker run -d --name=${docker_name} --restart=always \
-            -p ${docker_port}:3000 \
+        docker run -d "--name=${docker_name}" --restart=always \
+            -p "${docker_port}:3000" \
             -v /home/docker/convertx:/app/data \
-            ${docker_img}
+            "${docker_img}"
     }
 
     local docker_describe="ConvertX 是一个功能强大的多格式文件转换工具，支持文档、图像、音频、视频等多种格式。"
@@ -24737,15 +24869,15 @@ docker_install_lucky() {
     local docker_port=8112
 
     docker_rum() {
-        docker run -d --name=${docker_name} --restart=always \
+        docker run -d "--name=${docker_name}" --restart=always \
             --network host \
             -v /home/docker/lucky/conf:/app/conf \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            ${docker_img}
+            "${docker_img}"
 
         echo -e "正在等待 Lucky 初始化 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
         sleep_fractional 10
-        docker exec lucky /app/lucky -rSetHttpAdminPort ${docker_port}
+        docker exec lucky /app/lucky -rSetHttpAdminPort "${docker_port}"
     }
 
     local docker_describe="Lucky 是一个大内网穿透及端口转发管理工具，支持 DDNS、反向代理、WOL 等功能。"
@@ -24810,7 +24942,8 @@ restore_app_data() {
         linux_panel
     fi
     if [ -z "$filename" ]; then
-        local filename=$(ls -t /app*.tar.gz | head -1)
+        local filename
+        filename=$(ls -t /app*.tar.gz | head -1)
     fi
     if [ -n "$filename" ]; then
         echo -e "${gl_huang}正在解压 $filename ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -24829,7 +24962,8 @@ linux_panel() {
             echo -e "${gl_zi}>>> 应用市场${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-            local app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
+            local app_numbers
+            app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
 
             for i in {1..150}; do
                 if echo "$app_numbers" | grep -q "^$i$"; then
@@ -25044,8 +25178,8 @@ linux_panel() {
         120 | fndesk) docker_install_fndesk ;;                               # fndesk飞牛桌面图标管理
         121 | fastnet) docker_install_fastnet ;;                             # FastNet测速工具
         122 | firefox) docker_install_firefox ;;                             # Firefox浏览器
-        123 | firefox) docker_install_lucky ;;                               # Lucky大内网穿透
-        124 | firefox) docker_install_convertx ;;                            # convertx多格式文件转换
+        123 | lucky) docker_install_lucky ;;                                 # Lucky大内网穿透
+        124 | convertx) docker_install_convertx ;;                            # convertx多格式文件转换
         b) backup_app_data ;;                                                # 备份全部应用数据
         r) restore_app_data ;;                                               # 还原全部应用数据
         0) cancel_return "主菜单"; mobufan ;;
@@ -25102,15 +25236,15 @@ linux_ldnmp() {
             install_ssltls
             certs_status
             add_db
-            wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
-            wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20250901.zip
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
+            wget -O latest.zip "${gh_proxy}github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20250901.zip"
             unzip latest.zip
             rm latest.zip
 
@@ -25133,18 +25267,18 @@ linux_ldnmp() {
             install_ssltls
             certs_status
             add_db
-            wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
-            wget -O latest.zip ${gh_proxy}github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
+            wget -O latest.zip "${gh_proxy}github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip"
             unzip -o latest.zip
             rm latest.zip
-            mv /etc/nginx/html/$yuming/kodbox* /etc/nginx/html/$yuming/kodbox
+            mv "/etc/nginx/html/$yuming/kodbox*" "/etc/nginx/html/$yuming/kodbox"
             restart_ldnmp
 
             ldnmp_web_on
@@ -25165,19 +25299,19 @@ linux_ldnmp() {
             install_ssltls
             certs_status
             add_db
-            wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
-            wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && mv maccms10-*/* . && rm -r maccms10-* && rm maccms10.zip
-            cd /etc/nginx/html/$yuming/template/ && wget ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/DYXS2.zip && unzip DYXS2.zip && rm /etc/nginx/html/$yuming/template/DYXS2.zip
-            cp /etc/nginx/html/$yuming/template/DYXS2/asset/admin/Dyxs2.php /etc/nginx/html/$yuming/application/admin/controller
-            cp /etc/nginx/html/$yuming/template/DYXS2/asset/admin/dycms.html /etc/nginx/html/$yuming/application/admin/view/system
-            mv /etc/nginx/html/$yuming/admin.php /etc/nginx/html/$yuming/vip.php && wget -O /etc/nginx/html/$yuming/application/extra/maccms.php ${gh_proxy}raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
+            wget "${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip" && unzip maccms10.zip && mv maccms10-*/* . && rm -r maccms10-* && rm maccms10.zip
+            cd "/etc/nginx/html/$yuming/template/" && wget "${gh_proxy}github.com/kejilion/Website_source_code/raw/main/DYXS2.zip" && unzip DYXS2.zip && rm "/etc/nginx/html/$yuming/template/DYXS2.zip"
+            cp "/etc/nginx/html/$yuming/template/DYXS2/asset/admin/Dyxs2.php" "/etc/nginx/html/$yuming/application/admin/controller"
+            cp "/etc/nginx/html/$yuming/template/DYXS2/asset/admin/dycms.html" "/etc/nginx/html/$yuming/application/admin/view/system"
+            mv "/etc/nginx/html/$yuming/admin.php" "/etc/nginx/html/$yuming/vip.php" && wget -O "/etc/nginx/html/$yuming/application/extra/maccms.php" "${gh_proxy}raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php"
 
             restart_ldnmp
 
@@ -25203,15 +25337,15 @@ linux_ldnmp() {
             install_ssltls
             certs_status
             add_db
-            wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
-            wget ${gh_proxy}github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
+            wget "${gh_proxy}github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz" && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
             restart_ldnmp
 
@@ -25247,23 +25381,23 @@ linux_ldnmp() {
             install_ssltls
             certs_status
             add_db
-            wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
             docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
 
             docker exec php sh -c "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\""
             docker exec php sh -c "php composer-setup.php"
             docker exec php sh -c "php -r \"unlink('composer-setup.php');\""
             docker exec php sh -c "mv composer.phar /usr/local/bin/composer"
 
-            docker exec php composer create-project flarum/flarum /var/www/html/$yuming
+            docker exec php composer create-project flarum/flarum "/var/www/html/$yuming"
             docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum-lang/chinese-simplified"
             docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum/extension-manager:*"
             docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/polls"
@@ -25295,15 +25429,15 @@ linux_ldnmp() {
             install_ssltls
             certs_status
             add_db
-            wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
-            wget -O latest.zip ${gh_proxy}github.com/typecho/typecho/releases/latest/download/typecho.zip
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
+            wget -O latest.zip "${gh_proxy}github.com/typecho/typecho/releases/latest/download/typecho.zip"
             unzip latest.zip
             rm latest.zip
 
@@ -25329,16 +25463,16 @@ linux_ldnmp() {
             install_ssltls
             certs_status
             add_db
-            wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf
-            sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" /etc/nginx/conf.d/$yuming.conf
-            sed -i "s|yuming.com|$yuming|g" /etc/nginx/conf.d/$yuming.conf
+            wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf"
+            sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" "/etc/nginx/conf.d/$yuming.conf"
+            sed -i "s|yuming.com|$yuming|g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
-            wget -O latest.zip ${gh_proxy}github.com/linkstackorg/linkstack/releases/latest/download/linkstack.zip
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
+            wget -O latest.zip "${gh_proxy}github.com/linkstackorg/linkstack/releases/latest/download/linkstack.zip"
             unzip latest.zip
             rm latest.zip
 
@@ -25363,14 +25497,14 @@ linux_ldnmp() {
             install_ssltls
             certs_status
             add_db
-            wget -O /etc/nginx/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O /etc/nginx/conf.d/map.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf"
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/index_php.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
 
             clear
             echo -e "[${gl_huang}1/6${gl_bai}] 上传PHP源码"
@@ -25382,8 +25516,8 @@ linux_ldnmp() {
                 wget "$url_download"
             fi
 
-            unzip $(ls -t *.zip | head -n 1)
-            rm -f $(ls -t *.zip | head -n 1)
+            unzip "$(ls -t *.zip | head -n 1)"
+            rm -f "$(ls -t *.zip | head -n 1)"
 
             clear
             echo -e "[${gl_huang}2/6${gl_bai}] index.php所在路径"
@@ -25392,8 +25526,8 @@ linux_ldnmp() {
 
             read -r -e -p "请输入index.php的路径，类似（/etc/nginx/html/$yuming/wordpress/）： " index_lujing
 
-            sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /etc/nginx/conf.d/$yuming.conf
-            sed -i "s#/etc/nginx/#/var/www/#g" /etc/nginx/conf.d/$yuming.conf
+            sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" "/etc/nginx/conf.d/$yuming.conf"
+            sed -i "s#/etc/nginx/#/var/www/#g" "/etc/nginx/conf.d/$yuming.conf"
 
             clear
             echo -e "[${gl_huang}3/6${gl_bai}] 请选择PHP版本"
@@ -25401,11 +25535,11 @@ linux_ldnmp() {
             read -r -e -p "1. php最新版 | 2. php7.4 : " pho_v
             case "$pho_v" in
             1)
-                sed -i "s#php:9000#php:9000#g" /etc/nginx/conf.d/$yuming.conf
+                sed -i "s#php:9000#php:9000#g" "/etc/nginx/conf.d/$yuming.conf"
                 local PHP_Version="php"
                 ;;
             2)
-                sed -i "s#php:9000#php74:9000#g" /etc/nginx/conf.d/$yuming.conf
+                sed -i "s#php:9000#php74:9000#g" "/etc/nginx/conf.d/$yuming.conf"
                 local PHP_Version="php74"
                 ;;
             *) handle_invalid_input ;;
@@ -25419,7 +25553,7 @@ linux_ldnmp() {
 
             read -r -e -p "$(echo -e "输入需要安装的扩展名称，如 ${gl_huang}SourceGuardian imap ftp${gl_bai} 等等。直接回车将跳过安装 ： ")" php_extensions
             if [ -n "$php_extensions" ]; then
-                docker exec $PHP_Version install-php-extensions $php_extensions
+                docker exec "$PHP_Version" install-php-extensions $php_extensions
             fi
 
             clear
@@ -25428,7 +25562,7 @@ linux_ldnmp() {
             echo "按任意键继续，可以详细设置站点配置，如伪静态等内容 \c"
             read -n 1 -s -r -p ""
             install nano
-            nano /etc/nginx/conf.d/$yuming.conf
+            nano "/etc/nginx/conf.d/$yuming.conf"
 
             clear
             echo -e "[${gl_huang}6/6${gl_bai}] 数据库管理"
@@ -25442,14 +25576,14 @@ linux_ldnmp() {
                 echo "数据库备份必须是.gz结尾的压缩包。请放到/home/目录下，支持宝塔/1panel备份数据导入。"
                 read -r -e -p "也可以输入下载链接，远程下载备份数据，直接回车将跳过远程下载： " url_download_db
 
-                cd /home/
+                cd /home/ || return
                 if [ -n "$url_download_db" ]; then
                     wget "$url_download_db"
                 fi
-                gunzip $(ls -t *.gz | head -n 1)
+                gunzip "$(ls -t *.gz | head -n 1)"
                 latest_sql=$(ls -t *.sql | head -n 1)
                 dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
-                docker exec -i mysql mysql -u root -p"$dbrootpasswd" $dbname <"/home/$latest_sql"
+                docker exec -i mysql mysql -u root -p"$dbrootpasswd" "$dbname" <"/home/$latest_sql"
                 echo "数据库导入的表数据"
                 docker exec -i mysql mysql -u root -p"$dbrootpasswd" -e "USE $dbname; SHOW TABLES;"
                 rm -f *.sql
@@ -25488,9 +25622,9 @@ linux_ldnmp() {
             install_ssltls
             certs_status
 
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
-            sed -i "s/baidu.com/$reverseproxy/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
+            sed -i "s/baidu.com/$reverseproxy/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
             docker exec nginx nginx -s reload
@@ -25523,9 +25657,9 @@ linux_ldnmp() {
             install_ssltls
             certs_status
 
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
-            sed -i "s|fandaicom|$fandai_yuming|g" /etc/nginx/conf.d/$yuming.conf
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
+            sed -i "s|fandaicom|$fandai_yuming|g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
             docker exec nginx nginx -s reload
@@ -25547,7 +25681,7 @@ linux_ldnmp() {
                 --name bitwarden \
                 --restart=always \
                 -p 3280:80 \
-                -v /etc/nginx/html/$yuming/bitwarden/data:/data \
+                -v "/etc/nginx/html/$yuming/bitwarden/data:/data" \
                 vaultwarden/server
             duankou=3280
             reverse_proxy
@@ -25565,7 +25699,7 @@ linux_ldnmp() {
             install_ssltls
             certs_status
 
-            docker run -d --name halo --restart=always -p 8010:8090 -v /etc/nginx/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
+            docker run -d --name halo --restart=always -p 8010:8090 -v "/etc/nginx/html/$yuming/.halo2:/root/.halo2" halohub/halo:2
             duankou=8010
             reverse_proxy
 
@@ -25582,17 +25716,17 @@ linux_ldnmp() {
             install_ssltls
             certs_status
 
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
 
-            wget ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/ai_prompt_generator.zip
-            unzip $(ls -t *.zip | head -n 1)
-            rm -f $(ls -t *.zip | head -n 1)
+            wget "${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/ai_prompt_generator.zip"
+            unzip "$(ls -t *.zip | head -n 1)"
+            rm -f "$(ls -t *.zip | head -n 1)"
 
             docker exec nginx chmod -R nginx:nginx /var/www/html
             docker exec nginx nginx -s reload
@@ -25619,13 +25753,13 @@ linux_ldnmp() {
             install_ssltls
             certs_status
 
-            wget -O /etc/nginx/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
-            sed -i "s/yuming.com/$yuming/g" /etc/nginx/conf.d/$yuming.conf
+            wget -O "/etc/nginx/conf.d/$yuming.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf"
+            sed -i "s/yuming.com/$yuming/g" "/etc/nginx/conf.d/$yuming.conf"
             nginx_http_on
 
-            cd /etc/nginx/html
-            mkdir $yuming
-            cd $yuming
+            cd /etc/nginx/html || return
+            mkdir "$yuming"
+            cd "$yuming" || return
 
             clear
             echo -e "[${gl_huang}1/2${gl_bai}] 上传静态源码"
@@ -25637,8 +25771,8 @@ linux_ldnmp() {
                 wget "$url_download"
             fi
 
-            unzip $(ls -t *.zip | head -n 1)
-            rm -f $(ls -t *.zip | head -n 1)
+            unzip "$(ls -t *.zip | head -n 1)"
+            rm -f "$(ls -t *.zip | head -n 1)"
 
             clear
             echo -e "[${gl_huang}2/2${gl_bai}] index.html所在路径"
@@ -25647,8 +25781,8 @@ linux_ldnmp() {
 
             read -r -e -p "请输入index.html的路径，类似（/etc/nginx/html/$yuming/index/）： " index_lujing
 
-            sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /etc/nginx/conf.d/$yuming.conf
-            sed -i "s#/etc/nginx/#/var/www/#g" /etc/nginx/conf.d/$yuming.conf
+            sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" "/etc/nginx/conf.d/$yuming.conf"
+            sed -i "s#/etc/nginx/#/var/www/#g" "/etc/nginx/conf.d/$yuming.conf"
 
             docker exec nginx chmod -R nginx:nginx /var/www/html
             docker exec nginx nginx -s reload
@@ -25661,7 +25795,8 @@ linux_ldnmp() {
         32)
             clear
 
-            local backup_filename="web_$(date +"%Y%m%d%H%M%S").tar.gz"
+            local backup_filename
+            backup_filename="web_$(date +"%Y%m%d%H%M%S").tar.gz"
             echo -e "${gl_huang}正在备份 $backup_filename ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             cd /home/ && tar czvf "$backup_filename" web
 
@@ -25679,7 +25814,8 @@ linux_ldnmp() {
                         exit_animation
                         continue
                     fi
-                    local latest_tar=$(ls -t /home/*.tar.gz | head -1)
+                    local latest_tar
+                    latest_tar=$(ls -t /home/*.tar.gz | head -1)
                     if [ -n "$latest_tar" ]; then
                         ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
                         sleep_fractional 2
@@ -25703,12 +25839,12 @@ linux_ldnmp() {
             read -r -e -p "输入远程服务器IP: " useip
             read -r -e -p "输入远程服务器密码: " usepasswd
 
-            cd ~
-            wget -O ${useip}_beifen.sh ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/beifen.sh >/dev/null 2>&1
-            chmod +x ${useip}_beifen.sh
+            cd ~ || return
+            wget -O "${useip}_beifen.sh" "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/beifen.sh" >/dev/null 2>&1
+            chmod +x "${useip}_beifen.sh"
 
-            sed -i "s/0.0.0.0/$useip/g" ${useip}_beifen.sh
-            sed -i "s/123456/$usepasswd/g" ${useip}_beifen.sh
+            sed -i "s/0.0.0.0/$useip/g" "${useip}_beifen.sh"
+            sed -i "s/123456/$usepasswd/g" "${useip}_beifen.sh"
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo "1. 每周备份                 2. 每天备份"
@@ -25754,11 +25890,12 @@ linux_ldnmp() {
             fi
 
             if [ -z "$filename" ]; then
-                local filename=$(ls -t /home/*.tar.gz | head -1)
+                local filename
+                filename=$(ls -t /home/*.tar.gz | head -1)
             fi
 
             if [ -n "$filename" ]; then
-                cd /etc/nginx/ >/dev/null 2>&1
+                cd /etc/nginx/ >/dev/null 2>&1 || return
                 docker compose down >/dev/null 2>&1
                 rm -rf /etc/nginx >/dev/null 2>&1
 
@@ -25823,7 +25960,7 @@ linux_ldnmp() {
                     read -r -e -p "请输入${ldnmp_pods}版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
                     local version=${version:-latest}
 
-                    cd /etc/nginx/
+                    cd /etc/nginx/ || return
                     cp /etc/nginx/docker-compose.yml /etc/nginx/docker-compose1.yml
                     sed -i "s/image: mysql/image: mysql:${version}/" /etc/nginx/docker-compose.yml
                     docker rm -f $ldnmp_pods
@@ -25837,7 +25974,7 @@ linux_ldnmp() {
                     local ldnmp_pods="php"
                     read -r -e -p "请输入${ldnmp_pods}版本号 （如: 7.4 8.0 8.1 8.2 8.3）（回车获取最新版）: " version
                     local version=${version:-8.3}
-                    cd /etc/nginx/
+                    cd /etc/nginx/ || return
                     cp /etc/nginx/docker-compose.yml /etc/nginx/docker-compose1.yml
                     sed -i "s/kjlion\///g" /etc/nginx/docker-compose.yml >/dev/null 2>&1
                     sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /etc/nginx/docker-compose.yml
@@ -25850,7 +25987,7 @@ linux_ldnmp() {
                     run_command docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories >/dev/null 2>&1
 
                     docker exec php apk update
-                    curl -sL ${gh_proxy}github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions
+                    curl -sL "${gh_proxy}github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions" -o /usr/local/bin/install-php-extensions
                     docker exec php mkdir -p /usr/local/bin/
                     docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
                     docker exec php chmod +x /usr/local/bin/install-php-extensions
@@ -25871,7 +26008,7 @@ linux_ldnmp() {
                     ;;
                 4)
                     local ldnmp_pods="redis"
-                    cd /etc/nginx/
+                    cd /etc/nginx/ || return
                     docker rm -f $ldnmp_pods
                     docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi >/dev/null 2>&1
                     docker compose up -d --force-recreate $ldnmp_pods
@@ -25883,7 +26020,7 @@ linux_ldnmp() {
                     read -r -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
                     case "$choice" in
                     [Yy])
-                        cd /etc/nginx/
+                        cd /etc/nginx/ || return
                         docker compose down --rmi all
 
                         check_port
@@ -25907,7 +26044,7 @@ linux_ldnmp() {
             read -r -e -p "$(echo -e "${gl_hong}强烈建议：${gl_bai}先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
             case "$choice" in
             [Yy])
-                cd /etc/nginx/
+                cd /etc/nginx/ || return
                 docker compose down --rmi all
                 docker compose -f docker-compose.phpmyadmin.yml down >/dev/null 2>&1
                 docker compose -f docker-compose.phpmyadmin.yml down --rmi all >/dev/null 2>&1
@@ -26171,7 +26308,8 @@ EOF
         log_info "配置 .bash_profile 确保登录时加载 .bashrc ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
         if [[ -n "$SUDO_USER" ]] && [[ "$SUDO_USER" != "root" ]]; then
-            local user_home=$(eval echo ~$SUDO_USER)
+            local user_home
+            user_home=$(eval echo "~$SUDO_USER")
             if [[ -d "$user_home" ]]; then
                 if [[ -f "$user_home/.bash_profile" ]] && grep -q "由set_locales_zh脚本添加" "$user_home/.bash_profile" 2>/dev/null; then
                     log_warn "用户 $SUDO_USER 的 .bash_profile 已配置，跳过"
@@ -26186,16 +26324,18 @@ if [ -f "$HOME/.bashrc" ]; then
     . "$HOME/.bashrc"
 fi
 EOF
-                        chown $SUDO_USER:$SUDO_USER "$user_home/.bash_profile"
+                        chown "$SUDO_USER:$SUDO_USER" "$user_home/.bash_profile"
                         log_ok "已为用户 $SUDO_USER 创建 .bash_profile"
                     else
                         if ! grep -q "\.bashrc" "$user_home/.bash_profile" 2>/dev/null; then
-                            echo '' >> "$user_home/.bash_profile"
-                            echo '# 由set_locales_zh脚本添加' >> "$user_home/.bash_profile"
-                            echo 'if [ -f "$HOME/.bashrc" ]; then' >> "$user_home/.bash_profile"
-                            echo '    . "$HOME/.bashrc"' >> "$user_home/.bash_profile"
-                            echo 'fi' >> "$user_home/.bash_profile"
-                            chown $SUDO_USER:$SUDO_USER "$user_home/.bash_profile"
+                            {
+                                echo ''
+                                echo '# 由set_locales_zh脚本添加'
+                                echo 'if [ -f "$HOME/.bashrc" ]; then'
+                                echo '    . "$HOME/.bashrc"'
+                                echo 'fi'
+                            } >> "$user_home/.bash_profile"
+                            chown "$SUDO_USER:$SUDO_USER" "$user_home/.bash_profile"
                             log_ok "已为用户 $SUDO_USER 更新 .bash_profile"
                         else
                             log_warn "用户 $SUDO_USER 的 .bash_profile 已有.bashrc加载逻辑，跳过"
@@ -26221,11 +26361,13 @@ EOF
                 log_ok "已为root用户创建 .bash_profile"
             else
                 if ! grep -q "\.bashrc" /root/.bash_profile 2>/dev/null; then
-                    echo '' >> /root/.bash_profile
-                    echo '# 由set_locales_zh脚本添加' >> /root/.bash_profile
-                    echo 'if [ -f "$HOME/.bashrc" ]; then' >> /root/.bash_profile
-                    echo '    . "$HOME/.bashrc"' >> /root/.bash_profile
-                    echo 'fi' >> /root/.bash_profile
+                    {
+                        echo ''
+                        echo '# 由set_locales_zh脚本添加'
+                        echo 'if [ -f "$HOME/.bashrc" ]; then'
+                        echo '    . "$HOME/.bashrc"'
+                        echo 'fi'
+                    } >> /root/.bash_profile
                     log_ok "已为root用户更新 .bash_profile"
                 else
                     log_warn "root 的 .bash_profile 已有.bashrc加载逻辑，跳过"
@@ -26236,7 +26378,8 @@ EOF
         log_info "为用户创建个人locale配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
         if [[ -n "$SUDO_USER" ]] && [[ "$SUDO_USER" != "root" ]]; then
-            local user_home=$(eval echo ~$SUDO_USER)
+            local user_home
+            user_home=$(eval echo "~$SUDO_USER")
             if [[ -d "$user_home" ]]; then
                 if grep -q "中文环境强制设置（由set_locales_zh脚本添加）" "$user_home/.bashrc" 2>/dev/null; then
                     log_warn "用户 $SUDO_USER 的 .bashrc 已配置中文环境，跳过"
@@ -26265,7 +26408,7 @@ if [ -n "$SSH_CONNECTION" ]; then
     export LC_MESSAGES=zh_CN.UTF-8
 fi
 EOF
-                    chown $SUDO_USER:$SUDO_USER "$user_home/.bashrc"
+                    chown "$SUDO_USER:$SUDO_USER" "$user_home/.bashrc"
                     log_ok "已为用户 $SUDO_USER 配置 .bashrc"
                 fi
             fi
@@ -26306,13 +26449,15 @@ EOF
             if grep -q "由set_locales_zh脚本添加" /etc/ssh/sshd_config 2>/dev/null; then
                 log_warn "SSH配置已修改，跳过"
             else
-                cp -f /etc/ssh/sshd_config /etc/ssh/sshd_config.bak.$(date +%Y%m%d%H%M%S) 2>/dev/null || true
+                cp -f /etc/ssh/sshd_config /etc/ssh/sshd_config.bak."$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
 
                 sed -i 's/^AcceptEnv/#AcceptEnv/g' /etc/ssh/sshd_config
 
-                echo "" >> /etc/ssh/sshd_config
-                echo "# 由set_locales_zh脚本添加：拒绝客户端转发的locale环境变量" >> /etc/ssh/sshd_config
-                echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
+                {
+                    echo ""
+                    echo "# 由set_locales_zh脚本添加：拒绝客户端转发的locale环境变量"
+                    echo "AcceptEnv LANG LC_*"
+                } >> /etc/ssh/sshd_config
 
                 if systemctl is-active sshd &>/dev/null; then
                     systemctl restart sshd
@@ -26723,7 +26868,6 @@ list_cifs_services() {
             fi
 
             local status_color="${gl_bai}"
-            local status_text=""
 
             if systemctl is-active "$base_name" --quiet 2>/dev/null; then
                 status_color="${gl_lv}[运行中]${gl_bai}"
@@ -26921,7 +27065,8 @@ cleanup_service() {
     fi
 
     if [[ -f "$SCRIPT" ]]; then
-        local MOUNT=$(awk -F"MOUNT='" '/MOUNT=/ {print $2}' "$SCRIPT" 2>/dev/null | cut -d"'" -f1)
+        local MOUNT
+        MOUNT=$(awk -F"MOUNT='" '/MOUNT=/ {print $2}' "$SCRIPT" 2>/dev/null | cut -d"'" -f1)
         if [[ -n "$MOUNT" ]]; then
             if mountpoint -q "$MOUNT" 2>/dev/null; then
                 log_info "正在卸载挂载点: $MOUNT"
@@ -27583,7 +27728,8 @@ mount_cifs_share() {
             }
         fi
 
-        local mount_options="uid=$(id -u),gid=$(id -g),file_mode=0644,dir_mode=0755,iocharset=utf8,noperm"
+        local mount_options
+        mount_options="uid=$(id -u),gid=$(id -g),file_mode=0644,dir_mode=0755,iocharset=utf8,noperm"
 
         local cifs_versions="3.0 2.1 2.0 1.0"
         local mount_success=false
@@ -27800,7 +27946,8 @@ mount_cifs_share() {
         }
 
         if [[ -n $samba_user && -n $samba_pass ]]; then
-            local safe_share=$(echo "$share_name" | tr -c '[:alnum:]._-' '_')
+            local safe_share
+            safe_share=$(echo "$share_name" | tr -c '[:alnum:]._-' '_')
             cred_file="$cred_dir/${server_ip}_${safe_share}.cred"
 
             echo -e "username=$samba_user" >"$cred_file"
@@ -27809,7 +27956,8 @@ mount_cifs_share() {
 
             fstab_entry="//$server_ip/$share_name $mount_dir cifs credentials=$cred_file,uid=$(id -u),gid=$(id -g),file_mode=0644,dir_mode=0755,iocharset=utf8,noperm,vers=3.0 0 0"
         elif [[ -n $samba_user ]]; then
-            local safe_share=$(echo "$share_name" | tr -c '[:alnum:]._-' '_')
+            local safe_share
+            safe_share=$(echo "$share_name" | tr -c '[:alnum:]._-' '_')
             cred_file="$cred_dir/${server_ip}_${safe_share}.cred"
 
             echo -e "username=$samba_user" >"$cred_file"
@@ -27823,7 +27971,7 @@ mount_cifs_share() {
         if grep -q "^[^#].*$mount_dir.*cifs" /etc/fstab; then
             log_warn "/etc/fstab 中已存在 $mount_dir 的挂载项，跳过添加"
         else
-            cp /etc/fstab /etc/fstab.bak.$(date +%Y%m%d_%H%M%S) 2>/dev/null
+            cp /etc/fstab /etc/fstab.bak."$(date +%Y%m%d_%H%M%S)" 2>/dev/null
             echo "$fstab_entry" | tee -a /etc/fstab >/dev/null
             log_ok "已添加到 /etc/fstab"
 
@@ -27859,7 +28007,7 @@ unmount_samba_shares() {
         local mount_pattern="$1"
         mount_pattern=$(echo "$mount_pattern" | sed 's/[\/&]/\\&/g')
 
-        cp /etc/fstab /etc/fstab.bak.unmount.$(date +%Y%m%d_%H%M%S) 2>/dev/null
+        cp /etc/fstab /etc/fstab.bak.unmount."$(date +%Y%m%d_%H%M%S)" 2>/dev/null
 
         if grep -q "^[^#].*$mount_pattern.*cifs" /etc/fstab; then
             local fstab_line
@@ -28002,8 +28150,7 @@ config_samba_share() {
 
         clear
         echo -e "${gl_zi}>>> 检查Samba配置${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        if [ $? -eq 0 ]; then
+        if echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"; then
             log_ok "Samba 服务安装完成"
             return 0
         else
@@ -28374,7 +28521,7 @@ EOF
 
     log_info "正在更新Samba配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
-    cp /etc/samba/smb.conf /etc/samba/smb.conf.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null
+    cp /etc/samba/smb.conf /etc/samba/smb.conf.backup."$(date +%Y%m%d_%H%M%S)" 2>/dev/null
 
     cat >>/etc/samba/smb.conf <<EOF
 
@@ -28498,7 +28645,7 @@ samba_user_management() {
                     log_error "系统用户不存在，无法添加Samba用户[1,2](@ref)"
                 fi
             fi
-            read -p "$(echo -e "${gl_bai}按回车键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+            read -r -p "$(echo -e "${gl_bai}按回车键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
 
             ;;
         2)
@@ -28512,7 +28659,7 @@ samba_user_management() {
             else
                 log_error "Samba用户不存在"
             fi
-            read -p "$(echo -e "${gl_bai}按回车键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+            read -r -p "$(echo -e "${gl_bai}按回车键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
             ;;
         3)
             read -r -p "$(echo -e "${gl_bai}请输入要修改密码的用户名: ")" pass_user
@@ -28525,7 +28672,7 @@ samba_user_management() {
             else
                 log_error "用户不存在，请先添加用户[1](@ref)"
             fi
-            read -p "$(echo -e "${gl_bai}按回车键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+            read -r -p "$(echo -e "${gl_bai}按回车键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
             ;;
         0) cancel_return; return 0 ;;
         00 | 000 | 0000) exit_script ;;
@@ -28935,7 +29082,8 @@ show_system_info() {
         echo -e "${gl_bai}系统版本:  ${gl_lv}未知${gl_bai}"
     fi
 
-    local net_manager=$(detect_network_manager)
+    local net_manager
+    net_manager=$(detect_network_manager)
     echo -e "${gl_bai}网络管理:  ${gl_lv}$net_manager${gl_bai}"
 
     if [ "$(detect_resolved)" = "yes" ]; then
@@ -28955,7 +29103,8 @@ show_network_info() {
     echo -e "${gl_huang}网络接口信息${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    local interfaces=$(ip -o link show | awk -F': ' '{print $2}')
+    local interfaces
+    interfaces=$(ip -o link show | awk -F': ' '{print $2}')
     if [ -z "$interfaces" ]; then
         log_error "无法获取网络接口"
         exit_animation
@@ -28965,9 +29114,12 @@ show_network_info() {
     echo -e "${gl_bai}检测到网络接口:${gl_bai}"
     for iface in $interfaces; do
         if [ "$iface" != "lo" ]; then
-            local state=$(cat /sys/class/net/$iface/operstate 2>/dev/null || echo "未知")
-            local mac=$(cat /sys/class/net/$iface/address 2>/dev/null || echo "未知")
-            local ipv4=$(ip -4 addr show $iface 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' || echo "无IP")
+            local state
+            state=$(cat "/sys/class/net/$iface/operstate" 2>/dev/null || echo "未知")
+            local mac
+            mac=$(cat "/sys/class/net/$iface/address" 2>/dev/null || echo "未知")
+            local ipv4
+            ipv4=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' || echo "无IP")
             echo -e "${gl_bufan}接口:${gl_bai} ${gl_bai}$iface${gl_bai}"
             echo -e "  ${gl_bufan}状态:${gl_bai} ${gl_bai}$state${gl_bai}"
             echo -e "  ${gl_bufan}MAC:${gl_bai} ${gl_bai}$mac${gl_bai}"
@@ -28984,14 +29136,14 @@ show_dns_info() {
     if [ "$(detect_resolved)" = "yes" ]; then
         echo -e "  ${gl_bufan}systemd-resolved 状态:${gl_bai} ${gl_lv}启用${gl_bai}"
         echo -e "  ${gl_bufan}全局DNS:${gl_bai}"
-        resolvectl status 2>/dev/null | grep -A5 "Global" | grep "DNS Server" | awk '{print "    "$3}' | while read dns; do
+        resolvectl status 2>/dev/null | grep -A5 "Global" | grep "DNS Server" | awk '{print "    "$3}' | while read -r dns; do
             echo -e "    ${gl_bai}$dns${gl_bai}"
         done
     else
         if [ -f /etc/resolv.conf ]; then
             grep -E '^nameserver' /etc/resolv.conf 2>/dev/null |
                 awk '{print "  " NR ". " $2}' |
-                while read line; do
+                while read -r line; do
                     echo -e "${gl_bai}  $line${gl_bai}"
                 done
         else
@@ -29005,7 +29157,8 @@ show_current_ip_config() {
     echo -e "${gl_huang}当前IP配置${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    local gateway=$(ip route | grep default | awk '{print $3}' | head -1)
+    local gateway
+    gateway=$(ip route | grep default | awk '{print $3}' | head -1)
     if [ -n "$gateway" ]; then
         echo -e "${gl_bai}默认网关:  ${gl_lv}$gateway${gl_bai}"
     else
@@ -29015,7 +29168,7 @@ show_current_ip_config() {
     show_dns_info
 
     echo -e "${gl_bai}路由表:${gl_bai}"
-    ip route | head -10 | while read line; do
+    ip route | head -10 | while read -r line; do
         echo -e "  ${gl_bufan}$line${gl_bai}"
     done
 
@@ -29068,7 +29221,8 @@ configure_static_ip_netplan() {
 
     log_info "查找Netplan配置文件"
 
-    local config_files=$(ls /etc/netplan/*.yaml 2>/dev/null)
+    local config_files
+    config_files=$(ls /etc/netplan/*.yaml 2>/dev/null)
     if [ -z "$config_files" ]; then
         local config_file="/etc/netplan/01-network.yaml"
         log_info "未找到现有配置文件，创建新的: $config_file"
@@ -29080,7 +29234,7 @@ configure_static_ip_netplan() {
         else
             log_info "找到多个配置文件:"
             for i in "${!file_list[@]}"; do
-                echo -e "${gl_bufan}$(($i + 1)).${gl_bai} ${gl_bai}${file_list[$i]}${gl_bai}"
+                echo -e "${gl_bufan}$((i + 1)).${gl_bai} ${gl_bai}${file_list[$i]}${gl_bai}"
             done
 
             while true; do
@@ -29100,7 +29254,8 @@ configure_static_ip_netplan() {
         fi
     fi
 
-    local backup_file="${config_file}.backup.$(date +%Y%m%d%H%M%S)"
+    local backup_file
+    backup_file="${config_file}.backup.$(date +%Y%m%d%H%M%S)"
     log_info "备份配置文件到: $backup_file"
     cp "$config_file" "$backup_file" 2>/dev/null || true
 
@@ -29113,7 +29268,8 @@ configure_static_ip_netplan() {
     clean_netplan_locks
 
     log_info "生成新的Netplan配置"
-    local temp_config=$(mktemp)
+    local temp_config
+    temp_config=$(mktemp)
 
     local dns_array=()
     if [ "$use_resolved" = "true" ]; then
@@ -29229,7 +29385,8 @@ configure_static_ip_netplan_simple() {
     local dns_array=()
     IFS=',' read -ra dns_array <<<"$dns_servers"
 
-    local temp_config=$(mktemp)
+    local temp_config
+    temp_config=$(mktemp)
 
     cat >"$temp_config" <<EOF
 network:
@@ -29280,7 +29437,8 @@ configure_static_ip() {
         echo -e "${gl_zi}>>> 选择要配置的网络接口"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}可用的网络接口${gl_bai}"
-        local interfaces=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | grep -v docker | grep -v br- | grep -v veth)
+        local interfaces
+        interfaces=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | grep -v docker | grep -v br- | grep -v veth)
 
         [ -z "$interfaces" ] && interfaces=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo)
         if [ -z "$interfaces" ]; then
@@ -29291,9 +29449,11 @@ configure_static_ip() {
         local iface_list=($interfaces)
         for i in "${!iface_list[@]}"; do
             local iface="${iface_list[$i]}"
-            local ip=$(ip -4 addr show $iface 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' || echo "无IP")
-            local state=$(cat /sys/class/net/$iface/operstate 2>/dev/null || echo "未知")
-            echo -e "${gl_bufan}$(($i + 1)).${gl_bai} ${gl_bai}$iface${gl_bai} (IP: ${gl_lv}$ip${gl_bai}, 状态: ${gl_bai}$state${gl_bai})"
+            local ip
+            ip=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' || echo "无IP")
+            local state
+            state=$(cat "/sys/class/net/$iface/operstate" 2>/dev/null || echo "未知")
+            echo -e "${gl_bufan}$((i + 1)).${gl_bai} ${gl_bai}$iface${gl_bai} (IP: ${gl_lv}$ip${gl_bai}, 状态: ${gl_bai}$state${gl_bai})"
         done
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请选择接口编号(${gl_huang}1${gl_bai}-${gl_hong}${#iface_list[@]}${gl_bai})或输入接口名(${gl_huang}0${gl_bai}返回): ")" choice
@@ -29317,7 +29477,8 @@ configure_static_ip() {
     echo -e "${gl_zi}>>> 配置IP地址信息${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    local current_ip=$(ip -4 addr show $interface 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -1)
+    local current_ip
+    current_ip=$(ip -4 addr show "$interface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -1)
 
     while true; do
         if [ -n "$current_ip" ]; then
@@ -29330,8 +29491,10 @@ configure_static_ip() {
         [ -z "$ip_address" ] && log_error "IP地址不能为空!" && continue
 
         if [[ "$ip_address" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$ ]]; then
-            local ip_part=$(echo "$ip_address" | cut -d'/' -f1)
-            local prefix=$(echo "$ip_address" | cut -d'/' -f2)
+            local ip_part
+            ip_part=$(echo "$ip_address" | cut -d'/' -f1)
+            local prefix
+            prefix=$(echo "$ip_address" | cut -d'/' -f2)
 
             [ "$prefix" -lt 1 ] || [ "$prefix" -gt 32 ] && log_error "子网掩码必须在1-32之间!" && continue
 
@@ -29347,7 +29510,8 @@ configure_static_ip() {
         fi
     done
 
-    local current_gateway=$(ip route | grep default | awk '{print $3}' | head -1)
+    local current_gateway
+    current_gateway=$(ip route | grep default | awk '{print $3}' | head -1)
     while true; do
         echo ""
         if [ -n "$current_gateway" ]; then
@@ -29444,8 +29608,10 @@ configure_static_ip() {
         done
     fi
 
-    local ip_part=$(echo "$ip_address" | cut -d'/' -f1)
-    local prefix=$(echo "$ip_address" | cut -d'/' -f2)
+    local ip_part
+    ip_part=$(echo "$ip_address" | cut -d'/' -f1)
+    local prefix
+    prefix=$(echo "$ip_address" | cut -d'/' -f2)
     local netmask=""
     case $prefix in
     8) netmask="255.0.0.0" ;;
@@ -29453,7 +29619,7 @@ configure_static_ip() {
     24) netmask="255.255.255.0" ;;
     32) netmask="255.255.255.255" ;;
     *)
-        local full=$((0xffffffff << (32 - $prefix) & 0xffffffff))
+        local full=$((0xffffffff << (32 - prefix) & 0xffffffff))
         netmask="$((full >> 24 & 0xff)).$((full >> 16 & 0xff)).$((full >> 8 & 0xff)).$((full & 0xff))"
         ;;
     esac
@@ -29482,14 +29648,15 @@ configure_static_ip() {
         local dns="$4"
         local nm="$5"
         local interfaces_file="/etc/network/interfaces"
-        local backup_file="${interfaces_file}.bak.$(date +%Y%m%d%H%M%S)"
+        local backup_file
+        backup_file="${interfaces_file}.bak.$(date +%Y%m%d%H%M%S)"
         local tmp_file="${interfaces_file}.tmp"
 
         cp "$interfaces_file" "$backup_file"
         log_info "已备份原文件到: $backup_file"
 
         local in_block=0
-        >"$tmp_file" # 清空临时文件
+        true >"$tmp_file" # 清空临时文件
 
         while IFS= read -r line || [ -n "$line" ]; do
             if [[ "$line" =~ ^[[:space:]]*(auto|allow-hotplug)[[:space:]]+$iface([[:space:]]|$) ]]; then
@@ -29534,7 +29701,7 @@ configure_static_ip() {
                     if [ -f /etc/resolv.conf ] && [ ! -f /etc/resolv.conf.bak ]; then
                         cp /etc/resolv.conf /etc/resolv.conf.bak
                     fi
-                    >/etc/resolv.conf
+                    true >/etc/resolv.conf
                     IFS=',' read -ra dns_array <<<"$dns"
                     for dns_ip in "${dns_array[@]}"; do
                         echo "nameserver $dns_ip" >>/etc/resolv.conf
@@ -29572,9 +29739,12 @@ configure_static_ip() {
         local nm="$5"
         local config_dir="/etc/sysconfig/network-scripts"
         local config_file="$config_dir/ifcfg-$iface"
-        local backup_file="$config_file.bak.$(date +%Y%m%d%H%M%S)"
-        local ip_part=$(echo "$ip_cidr" | cut -d'/' -f1)
-        local prefix=$(echo "$ip_cidr" | cut -d'/' -f2)
+        local backup_file
+        backup_file="$config_file.bak.$(date +%Y%m%d%H%M%S)"
+        local ip_part
+        ip_part=$(echo "$ip_cidr" | cut -d'/' -f1)
+        local prefix
+        prefix=$(echo "$ip_cidr" | cut -d'/' -f2)
 
         if [ ! -d "$config_dir" ]; then
             log_error "network-scripts目录不存在: $config_dir"
@@ -29612,12 +29782,14 @@ GATEWAY=$gw
 DNS1=$(echo "$dns" | cut -d',' -f1)
 EOF
 
-        local dns2=$(echo "$dns" | cut -d',' -f2)
+        local dns2
+        dns2=$(echo "$dns" | cut -d',' -f2)
         if [ -n "$dns2" ]; then
             echo "DNS2=$dns2" >>"$config_file"
         fi
 
-        local dns3=$(echo "$dns" | cut -d',' -f3)
+        local dns3
+        dns3=$(echo "$dns" | cut -d',' -f3)
         if [ -n "$dns3" ]; then
             echo "DNS3=$dns3" >>"$config_file"
         fi
@@ -29678,15 +29850,18 @@ EOF
             sleep_fractional 2
         done
 
-        local final_ip=$(ip -4 addr show "$interface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -1)
-        local final_gw=$(ip route | grep '^default' | head -1 | awk '{print $3}')
+        local final_ip
+        final_ip=$(ip -4 addr show "$interface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -1)
+        local final_gw
+        final_gw=$(ip route | grep '^default' | head -1 | awk '{print $3}')
         log_error "配置验证失败"
         log_error "当前IP: ${gl_hong}${final_ip:-无}${gl_bai} (期望: ${gl_lv}$expected_ip${gl_bai})"
         log_error "当前网关: ${gl_hong}${final_gw:-无}${gl_bai} (期望: ${gl_lv}$expected_gw${gl_bai})"
         return 1
     }
 
-    local net_manager=$(detect_network_manager)
+    local net_manager
+    net_manager=$(detect_network_manager)
     log_info "检测到网络管理工具: $net_manager"
 
     case "$net_manager" in
@@ -29704,7 +29879,8 @@ EOF
         if command -v nmcli >/dev/null 2>&1; then
             log_info "使用 nmcli 配置静态IP"
 
-            local conn_name=$(nmcli -t -f NAME,DEVICE connection show | grep ":$interface$" | cut -d: -f1)
+            local conn_name
+            conn_name=$(nmcli -t -f NAME,DEVICE connection show | grep ":$interface$" | cut -d: -f1)
             if [ -z "$conn_name" ]; then
                 conn_name="$interface"
             fi
@@ -29740,7 +29916,7 @@ EOF
         ;;
     esac
 
-    if [ $result -eq 0 ]; then
+    if [ "$result" -eq 0 ]; then
         echo ""
         log_ok "静态IP配置已应用!"
         _verify_ip_config "$ip_address" "$gateway"
@@ -29749,7 +29925,7 @@ EOF
         echo -e "${gl_zi}>>> 当前网络状态${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_info "网络接口 $interface 的IP配置:"
-        ip addr show $interface 2>/dev/null | grep "inet " || echo -e "${gl_huang}警告: 未找到IP地址配置${gl_bai}"
+        ip addr show "$interface" 2>/dev/null | grep "inet " || echo -e "${gl_huang}警告: 未找到IP地址配置${gl_bai}"
 
         echo ""
         log_info "默认网关:"
@@ -29923,7 +30099,8 @@ set_gateway() {
         local gateway="$1"
         local interface="$2"
         local netplan_file="$3"
-        local backup_file="${netplan_file}.bak.$(date +%Y%m%d%H%M%S)"
+        local backup_file
+        backup_file="${netplan_file}.bak.$(date +%Y%m%d%H%M%S)"
 
         cp "$netplan_file" "$backup_file"
         log_info "已备份原文件到: ${gl_lv}$backup_file${gl_bai}"
@@ -30075,7 +30252,8 @@ EOF
             fi
 
         elif [[ -f /etc/network/interfaces ]]; then
-            local backup_file="/etc/network/interfaces.bak.$(date +%Y%m%d%H%M%S)"
+            local backup_file
+            backup_file="/etc/network/interfaces.bak.$(date +%Y%m%d%H%M%S)"
             cp /etc/network/interfaces "$backup_file"
             log_info "已备份原文件到: $backup_file"
 
@@ -30205,10 +30383,11 @@ test_network_connectivity() {
         echo -e "${gl_hong}✗ 本地回环失败${gl_bai}"
     fi
 
-    local gateway=$(ip route | grep default | awk '{print $3}' | head -1)
+    local gateway
+    gateway=$(ip route | grep default | awk '{print $3}' | head -1)
     if [ -n "$gateway" ]; then
         echo -e "${gl_bai}测试网关 $gateway ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if ping -c 2 -W 1 $gateway &>/dev/null; then
+        if ping -c 2 -W 1 "$gateway" &>/dev/null; then
             echo -e "${gl_lv}✓ 网关可达${gl_bai}"
         else
             echo -e "${gl_hong}✗ 网关不可达${gl_bai}"
@@ -30246,7 +30425,7 @@ fix_dns_config() {
         if [ -f /etc/resolv.conf ]; then
             echo ""
             echo -e "${gl_bai}当前DNS配置 (来自/etc/resolv.conf):${gl_bai}"
-            grep -E '^nameserver' /etc/resolv.conf 2>/dev/null | while read line; do
+            grep -E '^nameserver' /etc/resolv.conf 2>/dev/null | while read -r line; do
                 echo -e "  ${gl_bai}$line${gl_bai}"
             done
 
@@ -30287,7 +30466,7 @@ fix_dns_config() {
                     ;;
                 esac
 
-                cp /etc/resolv.conf /etc/resolv.conf.backup.$(date +%Y%m%d%H%M%S) 2>/dev/null || true
+                cp /etc/resolv.conf /etc/resolv.conf.backup."$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
 
                 cat >/tmp/resolv.conf.new <<EOF
 # Generated by network configuration script
@@ -30324,12 +30503,12 @@ EOF
 
     echo -e "${gl_bai}当前DNS服务器:${gl_bai}"
     if command -v resolvectl &>/dev/null; then
-        resolvectl status 2>/dev/null | grep "DNS Server" | head -5 | while read line; do
-            echo -e "  ${gl_bai}$(echo $line | sed 's/DNS Servers://g' | xargs)${gl_bai}"
+        resolvectl status 2>/dev/null | grep "DNS Server" | head -5 | while read -r line; do
+            echo -e "  ${gl_bai}$(echo "$line" | sed 's/DNS Servers://g' | xargs)${gl_bai}"
         done
     else
         if [ -f /etc/resolv.conf ]; then
-            grep -E '^nameserver' /etc/resolv.conf 2>/dev/null | while read line; do
+            grep -E '^nameserver' /etc/resolv.conf 2>/dev/null | while read -r line; do
                 echo -e "  ${gl_bai}$line${gl_bai}"
             done
         fi
@@ -30437,7 +30616,8 @@ menu_linux_ipv4() {
 # 查看本地SSH密钥自动分发
 scan_key_done() {
     local net="${1:-10.10.10}"  # 不传参则默认扫描 10.10.10.0/24
-    local output_file=$(mktemp) # 创建一个临时文件来存放结果
+    local output_file
+    output_file=$(mktemp) # 创建一个临时文件来存放结果
 
     echo -e "正在扫描 ${gl_huang}${net}.0/24 ${gl_bai}网段 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e ""
@@ -30446,10 +30626,11 @@ scan_key_done() {
     for i in {1..254}; do
         ip="${net}.$i"
         (
-            ssh -q -T -o BatchMode=yes -o ConnectTimeout=1 -o PasswordAuthentication=no "$ip" 'exit 0' &>/dev/null
-            if [ $? -eq 0 ]; then
-                echo -e "${gl_huang}$ip    ${gl_lv}已分发${gl_bai}" >>"$output_file"
-                echo -e "测试命令：${gl_lv}ssh root@$ip${gl_bai}" >>"$output_file"
+            if ssh -q -T -o BatchMode=yes -o ConnectTimeout=1 -o PasswordAuthentication=no "$ip" 'exit 0' &>/dev/null; then
+                {
+                    echo -e "${gl_huang}$ip    ${gl_lv}已分发${gl_bai}"
+                    echo -e "测试命令：${gl_lv}ssh root@$ip${gl_bai}"
+                } >> "$output_file"
                 echo >>"$output_file" # 添加空行
             fi
         ) &
@@ -30472,7 +30653,8 @@ get_root_login_status() {
         return
     }
 
-    local valid=$(awk '
+    local valid
+    valid=$(awk '
         /^[ \t]*#/ || /^[ \t]*$/ {next}
         /^[ \t]*Match[ \t]/     {skip=1; next}
         skip && /^[ \t]/        {next}
@@ -30499,7 +30681,8 @@ get_root_login_status() {
 linux_ssh_root_login() {
     local menu_name="${1:-上一级选单}"
     local conf="/etc/ssh/sshd_config"
-    local bak="${conf}.bak.$(date +%F_%T)"
+    local bak
+    bak="${conf}.bak.$(date +%F_%T)"
     cp "$conf" "$bak" || {
         log_error "无法备份 $conf ，退出"
         return 1
@@ -31224,7 +31407,8 @@ linux_interactive_ping() {
             fi
         fi
 
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        local timestamp
+        timestamp=$(date '+%Y-%m-%d %H:%M:%S')
         echo -e "${gl_hui}[$timestamp] ping测试: $target, 结果: $ping_exit_code${gl_bai}" >>/tmp/ping_test_history.log
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -31592,7 +31776,7 @@ local_run_task() {
     fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
-    return $sync_result
+    return "$sync_result"
 }
 
 # 批量执行所有本地同步任务 - 优化版
@@ -31913,7 +32097,6 @@ local_delete_schedule() {
     local current_task=0
     local target_line=""
     local target_comment_line=""
-    local found_target=false
     local prev_line=""
 
     while IFS= read -r line; do
@@ -31921,7 +32104,6 @@ local_delete_schedule() {
             ((current_task++))
             if [[ $current_task -eq $task_num ]]; then
                 target_line="$line"
-                found_target=true
 
                 if [[ -n "$prev_line" ]] && [[ "$prev_line" =~ ^#.*本地Rsync定时任务 ]]; then
                     target_comment_line="$prev_line"
@@ -32120,7 +32302,7 @@ local_run_task_reverse() {
     fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
-    return $sync_result
+    return "$sync_result"
 }
 
 # 正向同步菜单函数
@@ -32215,8 +32397,10 @@ local_show_task_details() {
             echo -e "  ${gl_bai}同步选项: ${gl_zi}$options${gl_bai}"
 
             if [[ -d "$source_path" ]]; then
-                local source_size=$(du -sh "$source_path" 2>/dev/null | cut -f1)
-                local source_count=$(find "$source_path" -type f 2>/dev/null | wc -l)
+                local source_size
+                source_size=$(du -sh "$source_path" 2>/dev/null | cut -f1)
+                local source_count
+                source_count=$(find "$source_path" -type f 2>/dev/null | wc -l)
                 echo -e "  ${gl_bai}源目录状态: ${gl_lv}存在${gl_bai}"
                 echo -e "  ${gl_bai}源目录大小: ${gl_bai}${source_size:-未知}"
                 echo -e "  ${gl_bai}源文件数量: ${gl_bai}${source_count}"
@@ -32229,8 +32413,10 @@ local_show_task_details() {
             fi
 
             if [[ -d "$target_path" ]]; then
-                local target_size=$(du -sh "$target_path" 2>/dev/null | cut -f1)
-                local target_count=$(find "$target_path" -type f 2>/dev/null | wc -l)
+                local target_size
+                target_size=$(du -sh "$target_path" 2>/dev/null | cut -f1)
+                local target_count
+                target_count=$(find "$target_path" -type f 2>/dev/null | wc -l)
                 echo -e "  ${gl_bai}目标目录状态: ${gl_lv}存在${gl_bai}"
                 echo -e "  ${gl_bai}目标目录大小: ${gl_bai}${target_size:-未知}"
                 echo -e "  ${gl_bai}目标文件数量: ${gl_bai}${target_count}"
@@ -32247,18 +32433,24 @@ local_show_task_details() {
             fi
 
             echo -e "${gl_bai}磁盘空间信息:${gl_bai}"
-            local source_disk=$(df -h "$source_path" 2>/dev/null | tail -1)
-            local target_disk=$(df -h "$target_path" 2>/dev/null | tail -1)
+            local source_disk
+            source_disk=$(df -h "$source_path" 2>/dev/null | tail -1)
+            local target_disk
+            target_disk=$(df -h "$target_path" 2>/dev/null | tail -1)
 
             if [[ -n "$source_disk" ]]; then
-                local source_fs=$(echo "$source_disk" | awk '{print $1}')
-                local source_avail=$(echo "$source_disk" | awk '{print $4}')
+                local source_fs
+                source_fs=$(echo "$source_disk" | awk '{print $1}')
+                local source_avail
+                source_avail=$(echo "$source_disk" | awk '{print $4}')
                 echo -e "  ${gl_bai}源磁盘可用空间: ${gl_bai}$source_avail (文件系统: $source_fs)"
             fi
 
             if [[ -n "$target_disk" ]]; then
-                local target_fs=$(echo "$target_disk" | awk '{print $1}')
-                local target_avail=$(echo "$target_disk" | awk '{print $4}')
+                local target_fs
+                target_fs=$(echo "$target_disk" | awk '{print $1}')
+                local target_avail
+                target_avail=$(echo "$target_disk" | awk '{print $4}')
                 echo -e "  ${gl_bai}目标磁盘可用空间: ${gl_bai}$target_avail (文件系统: $target_fs)"
             fi
 
@@ -32269,7 +32461,8 @@ local_show_task_details() {
         echo -e "${gl_lv}共找到 $((line_num-1)) 个同步任务${gl_bai}"
 
     else
-        local task=$(sed -n "${num}p" "$LOCAL_SYNC_CONFIG" 2>/dev/null)
+        local task
+        task=$(sed -n "${num}p" "$LOCAL_SYNC_CONFIG" 2>/dev/null)
         if [[ -z "$task" ]]; then
             echo -e "${gl_hong}错误: 未找到任务 #$num${gl_bai}"
             exit_animation
@@ -32323,14 +32516,17 @@ local_show_task_details() {
             echo -e "  ${gl_bai}  - no-group: 不保留组${gl_bai}"
         fi
         if [[ "$options" == *"--bwlimit"* ]]; then
-            local bwlimit=$(echo "$options" | grep -o -- "--bwlimit=[0-9]*" | cut -d= -f2)
+            local bwlimit
+            bwlimit=$(echo "$options" | grep -o -- "--bwlimit=[0-9]*" | cut -d= -f2)
             echo -e "  ${gl_bai}  - bwlimit: 限速 ${bwlimit}KB/s${gl_bai}"
         fi
         if [[ "$options" == *"--exclude"* ]]; then
-            local excludes=$(echo "$options" | grep -o -- "--exclude='[^']*'" || echo "$options" | grep -o -- '--exclude=[^[:space:]]*')
+            local excludes
+            excludes=$(echo "$options" | grep -o -- "--exclude='[^']*'" || echo "$options" | grep -o -- '--exclude=[^[:space:]]*')
             echo -e "  ${gl_bai}  - exclude: 排除以下文件:${gl_bai}"
             for exclude in $excludes; do
-                local pattern=$(echo "$exclude" | sed "s/--exclude='//" | sed "s/'$//" | sed "s/--exclude=//")
+                local pattern
+                pattern=$(echo "$exclude" | sed "s/--exclude='//" | sed "s/'$//" | sed "s/--exclude=//")
                 echo -e "    ${gl_bai}    * $pattern${gl_bai}"
             done
         fi
@@ -32339,9 +32535,12 @@ local_show_task_details() {
         echo -e "  ${gl_bai}源目录状态检查:${gl_bai}"
 
         if [[ -d "$source_path" ]]; then
-            local source_size=$(du -sh "$source_path" 2>/dev/null | cut -f1)
-            local source_file_count=$(find "$source_path" -type f 2>/dev/null | wc -l)
-            local source_dir_count=$(find "$source_path" -type d 2>/dev/null | wc -l)
+            local source_size
+            source_size=$(du -sh "$source_path" 2>/dev/null | cut -f1)
+            local source_file_count
+            source_file_count=$(find "$source_path" -type f 2>/dev/null | wc -l)
+            local source_dir_count
+            source_dir_count=$(find "$source_path" -type d 2>/dev/null | wc -l)
 
             echo -e "  ${gl_bai}  - 存在: ${gl_lv}是${gl_bai}"
             echo -e "  ${gl_bai}  - 总大小: ${gl_bai}$source_size"
@@ -32354,7 +32553,8 @@ local_show_task_details() {
                 echo -e "  ${gl_bai}  - 读取权限: ${gl_hong}不足${gl_bai}"
             fi
 
-            local mod_time=$(stat -c "%y" "$source_path" 2>/dev/null | cut -d'.' -f1)
+            local mod_time
+            mod_time=$(stat -c "%y" "$source_path" 2>/dev/null | cut -d'.' -f1)
             echo -e "  ${gl_bai}  - 最后修改: ${gl_bai}${mod_time:-未知}"
 
         else
@@ -32366,9 +32566,12 @@ local_show_task_details() {
         echo -e "  ${gl_bai}目标目录状态检查:${gl_bai}"
 
         if [[ -d "$target_path" ]]; then
-            local target_size=$(du -sh "$target_path" 2>/dev/null | cut -f1)
-            local target_file_count=$(find "$target_path" -type f 2>/dev/null | wc -l)
-            local target_dir_count=$(find "$target_path" -type d 2>/dev/null | wc -l)
+            local target_size
+            target_size=$(du -sh "$target_path" 2>/dev/null | cut -f1)
+            local target_file_count
+            target_file_count=$(find "$target_path" -type f 2>/dev/null | wc -l)
+            local target_dir_count
+            target_dir_count=$(find "$target_path" -type d 2>/dev/null | wc -l)
 
             echo -e "  ${gl_bai}  - 存在: ${gl_lv}是${gl_bai}"
             echo -e "  ${gl_bai}  - 总大小: ${gl_bai}$target_size"
@@ -32381,13 +32584,19 @@ local_show_task_details() {
                 echo -e "  ${gl_bai}  - 写入权限: ${gl_hong}不足${gl_bai}"
             fi
 
-            local disk_info=$(df -h "$target_path" 2>/dev/null | tail -1)
+            local disk_info
+            disk_info=$(df -h "$target_path" 2>/dev/null | tail -1)
             if [[ -n "$disk_info" ]]; then
-                local fs_type=$(echo "$disk_info" | awk '{print $1}')
-                local total_space=$(echo "$disk_info" | awk '{print $2}')
-                local used_space=$(echo "$disk_info" | awk '{print $3}')
-                local avail_space=$(echo "$disk_info" | awk '{print $4}')
-                local use_percent=$(echo "$disk_info" | awk '{print $5}')
+                local fs_type
+                fs_type=$(echo "$disk_info" | awk '{print $1}')
+                local total_space
+                total_space=$(echo "$disk_info" | awk '{print $2}')
+                local used_space
+                used_space=$(echo "$disk_info" | awk '{print $3}')
+                local avail_space
+                avail_space=$(echo "$disk_info" | awk '{print $4}')
+                local use_percent
+                use_percent=$(echo "$disk_info" | awk '{print $5}')
 
                 echo -e "  ${gl_bai}  - 文件系统: ${gl_bai}$fs_type"
                 echo -e "  ${gl_bai}  - 总空间: ${gl_bai}$total_space"
@@ -32395,8 +32604,10 @@ local_show_task_details() {
                 echo -e "  ${gl_bai}  - 可用空间: ${gl_bai}$avail_space"
 
                 if [[ -n "$source_size" ]] && [[ "$source_size" =~ ^[0-9.]+[KMGTPE]?$ ]]; then
-                    local source_bytes=$(echo "$source_size" | numfmt --from=iec 2>/dev/null)
-                    local avail_bytes=$(echo "$avail_space" | numfmt --from=iec 2>/dev/null)
+                    local source_bytes
+                    source_bytes=$(echo "$source_size" | numfmt --from=iec 2>/dev/null)
+                    local avail_bytes
+                    avail_bytes=$(echo "$avail_space" | numfmt --from=iec 2>/dev/null)
 
                     if [[ -n "$source_bytes" ]] && [[ -n "$avail_bytes" ]] && [[ "$source_bytes" -gt "$avail_bytes" ]]; then
                         echo -e "  ${gl_hong}警告: 目标磁盘空间不足!${gl_bai}"
@@ -32437,9 +32648,11 @@ local_show_task_details() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "  ${gl_bai}定时任务检查:${gl_bai}"
 
-        local cron_count=$(crontab -l 2>/dev/null | grep -c "local_rsync_run $num")
+        local cron_count
+        cron_count=$(crontab -l 2>/dev/null | grep -c "local_rsync_run $num")
         if [[ $cron_count -gt 0 ]]; then
-            local cron_jobs=$(crontab -l 2>/dev/null | grep "local_rsync_run $num")
+            local cron_jobs
+            cron_jobs=$(crontab -l 2>/dev/null | grep "local_rsync_run $num")
             echo -e "  ${gl_bai}  - 定时任务: ${gl_lv}已设置 ($cron_count 个)${gl_bai}"
             while IFS= read -r cron_line; do
                 echo -e "  ${gl_bai}    * $cron_line${gl_bai}"
@@ -33362,8 +33575,7 @@ create_script_in_opt() {
 
     if [ ! -d "$target_dir" ]; then
         log_info "目录 ${gl_lv}$target_dir${gl_bai} 不存在，正在创建 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        mkdir -p "$target_dir"
-        if [ $? -eq 0 ]; then
+        if mkdir -p "$target_dir"; then
             log_ok "目录创建成功。"
         else
             log_error "目录创建失败。"
@@ -33401,8 +33613,7 @@ create_script_in_opt() {
             esac
         fi
 
-        touch "$file_path"
-        if [ $? -eq 0 ]; then
+        if touch "$file_path"; then
             echo -e "${gl_bai}文件 ${gl_huang}$file_path ${gl_bai}创建成功。"
 
             chmod +x "$file_path"
@@ -33507,9 +33718,11 @@ linux_crontab_management() {
 show_1panel_status() {
 
     if command -v 1panel &>/dev/null; then
-        local version_output=$(1panel version 2>&1 | grep -v "Too few arguments" | grep -v "^$")
+        local version_output
+        version_output=$(1panel version 2>&1 | grep -v "Too few arguments" | grep -v "^$")
         if echo "$version_output" | grep -q "version:"; then
-            local version=$(echo "$version_output" | grep "version:" | head -1 | sed 's/.*version: //')
+            local version
+            version=$(echo "$version_output" | grep "version:" | head -1 | sed 's/.*version: //')
             echo -e "${gl_bai}1Panel版本信息: ${gl_lv}$version${gl_bai}"
         elif [ -n "$version_output" ] && [ "$version_output" != "Too few arguments." ]; then
             echo -e "${gl_bai}版本信息: ${gl_lv}$version_output${gl_bai}"
@@ -33521,9 +33734,11 @@ show_1panel_status() {
     fi
 
     if command -v 1pctl &>/dev/null; then
-        local core_output=$(1pctl status core 2>/dev/null)
+        local core_output
+        core_output=$(1pctl status core 2>/dev/null)
         if [ -n "$core_output" ]; then
-            local core_status=$(echo "$core_output" | grep "Core:" | head -1)
+            local core_status
+            core_status=$(echo "$core_output" | grep "Core:" | head -1)
             if [ -n "$core_status" ]; then
                 if echo "$core_status" | grep -q "正在运行\|running\|active\|🟢"; then
                     echo -e "${gl_bai}Core  运行状态：${gl_lv}$core_status${gl_bai}"
@@ -33545,9 +33760,11 @@ show_1panel_status() {
     fi
 
     if command -v 1pctl &>/dev/null; then
-        local agent_output=$(1pctl status agent 2>/dev/null)
+        local agent_output
+        agent_output=$(1pctl status agent 2>/dev/null)
         if [ -n "$agent_output" ]; then
-            local agent_status=$(echo "$agent_output" | grep "Agent:" | head -1)
+            local agent_status
+            agent_status=$(echo "$agent_output" | grep "Agent:" | head -1)
             if [ -n "$agent_status" ]; then
                 if echo "$agent_status" | grep -q "正在运行\|running\|active\|🟢"; then
                     echo -e "${gl_bai}Agent 运行状态：${gl_lv}$agent_status${gl_bai}"
@@ -33573,7 +33790,8 @@ show_1panel_status() {
 show_backup_info() {
     local backup_dir="/opt/1panel/backup/system_snapshot"
     if [ -d "$backup_dir" ]; then
-        local file_count=$(ls -1 "$backup_dir"/*.tar.gz 2>/dev/null | wc -l)
+        local file_count
+        file_count=$(ls -1 "$backup_dir"/*.tar.gz 2>/dev/null | wc -l)
 
         if [ "$file_count" -eq 0 ]; then
             echo -e "${gl_hong}未找到备份文件${gl_bai}"
@@ -33583,9 +33801,12 @@ show_backup_info() {
             local i=1
             for file in "$backup_dir"/*.tar.gz; do
                 if [ -f "$file" ]; then
-                    local filename=$(basename "$file")
-                    local filesize=$(du -h "$file" | cut -f1)
-                    local filetime=$(stat -c "%y" "$file" | cut -d' ' -f1,2 | cut -d'.' -f1)
+                    local filename
+                    filename=$(basename "$file")
+                    local filesize
+                    filesize=$(du -h "$file" | cut -f1)
+                    local filetime
+                    filetime=$(stat -c "%y" "$file" | cut -d' ' -f1,2 | cut -d'.' -f1)
                     echo -e "${gl_huang}$i. ${gl_lv}${filename}  ${gl_bai}${filesize}"
                     ((i++))
                 fi
@@ -33909,9 +34130,9 @@ user-info_1panel() {
     panel_info=$(1pctl user-info)
 
     if [[ -n "$local_ip" ]]; then
-        panel_info=$(echo "$panel_info" | sed "s/\$LOCAL_IP/$local_ip/g")
+        panel_info="${panel_info//\$LOCAL_IP/$local_ip}"
     else
-        panel_info=$(echo "$panel_info" | sed "s/\$LOCAL_IP/127.0.0.1/g")
+        panel_info="${panel_info//\$LOCAL_IP/127.0.0.1}"
     fi
 
     echo "$panel_info"
@@ -34002,16 +34223,15 @@ uninstall_1panel() {
 # 功能：提供完整的磁盘/系统备份和恢复功能
 # ============================================
 dd_backup_restore_tool() {
-    local TOOL_VERSION="3.0"
     local DEFAULT_BACKUP_DIR="/mnt/backup"
     local BACKUP_DIR="$DEFAULT_BACKUP_DIR"
-    local HOSTNAME=$(hostname -s 2>/dev/null || echo "unknown")
+    local HOSTNAME
+    HOSTNAME=$(hostname -s 2>/dev/null || echo "unknown")
 
     init_backup_dir() {
         if [[ ! -d "$BACKUP_DIR" ]]; then
             log_info "创建备份目录: $BACKUP_DIR"
-            mkdir -p "$BACKUP_DIR" 2>/dev/null
-            if [[ $? -ne 0 ]]; then
+            if ! mkdir -p "$BACKUP_DIR" 2>/dev/null; then
                 log_error "无法创建备份目录: $BACKUP_DIR"
                 log_warn "使用当前目录: $(pwd)"
                 BACKUP_DIR="$(pwd)"
@@ -34045,14 +34265,17 @@ dd_backup_restore_tool() {
         local count=0
         for file in "${backup_files[@]}"; do
             count=$((count + 1))
-            local filename=$(basename "$file")
+            local filename
+            filename=$(basename "$file")
             if [[ -z "$filename" ]] || [[ "$filename" == "*" ]]; then
                 count=$((count - 1))
                 continue
             fi
 
-            local filesize=$(du -h "$file" 2>/dev/null | cut -f1)
-            local filetime=$(stat -c '%y' "$file" 2>/dev/null | cut -d' ' -f1-2)
+            local filesize
+            filesize=$(du -h "$file" 2>/dev/null | cut -f1)
+            local filetime
+            filetime=$(stat -c '%y' "$file" 2>/dev/null | cut -d' ' -f1-2)
 
             if [[ ${#filename} -gt 30 ]]; then
                 filename="${filename:0:27}..."
@@ -34092,7 +34315,8 @@ dd_backup_restore_tool() {
 
         local count=1
         for file in "${backup_files[@]}"; do
-            local filename=$(basename "$file")
+            local filename
+            filename=$(basename "$file")
             if [[ -z "$filename" ]] || [[ "$filename" == "*" ]]; then
                 continue
             fi
@@ -34124,7 +34348,8 @@ dd_backup_restore_tool() {
         fi
 
         for file in "${old_files[@]}"; do
-            local filename=$(basename "$file")
+            local filename
+            filename=$(basename "$file")
             if [[ -n "$filename" ]] && [[ "$filename" != "*" ]]; then
                 echo -e "  ${gl_huang}${filename}${gl_bai}"
             fi
@@ -34134,7 +34359,8 @@ dd_backup_restore_tool() {
         case "$confirm" in
         [yY] | [yY][eE][sS])
             for file in "${old_files[@]}"; do
-                local filename=$(basename "$file")
+                local filename
+                filename=$(basename "$file")
                 if [[ -n "$filename" ]] && [[ "$filename" != "*" ]]; then
                     rm -f "$file" 2>/dev/null
                 fi
@@ -34154,7 +34380,8 @@ dd_backup_restore_tool() {
         local total_size=$2
         local source_device="$3"
         local target_file="$4"
-        local start_time=$(date +%s)
+        local start_time
+        start_time=$(date +%s)
         local last_size=0
         local last_time=$start_time
         local bar_width=40
@@ -34172,7 +34399,8 @@ dd_backup_restore_tool() {
                 current_size=$(stat -c%s "$target_file" 2>/dev/null || echo 0)
             fi
 
-            local current_time=$(date +%s)
+            local current_time
+            current_time=$(date +%s)
 
             if [[ $current_size -gt 0 ]]; then
                 local percent=0
@@ -34199,31 +34427,32 @@ dd_backup_restore_tool() {
                     fi
                 fi
 
-                local elapsed_str=$(printf "%02d:%02d" $((elapsed / 60)) $((elapsed % 60)))
+                local elapsed_str
+                elapsed_str=$(printf "%02d:%02d" $((elapsed / 60)) $((elapsed % 60)))
 
                 local current_size_hr=""
                 local total_size_hr=""
 
                 if command -v numfmt >/dev/null 2>&1; then
-                    current_size_hr=$(numfmt --to=iec $current_size 2>/dev/null || echo "$current_size")
-                    total_size_hr=$(numfmt --to=iec $total_size 2>/dev/null || echo "$total_size")
+                    current_size_hr=$(numfmt --to=iec "$current_size" 2>/dev/null || echo "$current_size")
+                    total_size_hr=$(numfmt --to=iec "$total_size" 2>/dev/null || echo "$total_size")
                 else
                     if [[ $current_size -ge $((1024 * 1024 * 1024)) ]]; then
-                        current_size_hr=$(printf "%.1fG" $(echo "scale=2; $current_size/1073741824" | bc 2>/dev/null || echo "0"))
+                        current_size_hr=$(printf "%.1fG" "$(echo "scale=2; $current_size/1073741824" | bc 2>/dev/null || echo "0")")
                     elif [[ $current_size -ge $((1024 * 1024)) ]]; then
-                        current_size_hr=$(printf "%.1fM" $(echo "scale=2; $current_size/1048576" | bc 2>/dev/null || echo "0"))
+                        current_size_hr=$(printf "%.1fM" "$(echo "scale=2; $current_size/1048576" | bc 2>/dev/null || echo "0")")
                     elif [[ $current_size -ge 1024 ]]; then
-                        current_size_hr=$(printf "%.1fK" $(echo "scale=2; $current_size/1024" | bc 2>/dev/null || echo "0"))
+                        current_size_hr=$(printf "%.1fK" "$(echo "scale=2; $current_size/1024" | bc 2>/dev/null || echo "0")")
                     else
                         current_size_hr="${current_size}B"
                     fi
 
                     if [[ $total_size -ge $((1024 * 1024 * 1024)) ]]; then
-                        total_size_hr=$(printf "%.1fG" $(echo "scale=2; $total_size/1073741824" | bc 2>/dev/null || echo "0"))
+                        total_size_hr=$(printf "%.1fG" "$(echo "scale=2; $total_size/1073741824" | bc 2>/dev/null || echo "0")")
                     elif [[ $total_size -ge $((1024 * 1024)) ]]; then
-                        total_size_hr=$(printf "%.1fM" $(echo "scale=2; $total_size/1048576" | bc 2>/dev/null || echo "0"))
+                        total_size_hr=$(printf "%.1fM" "$(echo "scale=2; $total_size/1048576" | bc 2>/dev/null || echo "0")")
                     elif [[ $total_size -ge 1024 ]]; then
-                        total_size_hr=$(printf "%.1fK" $(echo "scale=2; $total_size/1024" | bc 2>/dev/null || echo "0"))
+                        total_size_hr=$(printf "%.1fK" "$(echo "scale=2; $total_size/1024" | bc 2>/dev/null || echo "0")")
                     else
                         total_size_hr="${total_size}B"
                     fi
@@ -34257,21 +34486,22 @@ dd_backup_restore_tool() {
 
         local final_size_hr=""
         if command -v numfmt >/dev/null 2>&1; then
-            final_size_hr=$(numfmt --to=iec $final_size 2>/dev/null || echo "$final_size")
+            final_size_hr=$(numfmt --to=iec "$final_size" 2>/dev/null || echo "$final_size")
         else
             if [[ $final_size -ge $((1024 * 1024 * 1024)) ]]; then
-                final_size_hr=$(printf "%.1fG" $(echo "scale=2; $final_size/1073741824" | bc 2>/dev/null || echo "0"))
+                final_size_hr=$(printf "%.1fG" "$(echo "scale=2; $final_size/1073741824" | bc 2>/dev/null || echo "0")")
             elif [[ $final_size -ge $((1024 * 1024)) ]]; then
-                final_size_hr=$(printf "%.1fM" $(echo "scale=2; $final_size/1048576" | bc 2>/dev/null || echo "0"))
+                final_size_hr=$(printf "%.1fM" "$(echo "scale=2; $final_size/1048576" | bc 2>/dev/null || echo "0")")
             elif [[ $final_size -ge 1024 ]]; then
-                final_size_hr=$(printf "%.1fK" $(echo "scale=2; $final_size/1024" | bc 2>/dev/null || echo "0"))
+                final_size_hr=$(printf "%.1fK" "$(echo "scale=2; $final_size/1024" | bc 2>/dev/null || echo "0")")
             else
                 final_size_hr="${final_size}B"
             fi
         fi
 
         local total_time=$(($(date +%s) - start_time))
-        local total_time_str=$(printf "%02d:%02d" $((total_time / 60)) $((total_time % 60)))
+        local total_time_str
+        total_time_str=$(printf "%02d:%02d" $((total_time / 60)) $((total_time % 60)))
 
         printf "\r${gl_bai}[${gl_lv}100%%${gl_bai}] ["
         printf "${gl_bufan}%${bar_width}s" "" | tr ' ' '█'
@@ -34303,12 +34533,13 @@ dd_backup_restore_tool() {
         local block_size="$3"
         local compress_type="$4"
 
-        local total_size=$(get_device_size "$source_device")
+        local total_size
+        total_size=$(get_device_size "$source_device")
 
         if [[ $total_size -eq 0 ]]; then
             log_warn "无法获取设备大小，进度百分比可能不准确"
         else
-            log_info "设备总大小: ${gl_huang}$(numfmt --to=iec $total_size 2>/dev/null || echo "$total_size")${gl_bai}"
+            log_info "设备总大小: ${gl_huang}$(numfmt --to=iec "$total_size" 2>/dev/null || echo "$total_size")${gl_bai}"
         fi
 
         mkdir -p "$(dirname "$target_file")" 2>/dev/null
@@ -34336,9 +34567,9 @@ dd_backup_restore_tool() {
             ;;
         esac
 
-        show_precise_progress $backup_pid $total_size "$source_device" "$target_file"
+        show_precise_progress "$backup_pid" "$total_size" "$source_device" "$target_file"
 
-        wait $backup_pid 2>/dev/null
+        wait "$backup_pid" 2>/dev/null
         local dd_status=$?
 
         return $dd_status
@@ -34349,12 +34580,13 @@ dd_backup_restore_tool() {
         local target_device="$2"
         local block_size="$3"
 
-        local total_size=$(stat -c%s "$source_file" 2>/dev/null || echo 0)
+        local total_size
+        total_size=$(stat -c%s "$source_file" 2>/dev/null || echo 0)
 
         if [[ $total_size -eq 0 ]]; then
             log_warn "无法获取源文件大小"
         else
-            log_info "备份文件大小: ${gl_huang}$(numfmt --to=iec $total_size 2>/dev/null || echo "$total_size")${gl_bai}"
+            log_info "备份文件大小: ${gl_huang}$(numfmt --to=iec "$total_size" 2>/dev/null || echo "$total_size")${gl_bai}"
         fi
 
         if [[ "$source_file" == *.gz ]] || file "$source_file" 2>/dev/null | grep -q "gzip compressed"; then
@@ -34371,7 +34603,7 @@ dd_backup_restore_tool() {
             local restore_pid=$!
         fi
 
-        show_precise_progress $restore_pid $total_size "$source_file" "$target_device"
+        show_precise_progress $restore_pid "$total_size" "$source_file" "$target_device"
 
         wait $restore_pid 2>/dev/null
         local dd_status=$?
@@ -34482,7 +34714,8 @@ dd_backup_restore_tool() {
                     continue
                 fi
 
-                local TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                local TIMESTAMP
+                TIMESTAMP=$(date +%Y%m%d_%H%M%S)
                 local DEFAULT_BACKUP_NAME="${HOSTNAME}_${TIMESTAMP}"
 
                 echo -e "${gl_bai}备份名称设置:${gl_bai}"
@@ -34536,7 +34769,7 @@ dd_backup_restore_tool() {
                 esac
 
                 read -r -e -p "$(echo -e "${gl_bai}块大小 [默认:4M] (${gl_huang}0${gl_bai}返回): ")" block_size
-                [[ "$inpblock_sizeut" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$block_size" == "0" ]] && { cancel_return "上一级选单"; continue; }
                 block_size=${block_size:-4M}
 
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -34552,12 +34785,12 @@ dd_backup_restore_tool() {
                 case "$confirm" in
                 [yY] | [yY][eE][sS])
                     log_info "开始备份，请稍候 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                    backup_with_progress "$device_path" "$backup_file" "$block_size" "$compress_option"
 
-                    if [[ $? -eq 0 ]]; then
+                    if backup_with_progress "$device_path" "$backup_file" "$block_size" "$compress_option"; then
                         log_ok "✅ 备份成功完成!"
                         if [[ -f "$backup_file" ]]; then
-                            local final_size=$(du -h "$backup_file" 2>/dev/null | cut -f1 || echo "未知")
+                            local final_size
+                            final_size=$(du -h "$backup_file" 2>/dev/null | cut -f1 || echo "未知")
                             log_ok "文件: $(basename "$backup_file")"
                             log_ok "大小: $final_size"
                         fi
@@ -34602,7 +34835,8 @@ dd_backup_restore_tool() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入备份序号 (${gl_huang}0${gl_bai}返回): ")" file_index
                 [[ "$file_index" == "0" ]] && { cancel_return "上一级选单"; continue; }
 
-                local backup_file=$(get_backup_by_index "$file_index")
+                local backup_file
+                backup_file=$(get_backup_by_index "$file_index")
                 if [[ -z "$backup_file" ]] || [[ ! -f "$backup_file" ]]; then
                     log_error "无效的备份序号: $file_index"
                     sleep_fractional 1
@@ -34644,7 +34878,8 @@ dd_backup_restore_tool() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入备份序号 (${gl_huang}0${gl_bai}返回): ")" file_index
                 [[ "$file_index" == "0" ]] && { cancel_return "上一级选单"; continue; }
 
-                local backup_file=$(get_backup_by_index "$file_index")
+                local backup_file
+                backup_file=$(get_backup_by_index "$file_index")
                 if [[ -z "$backup_file" ]] || [[ ! -f "$backup_file" ]]; then
                     log_error "无效的备份序号: $file_index"
                     sleep_fractional 1
@@ -34653,7 +34888,8 @@ dd_backup_restore_tool() {
 
                 log_info "选择的备份: $(basename "$backup_file")"
 
-                local target_disk="/tmp/restore_test_$(date +%Y%m%d_%H%M%S).img"
+                local target_disk
+                target_disk="/tmp/restore_test_$(date +%Y%m%d_%H%M%S).img"
                 log_info "测试目标: $target_disk"
 
                 read -r -e -p "$(echo -e "${gl_bai}块大小 [默认:4M] (${gl_huang}0${gl_bai}返回): ")" block_size
@@ -34664,7 +34900,8 @@ dd_backup_restore_tool() {
                 restore_with_progress "$backup_file" "$target_disk" "$block_size"
 
                 if [[ $? -eq 0 && -f "$target_disk" ]]; then
-                    local final_size=$(du -h "$target_disk" 2>/dev/null | cut -f1 || echo "未知")
+                    local final_size
+                    final_size=$(du -h "$target_disk" 2>/dev/null | cut -f1 || echo "未知")
                     log_ok "测试恢复成功! 临时文件: $target_disk"
                     log_ok "大小: $final_size"
                     rm -f "$target_disk" 2>/dev/null
@@ -34678,7 +34915,7 @@ dd_backup_restore_tool() {
                 ;;
             0) cancel_return "上一级选单"; return 0 ;;
             00 | 000 | 0000) exit_script ;;
-            *) handle_invalid_input; continue;;*) handle_invalid_input ;;
+            *) handle_invalid_input; continue;;
             esac
 
             if [[ -z "$backup_file" ]] || [[ ! -f "$backup_file" ]]; then
@@ -34730,9 +34967,8 @@ dd_backup_restore_tool() {
             fi
 
             log_info "开始恢复系统到 $target_disk ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            restore_with_progress "$backup_file" "$target_disk" "$block_size"
 
-            if [[ $? -eq 0 ]]; then
+            if restore_with_progress "$backup_file" "$target_disk" "$block_size"; then
                 log_ok "✅ 系统恢复成功!"
                 log_warn "建议执行以下命令:"
                 echo -e "  ${gl_huang}sync${gl_bai}"
@@ -34763,11 +34999,11 @@ dd_backup_restore_tool() {
             case $manage_choice in
             0) cancel_return; return 0 ;;
             00 | 000 | 0000) exit_script ;;
-            *) handle_invalid_input ;;
             1)
                 read -r -e -p "$(echo -e "${gl_bai}输入要删除的备份序号 (${gl_huang}0${gl_bai}取消): ")" del_index
                 if [[ "$del_index" != "0" ]]; then
-                    local del_file=$(get_backup_by_index "$del_index")
+                    local del_file
+                    del_file=$(get_backup_by_index "$del_index")
                     if [[ -n "$del_file" ]]; then
                         read -r -e -p "$(echo -e "${gl_bai}确认删除 ${gl_huang}$(basename "$del_file")${gl_bai}? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
                         case "$confirm" in
@@ -34806,6 +35042,7 @@ dd_backup_restore_tool() {
                 df -h "$BACKUP_DIR" 2>/dev/null || echo "无法获取磁盘信息"
                 break_end
                 ;;
+            *) handle_invalid_input ;;
             esac
         done
     }
@@ -34840,7 +35077,8 @@ dd_backup_restore_tool() {
         echo -e "${gl_bai}备份目录:${gl_bai}"
         echo -e "  ${gl_lv}${BACKUP_DIR}${gl_bai}"
         if [[ -d "$BACKUP_DIR" ]]; then
-            local free_space=$(df -h "$BACKUP_DIR" 2>/dev/null | tail -1 | awk '{print $4}' || echo "未知")
+            local free_space
+            free_space=$(df -h "$BACKUP_DIR" 2>/dev/null | tail -1 | awk '{print $4}' || echo "未知")
             echo -e "  ${gl_lv}可用空间: $free_space${gl_bai}"
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -34908,8 +35146,10 @@ dd_backup_restore_tool() {
 
     echo -e "${gl_bai}备份目录: ${gl_lv}${BACKUP_DIR}${gl_bai}"
     if [[ -d "$BACKUP_DIR" ]]; then
-        local backup_count=$(ls "$BACKUP_DIR"/*.img "$BACKUP_DIR"/*.img.gz 2>/dev/null | wc -l 2>/dev/null || echo 0)
-        local dir_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
+        local backup_count
+        backup_count=$(ls "$BACKUP_DIR"/*.img "$BACKUP_DIR"/*.img.gz 2>/dev/null | wc -l 2>/dev/null || echo 0)
+        local dir_size
+        dir_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
         echo -e "${gl_bai}已有备份: ${gl_lv}${backup_count}${gl_bai} 个文件 (${dir_size})"
     fi
     echo ""
@@ -35006,17 +35246,20 @@ image_converter_find_images() {
     done
 
     if [[ ${#files_ref[@]} -gt 0 ]]; then
-        IFS=$'\n' files_ref=($(printf '%s\n' "${files_ref[@]}" | sort))
+        mapfile -t files_ref < <(printf '%s\n' "${files_ref[@]}" | sort)
         unset IFS
     fi
 
     for file in "${files_ref[@]}"; do
         if [[ -f "$file" ]]; then
-            local size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo "0")
+            local size
+            size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo "0")
             if [[ $size -ge 1048576 ]]; then
-                local size_display=$(echo "scale=1; $size/1048576" | bc 2>/dev/null || echo "0")M
+                local size_display
+                size_display=$(echo "scale=1; $size/1048576" | bc 2>/dev/null || echo "0")M
             elif [[ $size -ge 1024 ]]; then
-                local size_display=$(echo "scale=1; $size/1024" | bc 2>/dev/null || echo "0")K
+                local size_display
+                size_display=$(echo "scale=1; $size/1024" | bc 2>/dev/null || echo "0")K
             else
                 local size_display="${size}B"
             fi
@@ -35063,7 +35306,8 @@ image_converter_convert_single() {
         return 1
     fi
 
-    local filename=$(basename "$file")
+    local filename
+    filename=$(basename "$file")
     local name="${filename%.*}"
 
     local new_name="${name}.${format}"
@@ -35076,8 +35320,10 @@ image_converter_convert_single() {
     log_info "开始转换: ${filename} → ${new_name}"
 
     if ffmpeg -i "$file" "$new_name" 2>/dev/null; then
-        local input_size=$(du -h "$file" 2>/dev/null | cut -f1)
-        local output_size=$(du -h "$new_name" 2>/dev/null | cut -f1)
+        local input_size
+        input_size=$(du -h "$file" 2>/dev/null | cut -f1)
+        local output_size
+        output_size=$(du -h "$new_name" 2>/dev/null | cut -f1)
         log_ok "转换成功"
         log_info "原文件: ${filename} (${input_size:-未知})"
         log_info "新文件: ${new_name} (${output_size:-未知})"
@@ -35297,7 +35543,8 @@ image_converter_compress_quality() {
 
     for i in "${!selected_files[@]}"; do
         local file="${selected_files[i]}"
-        local filename=$(basename "$file")
+        local filename
+        filename=$(basename "$file")
         local extension="${filename##*.}"
         local name="${filename%.*}"
         local new_name="${name}_compressed.${extension}"
@@ -35371,7 +35618,8 @@ image_converter_resize_batch() {
             log_error "无效的百分比"
             return
         fi
-        local scale_percent=$(echo "scale=2; $percent/100" | bc)
+        local scale_percent
+        scale_percent=$(echo "scale=2; $percent/100" | bc)
         resize_cmd="-vf scale=iw*${scale_percent}:ih*${scale_percent}"
         ;;
     4)
@@ -35450,7 +35698,8 @@ image_converter_resize_batch() {
 
     for i in "${!selected_files[@]}"; do
         local file="${selected_files[i]}"
-        local filename=$(basename "$file")
+        local filename
+        filename=$(basename "$file")
         local extension="${filename##*.}"
         local name="${filename%.*}"
         local new_name="${name}_resized.${extension}"
@@ -35586,7 +35835,8 @@ image_converter_batch_rename() {
 
     for i in "${!selected_files[@]}"; do
         local file="${selected_files[i]}"
-        local filename=$(basename "$file")
+        local filename
+        filename=$(basename "$file")
 
         if [[ "$keep_original" == "true" ]]; then
             local extension="${filename##*.}"
@@ -35594,7 +35844,8 @@ image_converter_batch_rename() {
             local extension="$target_ext"
         fi
 
-        local index=$(printf "%03d" $((i + 1)))
+        local index
+        index=$(printf "%03d" $((i + 1)))
         local new_name="${prefix}_${index}.${extension}"
         local count=1
 
@@ -35606,7 +35857,7 @@ image_converter_batch_rename() {
         echo -e "${gl_huang}[$((i + 1))/$total]${gl_bai} 重命名: $file → $new_name"
 
         if mv "$file" "$new_name" 2>/dev/null; then
-            files_ref[$i]="$new_name"
+            files_ref[i]="$new_name"
             log_ok "重命名成功"
             success=$((success + 1))
         else
@@ -35787,9 +36038,11 @@ linux_timezone_settings() {
         echo -e "${gl_huang}>>> 系统时间信息${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        local timezone=$(current_timezone)
+        local timezone
+        timezone=$(current_timezone)
 
-        local current_time=$(date +"%Y-%m-%d %H:%M:%S")
+        local current_time
+        current_time=$(date +"%Y-%m-%d %H:%M:%S")
 
         echo -e "当前系统时区：${gl_lv}$timezone${gl_bai}"
         echo -e "当前系统时间：${gl_lv}$current_time${gl_bai}"
@@ -35976,7 +36229,8 @@ linux_change_hostname() {
     root_use
     while true; do
         echo -e ""
-        local current_hostname=$(uname -n)
+        local current_hostname
+        current_hostname=$(uname -n)
         echo -e "${gl_zi}>>> 修改主机名"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "当前主机名: ${gl_huang}$current_hostname${gl_bai}"
@@ -36021,9 +36275,12 @@ linux_set_swap() {
         clear
         echo -e "${gl_zi}>>> 设置虚拟内存${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        local swap_used=$(free -m | awk 'NR==3{print $3}')
-        local swap_total=$(free -m | awk 'NR==3{print $2}')
-        local swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dM/%dM (%d%%)", used, total, percentage}')
+        local swap_used
+        swap_used=$(free -m | awk 'NR==3{print $3}')
+        local swap_total
+        swap_total=$(free -m | awk 'NR==3{print $2}')
+        local swap_info
+        swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dM/%dM (%d%%)", used, total, percentage}')
         echo -e "当前虚拟内存: ${gl_huang}$swap_info${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}分配1024M"
@@ -36141,7 +36398,7 @@ linux_setup_ssh() {
 
     log_info "开始配置 SSH 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     [ -f /etc/ssh/sshd_config ] && \
-        cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup.$(date +%Y%m%d%H%M%S)
+        cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup."$(date +%Y%m%d%H%M%S)"
 
     declare -A SSH_DEF
     SSH_DEF=(
@@ -36170,8 +36427,10 @@ linux_setup_ssh() {
 
     sed -i "/[[:space:]]*自动补写缺省值/d" /etc/ssh/sshd_config
 
-    echo "" >> /etc/ssh/sshd_config
-    echo "# ==== 自动补写缺省值 $(date +%F' '%T) ====" >> /etc/ssh/sshd_config
+    {
+        echo ""
+        echo "# ==== 自动补写缺省值 $(date +%F' '%T) ===="
+    } >> /etc/ssh/sshd_config
     for key in "${!SSH_DEF[@]}"; do
         printf "%-25s %s\n" "$key" "${SSH_DEF[$key]}" >> /etc/ssh/sshd_config
     done
@@ -36240,7 +36499,8 @@ linux_setup_ssh() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     grep -E '^(Port|PermitRootLogin|GSSAPIAuthentication|UseDNS|Compression|ClientAliveInterval|ClientAliveCountMax|TCPKeepAlive|PrintMotd|PrintLastLog|X11Forwarding)[[:space:]]' /etc/ssh/sshd_config
 
-    local ip=$(hostname -I | awk '{print $1}')
+    local ip
+    ip=$(hostname -I | awk '{print $1}')
     echo ""
     echo -e "${gl_huang}>>> 连接信息："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -36258,10 +36518,12 @@ linux_change_ssh_port() {
     while true; do
         clear
 
-        local current_port=$(grep -E '^[[:space:]]*Port[[:space:]]+[0-9]+' /etc/ssh/sshd_config 2>/dev/null | head -n1 | awk '{print $2}')
+        local current_port
+        current_port=$(grep -E '^[[:space:]]*Port[[:space:]]+[0-9]+' /etc/ssh/sshd_config 2>/dev/null | head -n1 | awk '{print $2}')
 
         if [ -z "$current_port" ]; then
-            local commented_port=$(grep -E '^[[:space:]]*#[[:space:]]*Port[[:space:]]+[0-9]+' /etc/ssh/sshd_config 2>/dev/null | head -n1 | awk '{print $2}')
+            local commented_port
+            commented_port=$(grep -E '^[[:space:]]*#[[:space:]]*Port[[:space:]]+[0-9]+' /etc/ssh/sshd_config 2>/dev/null | head -n1 | awk '{print $2}')
             if [ -n "$commented_port" ]; then
                 current_port="$commented_port (被注释)"
             else
@@ -36359,7 +36621,7 @@ linux_ssh_defense_management() {
         case $sub_choice in
         1)
             f2b_install_sshd
-            cd ~
+            cd ~ || return
             f2b_status
             break_end
             ;;
@@ -36390,7 +36652,7 @@ linux_ssh_defense_management() {
 # 修复OpenSSH高危漏洞函数
 linux_fix_openssh_vulnerability() {
     root_use
-    cd ~
+    cd ~ || return
     curl -sS -O https://gitee.com/meimolihan/sh/raw/master/file/upgrade_openssh9.8p1.sh
     chmod +x ~/upgrade_openssh9.8p1.sh
     ~/upgrade_openssh9.8p1.sh
@@ -36497,8 +36759,10 @@ linux_limiting_shutdown() {
         echo -e "${gl_bufan}总发送: ${gl_bai}$tx"
 
         if [ -f ~/Limiting_Shut_down.sh ]; then
-            local rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-            local tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+            local rx_threshold_gb
+            rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+            local tx_threshold_gb
+            tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
             echo -e "${gl_lv}当前设置的进站限流阈值为: ${gl_huang}${rx_threshold_gb}${gl_lv}G${gl_bai}"
             echo -e "${gl_lv}当前设置的出站限流阈值为: ${gl_huang}${tx_threshold_gb}${gl_lv}GB${gl_bai}"
         else
@@ -36528,8 +36792,8 @@ linux_limiting_shutdown() {
             [ "$cz_day" = "0" ] && { cancel_return "上一级选单"; continue; }
             cz_day=${cz_day:-1}
 
-            cd ~
-            curl -Ss -o ~/Limiting_Shut_down.sh ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
+            cd ~ || return
+            curl -Ss -o ~/Limiting_Shut_down.sh "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh"
             chmod +x ~/Limiting_Shut_down.sh
             sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
             sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
@@ -36567,7 +36831,8 @@ linux_python_version_management() {
     echo -e "${gl_bai}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1Pm42157cK?t=0.1"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo "该功能可无缝安装python官方支持的任何版本！"
-    local VERSION=$(python3 -V 2>&1 | awk '{print $2}')
+    local VERSION
+    VERSION=$(python3 -V 2>&1 | awk '{print $2}')
     echo -e "当前python版本号: ${gl_lv}$VERSION${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bai}推荐版本:  ${gl_lv}3.12    3.11    3.10    3.9    3.8    2.7"
@@ -36585,7 +36850,7 @@ linux_python_version_management() {
 
             curl -O https://www.openssl.org/source/openssl-1.1.1u.tar.gz
             tar -xzf openssl-1.1.1u.tar.gz
-            cd openssl-1.1.1u
+            cd openssl-1.1.1u || return
             ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl shared zlib
             make
             make install
@@ -36630,9 +36895,10 @@ EOF
     pyenv global "$py_new_v"
 
     rm -rf /tmp/python-build.*
-    rm -rf $(pyenv root)/cache/*
+    rm -rf "$(pyenv root)"/cache/*
 
-    local VERSION=$(python -V 2>&1 | awk '{print $2}')
+    local VERSION
+    VERSION=$(python -V 2>&1 | awk '{print $2}')
     echo -e "当前python版本号: ${gl_huang}$VERSION${gl_bai}"
 }
 
@@ -36750,13 +37016,13 @@ linux_privacy_security() {
         read -r -e -p "请输入你的选择: " sub_choice
         case $sub_choice in
         1)
-            cd ~
+            cd ~ || return
             sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' /usr/local/bin/m
             sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' ~/mobufan.sh
             echo "已开启采集"
             ;;
         2)
-            cd ~
+            cd ~ || return
             sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/m
             sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/mobufan.sh
             echo "已关闭采集"
@@ -36782,14 +37048,14 @@ linux_tg_bot_monitor() {
 
     case "$choice" in
     [Yy])
-        cd ~
+        cd ~ || return
         install nano tmux bc jq
         check_crontab_installed
         if [ -f ~/TG-check-notify.sh ]; then
             chmod +x ~/TG-check-notify.sh
             nano ~/TG-check-notify.sh
         else
-            curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/TG-check-notify.sh
+            curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/TG-check-notify.sh"
             chmod +x ~/TG-check-notify.sh
             nano ~/TG-check-notify.sh
         fi
@@ -36801,7 +37067,7 @@ linux_tg_bot_monitor() {
             echo "@reboot tmux new -d -s TG-check-notify '~/TG-check-notify.sh'"
         ) | crontab - >/dev/null 2>&1
 
-        curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/TG-SSH-check-notify.sh >/dev/null 2>&1
+        curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/TG-SSH-check-notify.sh" >/dev/null 2>&1
         sed -i "3i$(grep '^TELEGRAM_BOT_TOKEN=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh >/dev/null 2>&1
         sed -i "4i$(grep '^CHAT_ID=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
         chmod +x ~/TG-SSH-check-notify.sh
@@ -37158,7 +37424,8 @@ linux_random_generator() {
     echo -e "${gl_bai}16位随机密码${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     for i in {1..5}; do
-        local password=$(< /dev/urandom tr -dc 'A-Za-z0-9!@#$%^&*()_+-=' | head -c16 2>/dev/null || openssl rand -base64 12 | tr -d '=+/' | head -c16)
+        local password
+        password=$(< /dev/urandom tr -dc 'A-Za-z0-9!@#$%^&*()_+-=' | head -c16 2>/dev/null || openssl rand -base64 12 | tr -d '=+/' | head -c16)
         echo -e "${gl_lv}随机密码 ${i}${gl_bai}: ${gl_bufan}${password}${gl_bai}"
     done
 
@@ -37167,7 +37434,8 @@ linux_random_generator() {
     echo -e "${gl_bai}32位随机密码${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     for i in {1..5}; do
-        local password=$(< /dev/urandom tr -dc 'A-Za-z0-9!@#$%^&*()_+-=' | head -c32 2>/dev/null || openssl rand -base64 24 | tr -d '=+/' | head -c32)
+        local password
+        password=$(< /dev/urandom tr -dc 'A-Za-z0-9!@#$%^&*()_+-=' | head -c32 2>/dev/null || openssl rand -base64 24 | tr -d '=+/' | head -c32)
         echo -e "${gl_lv}随机密码 ${i}${gl_bai}: ${gl_bufan}${password}${gl_bai}"
     done
 
@@ -37185,9 +37453,9 @@ linux_disable_root_create_user() {
     [ "$new_username" = "0" ] && { cancel_return "上一级选单"; return 1; }
     [ -z "$new_username" ] && { cancel_empty "上一级选单"; return 1; }
 
-    create_user_with_sshkey $new_username true
+    create_user_with_sshkey "$new_username" true
 
-    ssh-keygen -l -f /home/$new_username/.ssh/authorized_keys &>/dev/null && {
+    ssh-keygen -l -f "/home/$new_username/.ssh/authorized_keys" &>/dev/null && {
         passwd -l root &>/dev/null
         sed -i 's/^[[:space:]]*#\?[[:space:]]*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
     }
@@ -37472,10 +37740,14 @@ search_dir_here() {
                     echo "$abs_path"
                 else
                     echo -e "${gl_lv}${abs_path}${gl_bai}"
-                    local dir_info=$(ls -ldh "$dir" 2>/dev/null)
-                    local size=$(echo "$dir_info" | awk '{print $5}')
-                    local time_info=$(ls -ld --time-style=long-iso "$dir" 2>/dev/null | awk '{print $6, $7}')
-                    local permissions=$(echo "$dir_info" | awk '{print $1}')
+                    local dir_info
+                    dir_info=$(ls -ldh "$dir" 2>/dev/null)
+                    local size
+                    size=$(echo "$dir_info" | awk '{print $5}')
+                    local time_info
+                    time_info=$(ls -ld --time-style=long-iso "$dir" 2>/dev/null | awk '{print $6, $7}')
+                    local permissions
+                    permissions=$(echo "$dir_info" | awk '{print $1}')
                     echo -e "  ${gl_hui}权限: $permissions | 大小: $size | 修改: $time_info${gl_bai}"
                     echo
                 fi
@@ -37542,7 +37814,8 @@ duwatch() {
 # 批量重命名文件 - 主函数
 batch_rename_files() {
     while true; do
-        local current_dir=$(pwd)
+        local current_dir
+        current_dir=$(pwd)
         local files=()
 
         while IFS= read -r -d $'\0' file; do
@@ -37568,7 +37841,8 @@ batch_rename_files() {
                 echo -e "${gl_bai}文件列表:${gl_bai}"
                 for i in "${!files[@]}"; do
                     local file="${files[$i]}"
-                    local filename=$(basename "$file")
+                    local filename
+                    filename=$(basename "$file")
                     echo -e "  ${gl_huang}$((i + 1))${gl_bai}. ${gl_bufan}${filename}${gl_bai}"
                 done
             else
@@ -37576,7 +37850,8 @@ batch_rename_files() {
                 for i in {0..19}; do
                     if [[ $i -lt $file_count ]]; then
                         local file="${files[$i]}"
-                        local filename=$(basename "$file")
+                        local filename
+                        filename=$(basename "$file")
                         echo -e "  ${gl_huang}$((i + 1))${gl_bai}. ${gl_bufan}${filename}${gl_bai}"
                     fi
                 done
@@ -37611,7 +37886,8 @@ batch_rename_files() {
 
 # 1. 添加前缀
 rename_files_add_prefix() {
-    local current_dir=$(pwd)
+    local current_dir
+    current_dir=$(pwd)
     local files=()
     while IFS= read -r -d $'\0' file; do
         if [[ -f "$file" ]]; then
@@ -37630,7 +37906,7 @@ rename_files_add_prefix() {
     echo -e ""
     echo -e "${gl_zi}>>> 批量添加前缀${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -e -p "$(echo -e "${gl_bai}请输入要添加的前缀(${gl_huang}0${gl_bai}返回): ")" prefix
+    read -r -e -p "$(echo -e "${gl_bai}请输入要添加的前缀(${gl_huang}0${gl_bai}返回): ")" prefix
     if [[ -z "$prefix" ]]; then
         log_warn "前缀不能为空"
         exit_animation
@@ -37645,8 +37921,10 @@ rename_files_add_prefix() {
     local rename_count=0
     local rename_files=()
     for file in "${files[@]}"; do
-        local filename=$(basename "$file")
-        local dir=$(dirname "$file")
+        local filename
+        filename=$(basename "$file")
+        local dir
+        dir=$(dirname "$file")
         local newname="${dir}/${prefix}${filename}"
 
         if [[ "$filename" != "${prefix}${filename}" ]]; then
@@ -37691,7 +37969,8 @@ rename_files_add_prefix() {
 
 # 2. 添加后缀
 rename_files_add_suffix() {
-    local current_dir=$(pwd)
+    local current_dir
+    current_dir=$(pwd)
     local files=()
     while IFS= read -r -d $'\0' file; do
         if [[ -f "$file" ]]; then
@@ -37710,7 +37989,7 @@ rename_files_add_suffix() {
     echo -e ""
     echo -e "${gl_zi}>>> 批量添加后缀${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -e -p "$(echo -e "${gl_bai}请输入要添加的后缀 (不含扩展名)(${gl_huang}0${gl_bai}返回): ")" suffix
+    read -r -e -p "$(echo -e "${gl_bai}请输入要添加的后缀 (不含扩展名)(${gl_huang}0${gl_bai}返回): ")" suffix
     if [[ -z "$suffix" ]]; then
         log_warn "后缀不能为空"
         exit_animation
@@ -37725,8 +38004,10 @@ rename_files_add_suffix() {
     local rename_count=0
     local rename_files=()
     for file in "${files[@]}"; do
-        local filename=$(basename "$file")
-        local dir=$(dirname "$file")
+        local filename
+        filename=$(basename "$file")
+        local dir
+        dir=$(dirname "$file")
         local newname
 
         if [[ "$filename" =~ \. ]]; then
@@ -37782,7 +38063,8 @@ rename_files_add_suffix() {
 
 # 3. 替换字符串
 rename_files_replace_string() {
-    local current_dir=$(pwd)
+    local current_dir
+    current_dir=$(pwd)
     local files=()
     while IFS= read -r -d $'\0' file; do
         if [[ -f "$file" ]]; then
@@ -37801,7 +38083,7 @@ rename_files_replace_string() {
     echo -e ""
     echo -e "${gl_zi}>>> 替换字符${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -e -p "$(echo -e "${gl_bai}请输入要替换的字符串(${gl_huang}0${gl_bai}返回): ")" old_str
+    read -r -e -p "$(echo -e "${gl_bai}请输入要替换的字符串(${gl_huang}0${gl_bai}返回): ")" old_str
 
     [[ "$old_str" == "0" ]] && { cancel_return "上一级选单"; return 1; }
 
@@ -37820,8 +38102,10 @@ rename_files_replace_string() {
     local rename_count=0
     local rename_files=()
     for file in "${files[@]}"; do
-        local filename=$(basename "$file")
-        local dir=$(dirname "$file")
+        local filename
+        filename=$(basename "$file")
+        local dir
+        dir=$(dirname "$file")
         local newname="${dir}/${filename//$old_str/$new_str}"
 
         if [[ "$filename" != "$(basename "$newname")" ]]; then
@@ -37866,7 +38150,8 @@ rename_files_replace_string() {
 
 # 4. 序号重命名
 rename_files_sequential() {
-    local current_dir=$(pwd)
+    local current_dir
+    current_dir=$(pwd)
     local files=()
     while IFS= read -r -d $'\0' file; do
         if [[ -f "$file" ]]; then
@@ -37899,7 +38184,7 @@ rename_files_sequential() {
     echo -e ""
     echo -e "${gl_zi}>>> 序号重命名${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -e -p "$(echo -e "${gl_bai}请输入文件名模板(${gl_huang}0${gl_bai}返回): ")" template
+    read -r -e -p "$(echo -e "${gl_bai}请输入文件名模板(${gl_huang}0${gl_bai}返回): ")" template
     [[ "$template" == "0" ]] && { cancel_return "上一级选单"; return 1; }
 
     if [[ -z "$template" ]]; then
@@ -37916,8 +38201,10 @@ rename_files_sequential() {
     local idx=1
 
     for file in "${files[@]}"; do
-        local dir=$(dirname "$file")
-        local filename=$(basename "$file")
+        local dir
+        dir=$(dirname "$file")
+        local filename
+        filename=$(basename "$file")
         local ext="${filename##*.}"
         local name_without_ext="${filename%.*}"
 
@@ -37997,7 +38284,8 @@ rename_files_sequential() {
 
 # 5. 大小写转换
 rename_files_change_case() {
-    local current_dir=$(pwd)
+    local current_dir
+    current_dir=$(pwd)
     local files=()
     while IFS= read -r -d $'\0' file; do
         if [[ -f "$file" ]]; then
@@ -38035,8 +38323,10 @@ rename_files_change_case() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
             for file in "${files[@]}"; do
-                local filename=$(basename "$file")
-                local dir=$(dirname "$file")
+                local filename
+                filename=$(basename "$file")
+                local dir
+                dir=$(dirname "$file")
                 local newname
 
                 case "$case_mode" in
@@ -38085,7 +38375,7 @@ rename_files_change_case() {
                 [Nn])
                     log_warn "操作已取消"
                     ;;
-                *) handle_y_n ;;*) handle_invalid_input ;;
+                *) handle_y_n ;;
                 esac
             else
                 log_warn "没有文件需要转换大小写"
@@ -38105,7 +38395,8 @@ rename_files_change_case() {
 
 # 6. 移除字符
 rename_files_remove_chars() {
-    local current_dir=$(pwd)
+    local current_dir
+    current_dir=$(pwd)
     local files=()
     while IFS= read -r -d $'\0' file; do
         if [[ -f "$file" ]]; then
@@ -38124,7 +38415,7 @@ rename_files_remove_chars() {
     echo -e ""
     echo -e "${gl_zi}>>> 移除字符${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -e -p "$(echo -e "${gl_bai}请输入要移除的字符或模式(${gl_huang}0${gl_bai}返回): ")" remove_pattern
+    read -r -e -p "$(echo -e "${gl_bai}请输入要移除的字符或模式(${gl_huang}0${gl_bai}返回): ")" remove_pattern
 
     [[ "$remove_pattern" == "0" ]] && { cancel_return "上一级选单"; return 1; }
 
@@ -38140,8 +38431,10 @@ rename_files_remove_chars() {
     local rename_count=0
     local rename_files=()
     for file in "${files[@]}"; do
-        local filename=$(basename "$file")
-        local dir=$(dirname "$file")
+        local filename
+        filename=$(basename "$file")
+        local dir
+        dir=$(dirname "$file")
         local newname="${dir}/${filename//$remove_pattern/}"
 
         if [[ "$filename" != "$(basename "$newname")" ]]; then
@@ -38186,7 +38479,8 @@ rename_files_remove_chars() {
 
 # 7. 删除所有空格
 rename_files_remove_spaces() {
-    local current_dir=$(pwd)
+    local current_dir
+    current_dir=$(pwd)
     local files=()
     while IFS= read -r -d $'\0' file; do
         if [[ -f "$file" ]]; then
@@ -38216,8 +38510,10 @@ rename_files_remove_spaces() {
     local rename_count=0
     local rename_files=()
     for file in "${files[@]}"; do
-        local filename=$(basename "$file")
-        local dir=$(dirname "$file")
+        local filename
+        filename=$(basename "$file")
+        local dir
+        dir=$(dirname "$file")
         local newname="${dir}/${filename// /}"
 
         if [[ "$filename" != "$(basename "$newname")" ]]; then
@@ -38290,7 +38586,8 @@ list_files() {
         return 1
     fi
 
-    local original_dir="$(pwd)"
+    local original_dir
+    original_dir="$(pwd)"
 
     if ! cd "$target_dir" 2>/dev/null; then
         log_error "无法进入目录: $target_dir"
@@ -38406,7 +38703,8 @@ list_files() {
                 local char="${name_part:$i:1}"
                 local char_w=1
 
-                local utf8_char=$(printf "%s" "$char" | od -An -tx1 | tr -d ' ')
+                local utf8_char
+                utf8_char=$(printf "%s" "$char" | od -An -tx1 | tr -d ' ')
                 if [[ ${#utf8_char} -gt 2 || ("0x$utf8_char" -gt "0x7F" && ${#utf8_char} -eq 2) ]]; then
                     char_w=2
                 fi
@@ -38498,7 +38796,8 @@ list_files() {
             color="${gl_qing}"  # 配置文件青色
         fi
 
-        local display_name=$(format_fixed_width "$item" $name_width)
+        local display_name
+        display_name=$(format_fixed_width "$item" $name_width)
 
         printf "${gl_bufan}%3d.${gl_bai} ${color}%s" "$count" "$display_name"
 
@@ -38582,7 +38881,8 @@ transfer_file_to_remote() {
 
     echo ""
     echo -e "${gl_bai}源文件: ${gl_huang}$file_to_transfer${gl_bai}"
-    local file_size=$(du -h "$file_to_transfer" 2>/dev/null | cut -f1)
+    local file_size
+    file_size=$(du -h "$file_to_transfer" 2>/dev/null | cut -f1)
     echo -e "${gl_bai}文件大小: ${gl_huang}$file_size${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
@@ -38727,7 +39027,8 @@ copy_file_or_directory() {
         echo -e "${gl_bai}类型: ${gl_zi}目录${gl_bai}"
     else
         echo -e "${gl_bai}类型: ${gl_lv}文件${gl_bai}"
-        local file_size=$(du -h "$src_path" 2>/dev/null | cut -f1)
+        local file_size
+        file_size=$(du -h "$src_path" 2>/dev/null | cut -f1)
         echo -e "${gl_bai}大小: ${gl_huang}$file_size${gl_bai}"
     fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -38775,10 +39076,12 @@ copy_file_or_directory() {
 
                 if [[ -e "$dest_path" ]]; then
                     if [[ -d "$dest_path" ]]; then
-                        local dest_count=$(find "$dest_path" -type f 2>/dev/null | wc -l)
+                        local dest_count
+                        dest_count=$(find "$dest_path" -type f 2>/dev/null | wc -l)
                         echo -e "${gl_bai}目标目录包含 ${gl_huang}$dest_count${gl_bai} 个文件"
                     else
-                        local dest_size=$(du -h "$dest_path" 2>/dev/null | cut -f1)
+                        local dest_size
+                        dest_size=$(du -h "$dest_path" 2>/dev/null | cut -f1)
                         echo -e "${gl_bai}目标文件大小: ${gl_huang}$dest_size${gl_bai}"
                     fi
                 fi
@@ -38899,7 +39202,7 @@ move_file_or_directory() {
         item="${LIST_FILES_ARRAY[$i]}"
         item_path="./$item"
         if [[ -d "$item_path" ]]; then
-            dir_array[$dir_count]="$item"
+            dir_array[dir_count]="$item"
             ((dir_count++))
         fi
     done
@@ -39035,7 +39338,7 @@ batch_extract_all() {
         }
     done
 
-    archives=($(printf "%s\n" "${archives[@]}" | sort -u))
+    mapfile -t archives < <(printf "%s\n" "${archives[@]}" | sort -u)
     local total=${#archives[@]}
 
     if [[ $total -eq 0 ]]; then
@@ -39049,7 +39352,8 @@ batch_extract_all() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     local count=0 max_length=0 items_per_line=2
-    local term_width=$(tput cols 2>/dev/null || echo 80)
+    local term_width
+    term_width=$(tput cols 2>/dev/null || echo 80)
 
     for archive in "${archives[@]}"; do
         local len=${#archive}
@@ -39134,7 +39438,8 @@ batch_extract_all() {
 
     for archive in "${archives[@]}"; do
         ((i++))
-        local archive_name=$(basename "$archive")
+        local archive_name
+        archive_name=$(basename "$archive")
         local archive_base="${archive_name%.tar.gz}"  # 移除 .tar.gz 后缀
         archive_base="${archive_base%.tar.bz2}"
         archive_base="${archive_base%.tar.xz}"
@@ -39312,7 +39617,7 @@ extract_archive() {
     echo -e "${gl_zi}>>> 解压文件/目录${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    read -e -p "$(echo -e "${gl_bai}请输入要解压的文件名(${gl_lv}.tar.gz${gl_bai})(${gl_huang}0${gl_bai}返回): ")" filename
+    read -r -e -p "$(echo -e "${gl_bai}请输入要解压的文件名(${gl_lv}.tar.gz${gl_bai})(${gl_huang}0${gl_bai}返回): ")" filename
 
     [ -z "$filename" ] && { cancel_empty "上一级选单"; return 1; }
     [ "$filename" == "0" ] && { cancel_return "文件管理器"; return 1; }
@@ -39344,7 +39649,8 @@ extract_archive() {
         tar -tzf "$filename" 2>/dev/null | head -10 | while read -r line; do
             echo -e "  ${gl_lv}•${gl_bai} $line"
         done
-        local total_files=$(tar -tzf "$filename" 2>/dev/null | wc -l)
+        local total_files
+        total_files=$(tar -tzf "$filename" 2>/dev/null | wc -l)
         if [[ $total_files -gt 10 ]]; then
             echo -e " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} 共 $total_files 个文件/目录${gl_bai}"
         fi
@@ -39429,7 +39735,8 @@ cat_view_file_content() {
         return 1
     fi
 
-    local file_size=$(stat -c%s "$target_file" 2>/dev/null || stat -f%z "$target_file" 2>/dev/null)
+    local file_size
+    file_size=$(stat -c%s "$target_file" 2>/dev/null || stat -f%z "$target_file" 2>/dev/null)
 
     clear
     echo -e "${gl_zi}>>> 文件内容: ${gl_huang}$target_file${gl_bai} (${gl_lv}$file_size${gl_bai} bytes)"
@@ -39624,7 +39931,7 @@ rename_file_or_dir() {
 
     echo ""
     echo -e "${gl_huang}即将重命名:${gl_bai}"
-    echo -e "  ${gl_huang}$current_name${gl_bai} ${gl_abi}->${gl_bai} ${gl_lv}$new_name${gl_bai}"
+    echo -e "  ${gl_huang}$current_name${gl_bai} ${gl_bai}->${gl_bai} ${gl_lv}$new_name${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确认执行重命名吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
     [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
@@ -39703,7 +40010,7 @@ edit_file_with_nano() {
 
 # 创建文件
 create_new_file() {
-    read -e -p "$(echo -e "${gl_bai}请输入要创建的文件名(${gl_huang}0${gl_bai}返回): ")" filename
+    read -r -e -p "$(echo -e "${gl_bai}请输入要创建的文件名(${gl_huang}0${gl_bai}返回): ")" filename
     [ -z "$filename" ] && { cancel_empty "上一级选单"; return 1; }
     [ "$filename" == "0" ] && { cancel_return "文件管理器"; return 1; }
     touch "$filename" && echo -e "${gl_lv}文件已创建${gl_bai}" || echo -e "${gl_hong}创建失败${gl_bai}"
@@ -39719,7 +40026,8 @@ list_directory_sizes() {
         return 1
     fi
 
-    local original_path="$(pwd)"
+    local original_path
+    original_path="$(pwd)"
     cd "$target_path" || {
         echo -e "${gl_hong}错误: 无法进入目录: ${target_path}${gl_bai}"
         exit_animation
@@ -39752,7 +40060,7 @@ delete_directories() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}提示: 可输入序号、路径，或多个（空格分隔）${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        read -e -p "$(echo -e "${gl_bai}请输入要删除的目录(${gl_huang}0${gl_bai}返回): ")" input
+        read -r -e -p "$(echo -e "${gl_bai}请输入要删除的目录(${gl_huang}0${gl_bai}返回): ")" input
 
         [ -z "$input" ] && { cancel_empty "上一级选单"; return 1; }
         [ "$input" == "0" ] && { cancel_return "文件管理器"; return 1; }
@@ -39805,7 +40113,7 @@ rename_directory() {
     local dir_list=()
     if show_directory_list "." 4 false true "dir_list"; then
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        read -e -p "$(echo -e "${gl_bai}请输入目录序号或目录名(${gl_huang}0${gl_bai}返回): ")" input
+        read -r -e -p "$(echo -e "${gl_bai}请输入目录序号或目录名(${gl_huang}0${gl_bai}返回): ")" input
 
         [ -z "$input" ] && { cancel_empty "上一级选单"; return 1; }
         [ "$input" == "0" ] && { cancel_return "文件管理器"; return 1; }
@@ -39819,7 +40127,7 @@ rename_directory() {
 
         [[ ! -d "$current_name" ]] && { log_error "目录不存在: $current_name"; return 1; }
 
-        read -e -p "$(echo -e "${gl_bai}请输入新目录名(${gl_huang}0${gl_bai}返回): ")" new_name
+        read -r -e -p "$(echo -e "${gl_bai}请输入新目录名(${gl_huang}0${gl_bai}返回): ")" new_name
         [ -z "$new_name" ] && { cancel_empty "上一级选单"; return 1; }
         [ "$new_name" == "0" ] && { cancel_return "文件管理器"; return 1; }
         [[ -e "$new_name" ]] && { log_error "目标已存在: $new_name"; return 1; }
@@ -39849,7 +40157,8 @@ create_directory() {
 
 # 进入指定目录
 enter_directory() {
-    local current_path="$(pwd)"
+    local current_path
+    current_path="$(pwd)"
     local return_target="${1:-文件管理器}"  # 接收参数，默认值为"文件管理器"
     clear
     local dirs=()
@@ -39912,12 +40221,13 @@ enter_directory() {
         fi
 
         if cd "$target_path" 2>/dev/null; then
-            local new_path="$(pwd)"
+            local new_path
+            new_path="$(pwd)"
             echo -e "${gl_lv}成功进入目录: $new_path${gl_bai}"
 
             if [[ ! -d "$new_path" ]]; then
                 echo -e "${gl_hong}警告：目标不是一个有效的目录${gl_bai}"
-                cd "$current_path" 2>/dev/null
+                cd "$current_path" 2>/dev/null || return
             fi
         else
             echo -e "${gl_hong}无法进入目录: $input${gl_bai}"
@@ -39972,7 +40282,7 @@ modify_directory_permissions() {
         echo -e "  ${gl_bai}所有者: ${gl_lv}$old_owner${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        read -e -p "$(echo -e "${gl_bai}请输入新权限 (如 ${gl_huang}755${gl_bai}) (${gl_huang}0${gl_bai}返回)): ")" perm
+        read -r -e -p "$(echo -e "${gl_bai}请输入新权限 (如 ${gl_huang}755${gl_bai}) (${gl_huang}0${gl_bai}返回)): ")" perm
 
         [ -z "$perm" ] && { cancel_empty "上一级选单"; return 1; }
         [ "$perm" == "0" ] && { cancel_return "文件管理器"; return 1; }
@@ -40033,14 +40343,15 @@ linux_file() {
     local menu_name="${3:-上一级选单}"   # 返回传参
 
     if [[ "$initial_dir" != "." ]] && [[ -d "$initial_dir" ]]; then
-        cd "$initial_dir" 2>/dev/null
+        cd "$initial_dir" 2>/dev/null || return
     fi
 
     root_use
     while true; do
         clear
 
-        local current_dir="$(pwd)"
+        local current_dir
+        current_dir="$(pwd)"
 
         if [ -z "$(ls -A "$current_dir" 2>/dev/null)" ]; then
             echo -e "${gl_huang}>>> 当前目录文件列表：${gl_bai}(${gl_lv}$current_dir${gl_bai})"
@@ -40122,8 +40433,9 @@ linux_file() {
 }
 
 cluster_python3() {
+    local py_task="$1"
     install python3 python3-paramiko
-    cd ~/cluster/
+    cd ~/cluster/ || return
     curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task"
     python3 ~/cluster/"$py_task"
 }
@@ -40183,7 +40495,8 @@ mobufan_update() {
         fi
 
         local cron_job="mobufan.sh"
-        local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
+        local existing_cron
+        existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
 
         if [[ -n "$existing_cron" ]]; then
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -40258,8 +40571,10 @@ mobufan_update() {
 
         3)
             clear
-            local country=$(curl -sSL -A "Mozilla/5.0" --max-time 2 ipinfo.io/country 2>/dev/null || echo "unknown")
-            local ipv6_address=$(curl -sSL -A "Mozilla/5.0" --max-time 2 ipv6.ip.sb 2>/dev/null || echo "")
+            local country
+            country=$(curl -sSL -A "Mozilla/5.0" --max-time 2 ipinfo.io/country 2>/dev/null || echo "unknown")
+            local ipv6_address
+            ipv6_address=$(curl -sSL -A "Mozilla/5.0" --max-time 2 ipv6.ip.sb 2>/dev/null || echo "")
 
             if [[ "$country" = "CN" ]]; then
                 SH_Update_task="curl -sSL -A \"Mozilla/5.0\" -O $download_url && chmod +x mobufan.sh && sed -i 's/canshu=\"default\"/canshu=\"CN\"/g' ./mobufan.sh"
@@ -40431,14 +40746,13 @@ pve_shutdown_selector() {
         *)
             local index=$((choice - 1))
             if [ "$index" -ge 0 ] && [ "$index" -lt "${#RUNNING_INSTANCES[@]}" ]; then
-                shutdown_instance "$index"
-                if [ $? -eq 0 ]; then
+                if shutdown_instance "$index"; then
                     for i in 5 4 3 2 1; do
                         printf "\r${gl_huang}%d 秒后自动返回实例列表…${gl_bai}" "$i"
                         read -r -n 1 -s -t 1 && break
                     done
                     printf "\r\033[K"
-                    read -t 0.001 -n 1000 2>/dev/null
+                    read -r -t 0.001 -n 1000 2>/dev/null
                     get_running_instances >/dev/null || break
                     show_running_instances || break
                 fi
@@ -40580,14 +40894,13 @@ pve_start_selector() {
         *)
             local index=$((choice - 1))
             if [ "$index" -ge 0 ] && [ "$index" -lt "${#STOPPED_INSTANCES[@]}" ]; then
-                start_instance "$index"
-                if [ $? -eq 0 ]; then
+                if start_instance "$index"; then
                     for i in 5 4 3 2 1; do
                         printf "\r${gl_huang}%d 秒后自动返回实例列表…${gl_bai}" "$i"
-                        read -n 1 -s -t 1 && break
+                        read -r -n 1 -s -t 1 && break
                     done
                     printf "\r\033[K"
-                    read -t 0.001 -n 1000 2>/dev/null
+                    read -r -t 0.001 -n 1000 2>/dev/null
                     get_stopped_instances >/dev/null || break
                     show_stopped_instances || break
                 fi
@@ -40603,7 +40916,7 @@ pve_restart_selector() {
 
     is_pve_system || return 1  # 非PVE系统退出
 
-    check_and_install jq || continue # 检查 jq 是否安装（如果已安装直接继续）
+    check_and_install jq || return # 检查 jq 是否安装（如果已安装直接继续）
 
     clear
 
@@ -40656,18 +40969,20 @@ pve_restart_selector() {
         local total_instances=${#ALL_INSTANCES[@]}
         local max_width=0
         for ((i = 0; i < total_instances; i++)); do
-            local type_str=$([ "${INSTANCE_TYPES[$i]}" = "qemu" ] && echo "VM" || echo "LXC")
+            local type_str
+            type_str=$([ "${INSTANCE_TYPES[$i]}" = "qemu" ] && echo "VM" || echo "LXC")
             local current_text="${type_str}:${INSTANCE_IDS[$i]}"
             local text_length=${#current_text}
-            [ $text_length -gt $max_width ] && max_width=$text_length
+            [ "$text_length" -gt "$max_width" ] && max_width=$text_length
         done
         max_width=$((max_width + 4))
 
         for ((i = 0; i < total_instances; i += instances_per_line)); do
             for ((j = 0; j < instances_per_line; j++)); do
                 local index=$((i + j))
-                [ $index -ge $total_instances ] && break
-                local type_str=$([ "${INSTANCE_TYPES[$index]}" = "qemu" ] && echo "VM" || echo "LXC")
+                [ "$index" -ge "$total_instances" ] && break
+                local type_str
+                type_str=$([ "${INSTANCE_TYPES[$index]}" = "qemu" ] && echo "VM" || echo "LXC")
                 local status_color status_symbol
                 if [ "${INSTANCE_STATUSES[$index]}" = "running" ]; then
                     status_color="${gl_lv}"
@@ -40708,8 +41023,10 @@ pve_restart_selector() {
         local instance_type="${INSTANCE_TYPES[$index]}"
         local instance_status="${INSTANCE_STATUSES[$index]}"
 
-        local type_str=$([ "$instance_type" = "qemu" ] && echo "虚拟机" || echo "LXC容器")
-        local operation=$([ "$instance_status" = "running" ] && echo "重启" || echo "启动")
+        local type_str
+        type_str=$([ "$instance_type" = "qemu" ] && echo "虚拟机" || echo "LXC容器")
+        local operation
+        operation=$([ "$instance_status" = "running" ] && echo "重启" || echo "启动")
 
         echo -e "\n${gl_huang}实例详情:${gl_bai}"
         echo -e "  ${gl_lan}类型:${gl_bai} $type_str"
@@ -40794,10 +41111,10 @@ pve_restart_selector() {
                 restart_instance "$index"
                 for i in 5 4 3 2 1; do
                     printf "\r${gl_huang}%d 秒后自动返回实例列表…${gl_bai}" "$i"
-                    read -n 1 -s -t 1 && break
+                    read -r -n 1 -s -t 1 && break
                 done
                 printf "\r\033[K"
-                read -t 0.001 -n 1000 2>/dev/null
+                read -r -t 0.001 -n 1000 2>/dev/null
                 get_all_instances >/dev/null || break
                 show_all_instances || break
             else
@@ -41045,8 +41362,7 @@ qm_destroy_vm() {
         VM_STATUS=$(qm status "$VMID" 2>/dev/null | awk '{print $2}')
 
         if [[ "$VM_STATUS" == "running" ]]; then
-            qm stop "$VMID" --skiplock --timeout 5
-            if [ $? -eq 0 ]; then
+            if qm stop "$VMID" --skiplock --timeout 5; then
                 log_ok "VM $VMID 已停止"
             else
                 qm stop "$VMID" --skiplock --forceStop
@@ -41060,9 +41376,8 @@ qm_destroy_vm() {
         fi
 
         echo -e "${gl_lan}正在销毁 VM $VMID ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        qm destroy "$VMID" --purge
 
-        if [ $? -eq 0 ]; then
+        if qm destroy "$VMID" --purge; then
             log_ok "VM $VMID 已销毁，所有卷已删除"
         else
             log_error "销毁 VM $VMID 失败"
@@ -41138,8 +41453,7 @@ pve_install_istoreos() {
 
     if [[ ! -d "/var/lib/vz/template/iso" ]]; then
         log_info "创建目录: /var/lib/vz/template/iso"
-        mkdir -p "/var/lib/vz/template/iso"
-        if [[ $? -ne 0 ]]; then
+        if ! mkdir -p "/var/lib/vz/template/iso"; then
             log_error "创建目录失败"
             exit_animation
             return 1
@@ -41149,7 +41463,8 @@ pve_install_istoreos() {
     local need_download=0
 
     if [[ -f "${img_path}" ]]; then
-        local img_size=$(stat -c%s "${img_path}" 2>/dev/null || stat -f%z "${img_path}" 2>/dev/null || echo 0)
+        local img_size
+        img_size=$(stat -c%s "${img_path}" 2>/dev/null || stat -f%z "${img_path}" 2>/dev/null || echo 0)
         if [[ $img_size -gt 100000000 ]]; then
             log_ok "发现已存在的固件文件: ${gl_huang}${img_path}${gl_bai}"
             log_info "固件大小: ${gl_lv}$((img_size / 1024 / 1024))MB${gl_bai}"
@@ -41179,7 +41494,8 @@ pve_install_istoreos() {
 
             if extract_file "${img_gz_path}" "/var/lib/vz/template/iso" "true"; then
                 if [[ -f "${img_path}" ]]; then
-                    local img_size=$(stat -c%s "${img_path}" 2>/dev/null || stat -f%z "${img_path}" 2>/dev/null || echo 0)
+                    local img_size
+                    img_size=$(stat -c%s "${img_path}" 2>/dev/null || stat -f%z "${img_path}" 2>/dev/null || echo 0)
                     if [[ $img_size -gt 100000000 ]]; then
                         log_ok "解压成功，大小: $((img_size / 1024 / 1024))MB"
                         need_download=0
@@ -41213,7 +41529,8 @@ pve_install_istoreos() {
         log_info "正在下载固件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         log_info "下载链接: ${download_url}"
 
-        local available_mb=$(df -m "/var/lib/vz/template/iso" | awk 'NR==2 {print $4}')
+        local available_mb
+        available_mb=$(df -m "/var/lib/vz/template/iso" | awk 'NR==2 {print $4}')
         if [[ $available_mb -lt 500 ]]; then
             log_error "磁盘空间不足，需要至少500MB可用空间"
             log_error "当前可用空间: ${available_mb}MB"
@@ -41224,7 +41541,8 @@ pve_install_istoreos() {
         echo -e "${gl_bai}下载进度:${gl_huang}"
         if wget --show-progress -q -O "${img_gz_path}" "${download_url}"; then
             if [[ -f "${img_gz_path}" ]]; then
-                local gz_size=$(stat -c%s "${img_gz_path}" 2>/dev/null || stat -f%z "${img_gz_path}" 2>/dev/null || echo 0)
+                local gz_size
+                gz_size=$(stat -c%s "${img_gz_path}" 2>/dev/null || stat -f%z "${img_gz_path}" 2>/dev/null || echo 0)
                 if [[ $gz_size -gt 100000000 ]]; then
                     log_ok "下载完成，大小: $((gz_size / 1024 / 1024))MB"
                 else
@@ -41247,7 +41565,8 @@ pve_install_istoreos() {
         log_info "正在解压固件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         if extract_file "${img_gz_path}" "/var/lib/vz/template/iso" "true"; then
             if [[ -f "${img_path}" ]]; then
-                local img_size=$(stat -c%s "${img_path}" 2>/dev/null || stat -f%z "${img_path}" 2>/dev/null || echo 0)
+                local img_size
+                img_size=$(stat -c%s "${img_path}" 2>/dev/null || stat -f%z "${img_path}" 2>/dev/null || echo 0)
                 if [[ $img_size -gt 100000000 ]]; then
                     log_ok "解压成功，大小: $((img_size / 1024 / 1024))MB"
 
@@ -41271,7 +41590,8 @@ pve_install_istoreos() {
     fi
 
     if [[ -f "${img_path}" ]]; then
-        local final_size=$(stat -c%s "${img_path}" 2>/dev/null || stat -f%z "${img_path}" 2>/dev/null || echo 0)
+        local final_size
+        final_size=$(stat -c%s "${img_path}" 2>/dev/null || stat -f%z "${img_path}" 2>/dev/null || echo 0)
         if [[ $final_size -gt 100000000 ]]; then
             log_ok "固件准备完成: ${gl_huang}${img_path}${gl_bai}"
             log_info "固件大小: ${gl_lv}$((final_size / 1024 / 1024))MB${gl_bai}"
@@ -41452,7 +41772,8 @@ pve_install_istoreos() {
         disk_file=$(find "$vm_images_dir" -name "*.qcow2" -o -name "*.raw" 2>/dev/null | head -1)
 
         if [[ -n "$disk_file" ]]; then
-            local disk_name=$(basename "$disk_file")
+            local disk_name
+            disk_name=$(basename "$disk_file")
 
             log_info "尝试设置SCSI控制器 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             if qm set "${vm_id}" --scsihw virtio-scsi-pci --scsi0 "${storage_name}:${vm_id}/${disk_name}"; then
@@ -41668,8 +41989,7 @@ backup_vm() {
     read -r -e -p "$(echo -e "${gl_bai}确认继续? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
     case "${confirm,,}" in
     y | yes)
-        vzdump "${vmid}" --storage "${storage}" --compress gzip
-        if [[ $? -eq 0 ]]; then
+        if vzdump "${vmid}" --storage "${storage}" --compress gzip; then
             log_ok "备份 VMID ${vmid} 成功！"
         else
             log_error "备份 VMID ${vmid} 失败！"
@@ -41727,7 +42047,8 @@ restore_vm() {
         for path in "${backup_paths[@]}"; do
             if [[ -d "$path" ]]; then
                 log_info "检查路径: $path"
-                local files_in_path=($(ls -1t "$path"/*.vma.gz 2>/dev/null | head -20))
+                local files_in_path
+                mapfile -t files_in_path < <(ls -1t "$path"/*.vma.gz 2>/dev/null | head -20)
                 if [[ ${#files_in_path[@]} -gt 0 ]]; then
                     found_path="$path"
                     backup_files=("${files_in_path[@]}")
@@ -41750,10 +42071,14 @@ restore_vm() {
 
         echo -e "${gl_bufan}可用的备份文件:${gl_bai}"
         for i in "${!backup_files[@]}"; do
-            local filename=$(basename "${backup_files[$i]}")
-            local file_size=$(du -h "${backup_files[$i]}" 2>/dev/null | cut -f1)
-            local file_date=$(stat -c %y "${backup_files[$i]}" 2>/dev/null | cut -d' ' -f1-2)
-            local vmid_from_file=$(echo "$filename" | grep -oP 'vzdump-qemu-\K\d+')
+            local filename
+            filename=$(basename "${backup_files[$i]}")
+            local file_size
+            file_size=$(du -h "${backup_files[$i]}" 2>/dev/null | cut -f1)
+            local file_date
+            file_date=$(stat -c %y "${backup_files[$i]}" 2>/dev/null | cut -d' ' -f1-2)
+            local vmid_from_file
+            vmid_from_file=$(echo "$filename" | grep -oP 'vzdump-qemu-\K\d+')
             echo -e "${gl_bufan}$((i + 1)).${gl_bai} $filename"
             echo -e "     虚拟机ID: ${vmid_from_file:-未知}, 大小: ${file_size:-未知}, 日期: ${file_date:-未知}"
         done
@@ -41771,8 +42096,10 @@ restore_vm() {
         fi
 
         local selected_backup="${backup_files[$((backup_choice - 1))]}"
-        local backup_name=$(basename "$selected_backup")
-        local vmid_from_backup=$(echo "$backup_name" | grep -oP 'vzdump-qemu-\K\d+')
+        local backup_name
+        backup_name=$(basename "$selected_backup")
+        local vmid_from_backup
+        vmid_from_backup=$(echo "$backup_name" | grep -oP 'vzdump-qemu-\K\d+')
 
         log_info "请选择恢复目标存储（需要支持 'images' 内容类型）"
 
@@ -41781,8 +42108,10 @@ restore_vm() {
         local supported_storage=()
         while IFS= read -r line; do
             if [[ -n "$line" ]] && [[ ! "$line" =~ ^Name ]]; then
-                local storage_name=$(echo "$line" | awk '{print $1}')
-                local content_types=$(pvesm status -content images 2>/dev/null | grep -w "$storage_name" | awk '{print $2}')
+                local storage_name
+                storage_name=$(echo "$line" | awk '{print $1}')
+                local content_types
+                content_types=$(pvesm status -content images 2>/dev/null | grep -w "$storage_name" | awk '{print $2}')
                 if [[ -n "$content_types" ]]; then
                     supported_storage+=("$storage_name")
                     echo -e "${gl_bufan}${#supported_storage[@]}.${gl_bai} $storage_name (${gl_huang}支持 images${gl_bai})"
@@ -41961,7 +42290,8 @@ manage_backup_files() {
         done
 
         if command -v pvesm &>/dev/null; then
-            local pvesm_path=$(pvesm path "$storage_name" 2>/dev/null)
+            local pvesm_path
+            pvesm_path=$(pvesm path "$storage_name" 2>/dev/null)
             if [[ -n "$pvesm_path" ]] && [[ -d "$pvesm_path" ]]; then
                 path_map["$pvesm_path"]=1
                 log_info "从 pvesm 获取路径: $pvesm_path"
@@ -41969,7 +42299,8 @@ manage_backup_files() {
         fi
 
         if [[ -f "/etc/pve/storage.cfg" ]]; then
-            local config_path=$(grep -A5 " $storage_name" /etc/pve/storage.cfg | grep -E "^(path|server|share)" | head -1 | grep -o "/[^ ]*" 2>/dev/null)
+            local config_path
+            config_path=$(grep -A5 " $storage_name" /etc/pve/storage.cfg | grep -E "^(path|server|share)" | head -1 | grep -o "/[^ ]*" 2>/dev/null)
             if [[ -z "$config_path" ]]; then
                 config_path=$(grep -A5 " $storage_name" /etc/pve/storage.cfg | grep "path" | head -1 | awk '{print $2}' 2>/dev/null)
             fi
@@ -42009,7 +42340,8 @@ manage_backup_files() {
                     echo -e "     ${gl_lv}✓ 是挂载点${gl_bai}"
                 fi
 
-                local path_size=$(du -sh "${unique_paths[$i]}" 2>/dev/null | cut -f1)
+                local path_size
+                path_size=$(du -sh "${unique_paths[$i]}" 2>/dev/null | cut -f1)
                 if [[ -n "$path_size" ]]; then
                     echo -e "     大小: $path_size"
                 fi
@@ -42043,7 +42375,8 @@ manage_backup_files() {
         local found_backups=0
         for backup_dir in "${backup_dirs[@]}"; do
             if [[ -d "$backup_dir" ]]; then
-                local backup_count=$(find "$backup_dir" -name "*.vma.gz" -o -name "*.vma" -o -name "*.lzo" -o -name "*.zst" 2>/dev/null | wc -l)
+                local backup_count
+                backup_count=$(find "$backup_dir" -name "*.vma.gz" -o -name "*.vma" -o -name "*.lzo" -o -name "*.zst" 2>/dev/null | wc -l)
                 if [[ $backup_count -gt 0 ]]; then
                     log_ok "目录 '$backup_dir' 包含 $backup_count 个备份文件"
                     found_backups=1
@@ -42413,17 +42746,17 @@ parse_pct_list() {
         local fields=($line)
         local field_count=${#fields[@]}
 
-        if [ $field_count -ge 7 ]; then
+        if [ "$field_count" -ge 7 ]; then
             mem="${fields[2]}"
             disk="${fields[4]}"
             lock="${fields[5]}"
             name=$(echo "$line" | awk '{for(i=7;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/ $//')
-        elif [ $field_count -eq 4 ]; then
+        elif [ "$field_count" -eq 4 ]; then
             mem="${fields[2]}"
             disk="-"
             lock="-"
             name=$(echo "$line" | awk '{for(i=4;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/ $//')
-        elif [ $field_count -eq 3 ]; then
+        elif [ "$field_count" -eq 3 ]; then
             mem="-"
             disk="-"
             lock="-"
@@ -42486,7 +42819,6 @@ pve_check_locks() {
 
     local vm_locked_count=0
     local container_locked_count=0
-    local has_lock=false
 
     echo -e "${gl_lv}🖥️  KVM 虚拟机锁状态${gl_bai}"
 
@@ -42510,7 +42842,6 @@ pve_check_locks() {
                 case "$lock" in
                 backup | migrate | snapshot | snapdelete | clone | rollback)
                     ((vm_locked_count++))
-                    has_lock=true
                     local lock_desc=""
                     local lock_color=""
 
@@ -42584,7 +42915,6 @@ pve_check_locks() {
                 case "$lock" in
                 backup | migrate | snapshot | snapdelete | clone | rollback)
                     ((container_locked_count++))
-                    has_lock=true
                     local lock_desc=""
                     local lock_color=""
 
@@ -43202,7 +43532,7 @@ pve_change_vmid_interactive() {
                 ;;
             *)
                 handle_y_n
-                continue
+                return
                 ;;
         esac
     else
@@ -43276,7 +43606,7 @@ pve_change_vmid_interactive() {
             exit_animation
             return 1
             ;;
-        *) handle_y_n; return 1 ;;*) handle_invalid_input ;;
+        *) handle_y_n; return 1 ;;
     esac
 
     pve_change_vmid "$OLD_ID" "$NEW_ID" "$NEW_NAME"
@@ -43409,7 +43739,7 @@ pve_change_vmid() {
         local renamed_files=0
         for file in vm-${OLD_ID}-disk-*; do
             if [[ -f "$file" ]]; then
-                new_file=$(echo "$file" | sed "s/vm-${OLD_ID}-disk-/vm-${NEW_ID}-disk-/")
+                new_file="${file/vm-$OLD_ID-disk-/vm-$NEW_ID-disk-}"
                 mv "$file" "$new_file"
                 log_ok "已重命名: ${gl_hui}$file${gl_bai} -> ${gl_lv}$new_file${gl_bai}"
                 renamed_files=$((renamed_files + 1))
@@ -43418,7 +43748,7 @@ pve_change_vmid() {
 
         for file in *${OLD_ID}*; do
             if [[ -f "$file" && "$file" != vm-${OLD_ID}-disk-* ]]; then
-                new_file=$(echo "$file" | sed "s/${OLD_ID}/${NEW_ID}/g")
+                new_file="${file//$OLD_ID/$NEW_ID}"
                 mv "$file" "$new_file"
                 log_ok "已重命名其他文件: ${gl_hui}$file${gl_bai} -> ${gl_lv}$new_file${gl_bai}"
             fi
@@ -43629,7 +43959,7 @@ lxc_change_ctid_interactive() {
                 ;;
             *)
                 handle_y_n
-                continue
+                return
                 ;;
         esac
     else
@@ -43702,7 +44032,7 @@ lxc_change_ctid_interactive() {
             log_info "操作已取消"
             return 1
             ;;
-        *) handle_y_n; return 1 ;;*) handle_invalid_input ;;
+        *) handle_y_n; return 1 ;;
     esac
 
     lxc_change_ctid "$OLD_ID" "$NEW_ID" "$NEW_HOSTNAME"
@@ -43835,7 +44165,7 @@ lxc_change_ctid() {
         local renamed_files=0
         for file in *${OLD_ID}*; do
             if [[ -e "$file" ]]; then
-                new_file=$(echo "$file" | sed "s/${OLD_ID}/${NEW_ID}/g")
+                new_file="${file//$OLD_ID/$NEW_ID}"
                 mv "$file" "$new_file"
                 log_ok "已重命名: ${gl_hui}$file${gl_bai} -> ${gl_lv}$new_file${gl_bai}"
                 renamed_files=$((renamed_files + 1))
@@ -44083,9 +44413,10 @@ show_compose_project_menu() {
 
         [ "$project_choice" == "0" ] && { cancel_return; return 1; }
 
-        if ! [[ "$project_choice" =~ ^[0-9]+$ ]] || [ "$project_choice" -lt 1 ] || [ "$project_choice" -gt $count ]; then
+        if ! [[ "$project_choice" =~ ^[0-9]+$ ]] || [ "$project_choice" -lt 1 ] || [ "$project_choice" -gt "$count" ]; then
 
-            local dir_name=$(echo "$project_choice" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            local dir_name
+            dir_name=$(echo "$project_choice" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
             if [ -z "$dir_name" ]; then
                 echo -e "${gl_huang}无效的选择，请重新输入${gl_bai}"
@@ -44105,7 +44436,7 @@ show_compose_project_menu() {
                 if cd "$new_path" 2>/dev/null; then
                     echo -e "${gl_lv}进入已有目录: $dir_name"
                     show_compose_commands_menu
-                    cd "$base_path"
+                    cd "$base_path" || return
                     continue
                 fi
             fi
@@ -44115,7 +44446,7 @@ show_compose_project_menu() {
                 if cd "$new_path" 2>/dev/null; then
                     echo -e "${gl_lan}项目路径: $new_path${gl_bai}"
                     show_compose_commands_menu
-                    cd "$base_path"
+                    cd "$base_path" || return
                     continue
                 else
                     echo -e "${gl_hong}错误: 无法进入新创建的目录 '$new_path'${gl_bai}"
@@ -44142,7 +44473,7 @@ show_compose_project_menu() {
             echo -e "${gl_lv}已选择项目: $selected_project"
             echo -e "${gl_lan}项目路径: $full_path${gl_bai}"
             show_compose_commands_menu
-            cd "$base_path"
+            cd "$base_path" || return
         else
             echo -e "${gl_hong}错误: 无法进入目录 '$full_path'${gl_bai}"
             echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -44173,17 +44504,20 @@ show_inner_url() {
         return 2
     }
 
-    local ip=$(hostname -I | awk '{print $1}')
+    local ip
+    ip=$(hostname -I | awk '{print $1}')
     echo -e "${gl_bufan}服务访问链接：${gl_lv}http://${ip}:${port}${gl_bai}"
 }
 
 # 函数：显示Compose命令菜单
 show_compose_commands_menu() {
-    local current_dir="$(pwd)"
+    local current_dir
+    current_dir="$(pwd)"
     while true; do
         clear
         echo -e ""
-        local current_dir_name=$(basename "$PWD")
+        local current_dir_name
+        current_dir_name=$(basename "$PWD")
 
         echo -e "${gl_zi}>>> Compose项目菜单${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -44347,7 +44681,7 @@ show_compose_commands_menu() {
             echo
             echo -e "${gl_huang}$current_dir_name${gl_bai}服务列表 & 实时资源占用（Ctrl-C 退出）"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            bash <(curl -sL https://cmdbox.meimolihan.eu.org/sh/docker_occupy_find.sh) $current_dir_name
+            bash <(curl -sL https://cmdbox.meimolihan.eu.org/sh/docker_occupy_find.sh) "$current_dir_name"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             ;;
         14)
@@ -44404,7 +44738,8 @@ show_compose_commands_menu() {
         25)
             local TARGET_SERVICE="$MAIN_SERVICE"
             if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
-                local selected_service=$(select_service)
+                local selected_service
+                selected_service=$(select_service)
                 [[ -n "$selected_service" ]] && TARGET_SERVICE="$selected_service"
             fi
             if [[ -z "$TARGET_SERVICE" ]]; then
@@ -44447,7 +44782,8 @@ show_compose_commands_menu() {
         26)
             local TARGET_SERVICE="$MAIN_SERVICE"
             if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
-                local selected_service=$(select_service)
+                local selected_service
+                selected_service=$(select_service)
                 [[ -n "$selected_service" ]] && TARGET_SERVICE="$selected_service"
             fi
             if [[ -z "$TARGET_SERVICE" ]]; then
@@ -44499,7 +44835,7 @@ show_compose_commands_menu() {
             echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
             echo -e "${gl_hong}00. ${gl_bai}退出脚本"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            read -p "请输入选择 [0-5]: " policy_choice
+            read -r -p "请输入选择 [0-5]: " policy_choice
             case $policy_choice in
             1) new_policy="no" ;;
             2) new_policy="always" ;;
@@ -44622,7 +44958,8 @@ show_compose_commands_menu() {
                 docker compose down --rmi all --remove-orphans && docker system prune -af --volumes
                 echo -e "${gl_lv}✓ Compose容器、网络、卷已清理${gl_bai}"
 
-                local parent_dir=$(dirname "${current_dir}")
+                local parent_dir
+                parent_dir=$(dirname "${current_dir}")
                 cd "${parent_dir}" || {
                     log_error "无法切换到上级目录 ${parent_dir}"
                     read -r
@@ -44779,7 +45116,8 @@ git_clone_docker_projects() {
             fi
             local cleanUrl=${repoUrl#*git clone }
             cleanUrl=${cleanUrl//[\"\'\']/}
-            local repoName=$(basename "$cleanUrl" .git)
+            local repoName
+            repoName=$(basename "$cleanUrl" .git)
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}即将克隆仓库: $repoName${gl_bai}"
@@ -44798,8 +45136,7 @@ git_clone_docker_projects() {
             fi
 
             git clone "$cleanUrl"
-            echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            if [ $? -ne 0 ]; then
+            if ! echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"; then
                 echo -e "${gl_hong}仓库 '$repoName' 克隆失败，请检查URL是否正确或网络连接。${gl_bai}"
             else
                 echo -e "${gl_lv}仓库 '$repoName' 克隆成功！${gl_bai}"
@@ -44880,7 +45217,8 @@ check_docker_compose() {
 # 检查git版本
 check_git_version() {
     if command -v git &>/dev/null; then
-        local current_version=$(git --version 2>/dev/null | grep -oP 'version \K[^ ]+' || echo "未知")
+        local current_version
+        current_version=$(git --version 2>/dev/null | grep -oP 'version \K[^ ]+' || echo "未知")
         echo -e "${gl_bufan}Git ${gl_bai}版本：${gl_lv}$current_version${gl_bai}"
 
         local latest_version=""
@@ -45178,7 +45516,7 @@ uninstall_docker_compose() {
         read -r -e -p "$(echo -e "${gl_bai}是否继续检查其他位置? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" search_more
         if [[ "$search_more" =~ ^[Yy]$ ]]; then
             log_info "正在全盘搜索 docker-compose 文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            find / -name "*docker-compose*" -type f -executable 2>/dev/null | grep -E "(docker-compose|docker/compose)" | head -20 | while read file; do
+            find / -name "*docker-compose*" -type f -executable 2>/dev/null | grep -E "(docker-compose|docker/compose)" | head -20 | while read -r file; do
                 log_info "发现: $file"
                 FOUND_FILES+=("$file")
                 INSTALLED=true
@@ -45266,7 +45604,8 @@ uninstall_docker_compose() {
     fi
 
     if docker compose version &>/dev/null 2>&1; then
-        local NEW_VERSION=$(docker compose version 2>&1 | head -n 1)
+        local NEW_VERSION
+        NEW_VERSION=$(docker compose version 2>&1 | head -n 1)
         if [ -n "$OLD_VERSION" ] && [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
             log_warn "Docker Compose 插件版本未改变: $NEW_VERSION"
             log_warn "可能需要重启 Docker 服务或终端"
@@ -45454,7 +45793,7 @@ docker_mirror_menu() {
                     min=$t
                     fastest=$u
                 }
-                printf '%b%-45s %b%5s ms%b\n' "$gl_hui" "$u" "$gl_bai" "$t"
+                printf '%b%-45s %b%5s ms%b\n' "$gl_hui" "$u" "$gl_bai" "$t" "$reset"
             done
 
             [[ $min -ge 9999 ]] && {
@@ -45651,8 +45990,7 @@ enter_compose_dir() {
         echo -e "${gl_huang}目录不存在: ${gl_hong}$COMPOSE_WORK_DIR${gl_bai}"
         read -r -e -p "$(echo -e "是否创建? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
-            mkdir -p "$COMPOSE_WORK_DIR"
-            if [[ $? -eq 0 ]]; then
+            if mkdir -p "$COMPOSE_WORK_DIR"; then
                 echo -e "${gl_lv}✓ 已创建目录: $COMPOSE_WORK_DIR${gl_bai}"
             else
                 echo -e "${gl_hong}✗ 创建目录失败${gl_bai}"
@@ -45738,7 +46076,7 @@ docker_compose_env_tools() {
                 done
             done
 
-            recommended_dirs=($(printf "%s\n" "${recommended_dirs[@]}" | sort -u))
+            mapfile -t recommended_dirs < <(printf "%s\n" "${recommended_dirs[@]}" | sort -u)
         fi
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -45760,7 +46098,8 @@ docker_compose_env_tools() {
             fi
 
             if [[ -d "${preset_dirs[i]}" ]]; then
-                local compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
+                local compose_count
+                compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
                 if [[ $compose_count -gt 0 ]]; then
                     dir_status="${gl_lv}[有 ${compose_count} 个项目]${gl_bai}"
                 else
@@ -45810,8 +46149,7 @@ docker_compose_env_tools() {
             log_warn "目录不存在: $COMPOSE_WORK_DIR"
             read -r -e -p "$(echo -e "是否创建? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
             if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                mkdir -p "$COMPOSE_WORK_DIR"
-                if [[ $? -eq 0 ]]; then
+                if mkdir -p "$COMPOSE_WORK_DIR"; then
                     log_ok "已创建目录: $COMPOSE_WORK_DIR"
                 else
                     log_error "创建目录失败"
@@ -45839,7 +46177,8 @@ docker_compose_env_tools() {
 
         while IFS= read -r dir; do
             if [[ -f "$dir/docker-compose.yml" ]] || [[ -f "$dir/docker-compose.yaml" ]]; then
-                local rel_path=$(realpath --relative-to="$COMPOSE_WORK_DIR" "$dir")
+                local rel_path
+                rel_path=$(realpath --relative-to="$COMPOSE_WORK_DIR" "$dir")
                 found_projects+=("$rel_path")
                 log_info "${gl_bai}发现 Compose 项目:${gl_huang} $(basename "$dir")${gl_bai}"
             fi
@@ -45857,7 +46196,8 @@ docker_compose_env_tools() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         local BACKUP_ROOT="/mnt/backup_compose"
-        local DATE_STR=$(date +%Y%m%d_%H%M%S)
+        local DATE_STR
+        DATE_STR=$(date +%Y%m%d_%H%M%S)
         local BACKUP_DIR="${BACKUP_ROOT}/compose_backup_${DATE_STR}"
         mkdir -p "$BACKUP_DIR"
 
@@ -45889,7 +46229,8 @@ echo -e "${gl_bai}工作目录: ${gl_huang}$WORKDIR${gl_bai}"
 EOF
 
         for project_rel_path in "${found_projects[@]}"; do
-            local project_name=$(basename "$project_rel_path")
+            local project_name
+            project_name=$(basename "$project_rel_path")
             if [[ "$project_name" == "." ]]; then
                 project_name=$(basename "$COMPOSE_WORK_DIR")
             fi
@@ -45935,7 +46276,8 @@ EOF
 EOF
 
         for i in "${!found_projects[@]}"; do
-            local proj_name=$(basename "${found_projects[i]}")
+            local proj_name
+            proj_name=$(basename "${found_projects[i]}")
             if [[ "$proj_name" == "." ]]; then
                 proj_name=$(basename "$COMPOSE_WORK_DIR")
             fi
@@ -46041,7 +46383,8 @@ EOF
         for tar in "$BACKUP_DIR"/*.tar.gz; do
             [[ ! -f "$tar" ]] && continue
             [[ "$(basename "$tar")" == .*.tar.gz ]] && continue
-            local project_name=$(basename "$tar" .tar.gz)
+            local project_name
+            project_name=$(basename "$tar" .tar.gz)
             [[ -z "$project_name" ]] && continue
             local target_dir="/compose/$project_name"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -46146,7 +46489,7 @@ EOF
         read -r -e -p "$(echo -e "${gl_bai}目标服务器 SSH 端口 [默认 ${gl_huang}22${gl_bai}]: ")" TARGET_PORT
         TARGET_PORT=${TARGET_PORT:-22}
 
-        read -s -p "$(echo -e "${gl_bai}目标服务器 ${gl_huang}${TARGET_USER} ${gl_bai}密码: ")" SSHPASS
+        read -r -s -p "$(echo -e "${gl_bai}目标服务器 ${gl_huang}${TARGET_USER} ${gl_bai}密码: ")" SSHPASS
         echo
         export SSHPASS
 
@@ -46170,7 +46513,8 @@ EOF
             return 1
         fi
 
-        local backup_base_name=$(basename "$BACKUP_DIR")
+        local backup_base_name
+        backup_base_name=$(basename "$BACKUP_DIR")
         if sshpass -e scp -o StrictHostKeyChecking=no -P "$TARGET_PORT" -r \
             "$BACKUP_DIR" "${TARGET_USER}@${TARGET_IP}:${target_backup_dir}/" 2>/dev/null; then
             log_ok "备份传输完成"
@@ -46339,8 +46683,10 @@ docker_image_backup_tools() {
 
         for backup_dir in "${list[@]}"; do
             if [[ -f "${backup_dir}/manifest.json" ]]; then
-                local img_count=$(jq '.images | length' "${backup_dir}/manifest.json" 2>/dev/null || echo "?")
-                local backup_size=$(du -sh "${backup_dir}" 2>/dev/null | cut -f1 || echo "未知")
+                local img_count
+                img_count=$(jq '.images | length' "${backup_dir}/manifest.json" 2>/dev/null || echo "?")
+                local backup_size
+                backup_size=$(du -sh "${backup_dir}" 2>/dev/null | cut -f1 || echo "未知")
                 echo -e "${gl_bai}备份 ${gl_huang}$(basename "${backup_dir}")${gl_bai}: ${gl_zi}${img_count}${gl_bai} 个镜像, ${gl_lv}${backup_size}${gl_bai}"
             fi
         done
@@ -46362,7 +46708,8 @@ docker_image_backup_tools() {
         fi
 
         local BACKUP_ROOT="/mnt/backup_images"
-        local DATE_STR=$(date +%Y%m%d_%H%M%S)
+        local DATE_STR
+        DATE_STR=$(date +%Y%m%d_%H%M%S)
         local BACKUP_DIR="${BACKUP_ROOT}/images_backup_${DATE_STR}"
         mkdir -p "$BACKUP_DIR"
 
@@ -46505,7 +46852,8 @@ EOF
 
         for i in "${!images_to_backup[@]}"; do
             local image="${images_to_backup[i]}"
-            local safe_name=$(echo "$image" | sed 's/[\/:]/-/g' | sed 's/^-*//')
+            local safe_name
+            safe_name=$(echo "$image" | sed 's/[\/:]/-/g' | sed 's/^-*//')
             local backup_file="${safe_name}.tar"
 
             echo -e "${gl_bai}[$((i + 1))/${#images_to_backup[@]}] 备份: ${gl_huang}${image}${gl_bai}"
@@ -46531,7 +46879,8 @@ EOF
             fi
         done
 
-        local total_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
+        local total_size
+        total_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_lv}备份完成！${gl_bai}"
@@ -46610,8 +46959,8 @@ EOF
         if [[ -n "$latest_backup_name" ]]; then
             read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: ${gl_lv}$latest_backup_name${gl_bai})(${gl_huang}0${gl_bai}返回): ")" BACKUP_DIR
 
-            [[ -z "$BACKUP_DIR" ]] && { cancel_empty "上一级选单"; continue; }
-            [[ "$BACKUP_DIR" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ -z "$BACKUP_DIR" ]] && { cancel_empty "上一级选单"; return; }
+            [[ "$BACKUP_DIR" == "0" ]] && { cancel_return "上一级选单"; return; }
 
             if [[ -z "$BACKUP_DIR" ]]; then
                 BACKUP_DIR="$latest_backup"
@@ -46645,9 +46994,12 @@ EOF
             return 1
         fi
 
-        local img_count=$(jq '.images | length' "$BACKUP_DIR/manifest.json" 2>/dev/null || echo "0")
-        local backup_date=$(jq -r '.backup_date' "$BACKUP_DIR/manifest.json" 2>/dev/null || echo "未知")
-        local backup_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
+        local img_count
+        img_count=$(jq '.images | length' "$BACKUP_DIR/manifest.json" 2>/dev/null || echo "0")
+        local backup_date
+        backup_date=$(jq -r '.backup_date' "$BACKUP_DIR/manifest.json" 2>/dev/null || echo "未知")
+        local backup_size
+        backup_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bai}备份信息:${gl_bai}"
@@ -46670,7 +47022,7 @@ EOF
         read -r -e -p "$(echo -e "${gl_bai}目标服务器 SSH 端口 [默认 ${gl_huang}22${gl_bai}]: ")" TARGET_PORT
         TARGET_PORT=${TARGET_PORT:-22}
 
-        read -s -p "$(echo -e "${gl_bai}目标服务器 ${TARGET_USER} 密码: ")" SSHPASS
+        read -r -s -p "$(echo -e "${gl_bai}目标服务器 ${TARGET_USER} 密码: ")" SSHPASS
         echo
         export SSHPASS
 
@@ -46696,7 +47048,8 @@ EOF
         fi
 
         local target_backup_dir="/mnt/backup_images"
-        local backup_base_name=$(basename "$BACKUP_DIR")
+        local backup_base_name
+        backup_base_name=$(basename "$BACKUP_DIR")
 
         log_info "开始传输镜像备份到目标服务器 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -46708,7 +47061,8 @@ EOF
             return 1
         fi
 
-        local total_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
+        local total_size
+        total_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo "未知")
         echo -e "${gl_bai}传输大小: ${gl_huang}${total_size}${gl_bai}"
         echo -e "${gl_bai}目标路径: ${gl_huang}${TARGET_USER}@${TARGET_IP}:${target_backup_dir}/${backup_base_name}${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -46735,7 +47089,8 @@ EOF
         if sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
             "${TARGET_USER}@${TARGET_IP}" "test -f '${target_backup_dir}/${backup_base_name}/manifest.json'" 2>/dev/null; then
 
-            local remote_img_count=$(sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
+            local remote_img_count
+            remote_img_count=$(sshpass -e ssh -p "$TARGET_PORT" -o StrictHostKeyChecking=no \
                 "${TARGET_USER}@${TARGET_IP}" "jq '.images | length' '${target_backup_dir}/${backup_base_name}/manifest.json'" 2>/dev/null || echo "?")
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -46821,8 +47176,8 @@ EOF
         if [[ -n "$latest_backup_name" ]]; then
             read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: ${gl_lv}$latest_backup_name${gl_bai})(${gl_huang}0${gl_bai}返回): ")" BACKUP_DIR
 
-            [[ -z "$BACKUP_DIR" ]] && { cancel_empty "上一级选单"; continue; }
-            [[ "$BACKUP_DIR" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ -z "$BACKUP_DIR" ]] && { cancel_empty "上一级选单"; return; }
+            [[ "$BACKUP_DIR" == "0" ]] && { cancel_return "上一级选单"; return; }
 
             if [[ -z "$BACKUP_DIR" ]]; then
                 BACKUP_DIR="$latest_backup"
@@ -46881,7 +47236,8 @@ EOF
 
         echo -e "${gl_bai}找到 ${gl_huang}${#image_files[@]}${gl_bai} 个镜像文件:${gl_bai}"
         for i in "${!image_files[@]}"; do
-            local file_size=$(du -h "${image_files[i]}" 2>/dev/null | cut -f1 || echo "未知")
+            local file_size
+            file_size=$(du -h "${image_files[i]}" 2>/dev/null | cut -f1 || echo "未知")
             echo -e "${gl_huang}$((i + 1)).${gl_bai} $(basename "${image_files[i]}") (${gl_huang}${file_size}${gl_bai})"
         done
 
@@ -46917,7 +47273,7 @@ EOF
                 return
             fi
             ;;
-        0) cancel_return; break ;;
+        0) cancel_return; return ;;
         00 | 000 | 0000) exit_script ;;
         *) handle_invalid_input ;;
         esac
@@ -46930,7 +47286,8 @@ EOF
 
         for i in "${!files_to_load[@]}"; do
             local image_file="${files_to_load[i]}"
-            local filename=$(basename "$image_file")
+            local filename
+            filename=$(basename "$image_file")
 
             echo -e "${gl_bai}[$((i + 1))/${#files_to_load[@]}] 加载: ${gl_huang}${filename}${gl_bai}"
 
@@ -46987,8 +47344,10 @@ EOF
                 done
             fi
 
-            local total_images=$(docker images -q | wc -l)
-            local total_size=$(docker system df --format "{{.TotalSize}}" 2>/dev/null || echo "未知")
+            local total_images
+            total_images=$(docker images -q | wc -l)
+            local total_size
+            total_size=$(docker system df --format "{{.TotalSize}}" 2>/dev/null || echo "未知")
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
@@ -47038,8 +47397,10 @@ EOF
                     done
                 fi
 
-                local total_images=$(docker images -q | wc -l)
-                local total_size=$(docker system df --format "{{.TotalSize}}" 2>/dev/null || echo "未知")
+                local total_images
+                total_images=$(docker images -q | wc -l)
+                local total_size
+                total_size=$(docker system df --format "{{.TotalSize}}" 2>/dev/null || echo "未知")
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
                 echo -e ""
@@ -47055,7 +47416,8 @@ EOF
 
                         echo -e "${gl_bai}删除镜像: ${gl_huang}${repo}:${tag}${gl_bai} (${image_id})"
 
-                        local containers=$(docker ps -a -q --filter ancestor="$image_id")
+                        local containers
+                        containers=$(docker ps -a -q --filter ancestor="$image_id")
                         if [[ -n "$containers" ]]; then
                             echo -e "${gl_hong}警告: 有容器使用此镜像，请先删除容器${gl_bai}"
                             continue
@@ -47074,7 +47436,8 @@ EOF
                 ;;
             2)
                 echo -e "${gl_bai}正在查找悬空镜像 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                local dangling_images=$(docker images -f "dangling=true" -q)
+                local dangling_images
+                dangling_images=$(docker images -f "dangling=true" -q)
 
                 if [[ -z "$dangling_images" ]]; then
                     echo -e "${gl_huang}没有悬空镜像${gl_bai}"
@@ -47140,8 +47503,10 @@ EOF
                     done
                 fi
 
-                local total_images=$(docker images -q | wc -l)
-                local total_size=$(docker system df --format "{{.TotalSize}}" 2>/dev/null || echo "未知")
+                local total_images
+                total_images=$(docker images -q | wc -l)
+                local total_size
+                total_size=$(docker system df --format "{{.TotalSize}}" 2>/dev/null || echo "未知")
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
                 echo -e ""
@@ -47151,12 +47516,16 @@ EOF
 
                 if [[ "$export_num" =~ ^[0-9]+$ ]] && [[ $export_num -ge 1 ]] && [[ $export_num -le ${#ALL_IMAGES[@]} ]]; then
                     local image_info="${ALL_IMAGES[$((export_num - 1))]}"
-                    local repo=$(echo "$image_info" | grep -oP '^\S+')
-                    local tag=$(echo "$image_info" | grep -oP '\S+\s+\K\S+' | head -1)
+                    local repo
+                    repo=$(echo "$image_info" | grep -oP '^\S+')
+                    local tag
+                    tag=$(echo "$image_info" | grep -oP '\S+\s+\K\S+' | head -1)
                     local export_name="${repo}:${tag}"
 
-                    local safe_name=$(echo "$export_name" | sed 's/[^a-zA-Z0-9._-]/-/g')
-                    local export_file="/mnt/backup_images/${safe_name}_$(date +%Y%m%d_%H%M%S).tar"
+                    local safe_name
+                    safe_name="${export_name//[^a-zA-Z0-9._-]/-}"
+                    local export_file
+                    export_file="/mnt/backup_images/${safe_name}_$(date +%Y%m%d_%H%M%S).tar"
 
                     echo -e "${gl_bai}正在导出镜像: ${gl_huang}${export_name}${gl_bai}"
                     echo -e "${gl_bai}保存到: ${gl_huang}${export_file}${gl_bai}"
@@ -47205,9 +47574,12 @@ EOF
 
                 for i in "${!backup_files[@]}"; do
                     local file="${backup_files[i]}"
-                    local file_name=$(basename "$file")
-                    local file_size=$(du -h "$file" | cut -f1)
-                    local mod_time=$(stat -c "%y" "$file" | cut -d' ' -f1,2 | cut -d'.' -f1)
+                    local file_name
+                    file_name=$(basename "$file")
+                    local file_size
+                    file_size=$(du -h "$file" | cut -f1)
+                    local mod_time
+                    mod_time=$(stat -c "%y" "$file" | cut -d' ' -f1,2 | cut -d'.' -f1)
                     local file_num=$((i + 1))
 
                     printf "${gl_huang}%3d${gl_bai}\t%-8s\t%s\t${gl_lv}%s${gl_bai}\n" \
@@ -47229,8 +47601,10 @@ EOF
                 fi
 
                 local selected_file="${backup_files[$((file_num - 1))]}"
-                local file_size=$(du -h "$selected_file" | cut -f1)
-                local file_name=$(basename "$selected_file")
+                local file_size
+                file_size=$(du -h "$selected_file" | cut -f1)
+                local file_name
+                file_name=$(basename "$selected_file")
 
                 echo -e ""
                 echo -e "${gl_bai}选择的文件: ${gl_huang}${file_name}${gl_bai}"
@@ -47252,7 +47626,8 @@ EOF
                 done
                 echo -n "]"
 
-                local load_output=$(docker load -i "$selected_file" 2>&1)
+                local load_output
+                load_output=$(docker load -i "$selected_file" 2>&1)
                 local load_status=$?
 
                 echo -ne "\r\033[K"
@@ -47260,7 +47635,8 @@ EOF
                 if [[ $load_status -eq 0 ]]; then
                     echo -e "${gl_lv}✓ 镜像加载成功${gl_bai}"
 
-                    local loaded_image=$(echo "$load_output" | grep -oP "Loaded image: \K.*" || echo "")
+                    local loaded_image
+                    loaded_image=$(echo "$load_output" | grep -oP "Loaded image: \K.*" || echo "")
 
                     if [[ -n "$loaded_image" ]]; then
                         echo -e "${gl_bai}加载的镜像: ${gl_huang}${loaded_image}${gl_bai}"
@@ -47452,7 +47828,7 @@ stop_all_compose_projects() {
         done
     done
 
-    recommended_dirs=($(printf "%s\n" "${recommended_dirs[@]}" | sort -u))
+    mapfile -t recommended_dirs < <(printf "%s\n" "${recommended_dirs[@]}" | sort -u)
 
     if [[ ${#running_projects[@]} -gt 0 ]]; then
         echo -e "${gl_bai}扫描到运行中的 docker-compose 项目目录:${gl_bai}"
@@ -47487,7 +47863,8 @@ stop_all_compose_projects() {
         done
 
         if [[ -d "${preset_dirs[i]}" ]]; then
-            local compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
+            local compose_count
+            compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
             if [[ $compose_count -gt 0 ]]; then
                 dir_status="${gl_lv}[有 ${compose_count} 个项目]${gl_bai}"
             else
@@ -47563,7 +47940,8 @@ stop_all_compose_projects() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
-        local current_dir_name=$(basename "$(pwd)")
+        local current_dir_name
+        current_dir_name=$(basename "$(pwd)")
         echo -e "${gl_bai}停止项目: ${gl_huang}$current_dir_name${gl_bai} (当前目录)"
 
         if command -v docker-compose &>/dev/null; then
@@ -47587,7 +47965,8 @@ stop_all_compose_projects() {
             cd "$dir" 2>/dev/null || continue
 
             if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
-                local project_name=$(basename "$dir")
+                local project_name
+                project_name=$(basename "$dir")
                 echo -e "${gl_bai}停止项目: ${gl_huang}$project_name${gl_bai}"
 
                 if command -v docker-compose &>/dev/null; then
@@ -47664,7 +48043,7 @@ start_all_compose_projects() {
         fi
     done
 
-    all_projects=($(printf "%s\n" "${all_projects[@]}" | sort -u))
+    mapfile -t all_projects < <(printf "%s\n" "${all_projects[@]}" | sort -u)
 
     local running_projects=()
     if command -v docker &>/dev/null && docker info &>/dev/null; then
@@ -47757,7 +48136,8 @@ start_all_compose_projects() {
         done
 
         if [[ -d "${preset_dirs[i]}" ]]; then
-            local compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
+            local compose_count
+            compose_count=$(find "${preset_dirs[i]}" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) 2>/dev/null | wc -l)
             if [[ $compose_count -gt 0 ]]; then
                 local running_count=0
                 for project in "${running_projects[@]}"; do
@@ -47845,7 +48225,8 @@ start_all_compose_projects() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
-        local current_dir_name=$(basename "$(pwd)")
+        local current_dir_name
+        current_dir_name=$(basename "$(pwd)")
         echo -e "${gl_bai}启动项目: ${gl_huang}$current_dir_name${gl_bai} (当前目录)"
 
         if command -v docker-compose &>/dev/null; then
@@ -47871,7 +48252,8 @@ start_all_compose_projects() {
             cd "$dir" 2>/dev/null || continue
 
             if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
-                local project_name=$(basename "$dir")
+                local project_name
+                project_name=$(basename "$dir")
                 echo -e "${gl_bai}启动项目: ${gl_huang}$project_name${gl_bai}"
 
                 if command -v docker-compose &>/dev/null; then
@@ -47963,7 +48345,8 @@ detect_primary_gpu() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     for ((i = 0; i < ${#gpu_list[@]}; i++)); do
         local device="${gpu_list[$i]}"
-        local device_id=$(echo "$device" | awk '{print $1}')
+        local device_id
+        device_id=$(echo "$device" | awk '{print $1}')
 
         local device_type="未知"
         local device_desc=""
@@ -48047,10 +48430,14 @@ fnos_check_gpu_info() {
         return 1
     fi
 
-    local primary_info=$(echo "$gpu_info" | tail -1)
-    local vendor=$(echo "$primary_info" | cut -d'|' -f1)
-    local driver=$(echo "$primary_info" | cut -d'|' -f2)
-    local gpu_id=$(echo "$primary_info" | cut -d'|' -f3)
+    local primary_info
+    primary_info=$(echo "$gpu_info" | tail -1)
+    local vendor
+    vendor=$(echo "$primary_info" | cut -d'|' -f1)
+    local driver
+    driver=$(echo "$primary_info" | cut -d'|' -f2)
+    local gpu_id
+    gpu_id=$(echo "$primary_info" | cut -d'|' -f3)
 
     log_info "主GPU厂商: ${gl_lv}${vendor}${gl_bai}"
     if [[ -n "$gpu_id" ]]; then
@@ -48677,10 +49064,12 @@ fnos_handle_firmware_missing() {
     echo "$cmd_output"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    local has_bxtg_error=$(echo "$cmd_output" | grep -c "Possible missing firmware /lib/firmware/i915/bxtg_dmc.bin for module i915")
-    local has_skl_error=$(echo "$cmd_output" | grep -c "Possible missing firmware /lib/firmware/i915/skl_guc.bin for module i915")
+    local has_bxtg_error
+    has_bxtg_error=$(echo "$cmd_output" | grep -c "Possible missing firmware /lib/firmware/i915/bxtg_dmc.bin for module i915")
+    local has_skl_error
+    has_skl_error=$(echo "$cmd_output" | grep -c "Possible missing firmware /lib/firmware/i915/skl_guc.bin for module i915")
 
-    if [ $has_bxtg_error -gt 0 ] || [ $has_skl_error -gt 0 ]; then
+    if [ "$has_bxtg_error" -gt 0 ] || [ "$has_skl_error" -gt 0 ]; then
         log_warn "检测到固件文件缺失警告"
 
         echo -e "${gl_zi}>>> 固件缺失问题处理${gl_bai}"
@@ -48689,7 +49078,7 @@ fnos_handle_firmware_missing() {
         local default_url_bmg="https://dufs.mobufan.eu.org:666/fnos/i915/bmg_dmc.bin"
         local default_url_skl="https://dufs.mobufan.eu.org:666/fnos/i915/skl_guc.bin"
 
-        if [ $has_bxtg_error -gt 0 ]; then
+        if [ "$has_bxtg_error" -gt 0 ]; then
             log_info "需要处理固件: bxtg_dmc.bin"
             log_info "将使用 bmg_dmc.bin 替代下载"
             log_info "默认下载链接: ${default_url_bmg}"
@@ -48731,7 +49120,7 @@ fnos_handle_firmware_missing() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         fi
 
-        if [ $has_skl_error -gt 0 ]; then
+        if [ "$has_skl_error" -gt 0 ]; then
             log_info "需要处理固件: skl_guc.bin"
             log_info "默认下载链接: ${default_url_skl}"
             log_info "目标保存路径: /lib/firmware/i915/skl_guc.bin"
@@ -48860,9 +49249,11 @@ file_rename_sorter() {
 
     local rename_counter=1
     for old_path in "${moved_files[@]}"; do
-        local file=$(basename "$old_path")
+        local file
+        file=$(basename "$old_path")
 
-        local new_file=$(printf "%s-%03d.$file_type" "$prefix" "$rename_counter")
+        local new_file
+        new_file=$(printf "%s-%03d.$file_type" "$prefix" "$rename_counter")
 
         echo -e "  ${gl_huang}[$rename_counter/${#moved_files[@]}]${gl_bai} 重命名: ${gl_lv}$file${gl_bai} → ${gl_lv}$new_file${gl_bai}"
 
@@ -48906,7 +49297,8 @@ rename_original_images_pc() {
         log_info "正在使用前缀: ${gl_lv}$prefix${gl_bai}"
     fi
 
-    local temp_folder="temp_rename_folder_$(date +%s)_$RANDOM"
+    local temp_folder
+    temp_folder="temp_rename_folder_$(date +%s)_$RANDOM"
     log_info "创建临时文件夹: ${gl_lv}$temp_folder${gl_bai}"
 
     if ! mkdir -p "$temp_folder" 2>/dev/null; then
@@ -48988,7 +49380,8 @@ rename_original_images_pc() {
             continue
         fi
 
-        local filename=$(basename "$old_path")
+        local filename
+        filename=$(basename "$old_path")
         local ext="${filename##*.}"
         ext="${ext,,}" # 转换为小写扩展名
 
@@ -49006,7 +49399,8 @@ rename_original_images_pc() {
             continue
         fi
 
-        local new_filename=$(printf "%s-%03d.%s" "$prefix" "$counter" "$ext")
+        local new_filename
+        new_filename=$(printf "%s-%03d.%s" "$prefix" "$counter" "$ext")
 
         if [[ -e "./$new_filename" ]]; then
             log_warn "目标文件已存在，跳过: ${gl_huang}$new_filename${gl_bai}"
@@ -49027,7 +49421,8 @@ rename_original_images_pc() {
 
     log_info "正在清理临时文件夹 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     if [[ -d "$temp_folder" ]]; then
-        local remaining_files=$(ls -A "$temp_folder" 2>/dev/null | wc -l)
+        local remaining_files
+        remaining_files=$(ls -A "$temp_folder" 2>/dev/null | wc -l)
         if [[ $remaining_files -gt 0 ]]; then
             log_warn "临时文件夹中还有 ${gl_huang}$remaining_files${gl_bai} 个文件未处理"
             find "$temp_folder" -type f -exec mv -n -- "{}" ./ \; 2>/dev/null
@@ -49083,7 +49478,8 @@ rename_original_images_phone() {
         log_info "正在使用前缀: ${gl_lv}$prefix${gl_bai}"
     fi
 
-    local temp_folder="temp_rename_folder_$(date +%s)_$RANDOM"
+    local temp_folder
+    temp_folder="temp_rename_folder_$(date +%s)_$RANDOM"
     log_info "创建临时文件夹: ${gl_lv}$temp_folder${gl_bai}"
 
     if ! mkdir -p "$temp_folder" 2>/dev/null; then
@@ -49170,7 +49566,8 @@ rename_original_images_phone() {
             continue
         fi
 
-        local filename=$(basename "$old_path")
+        local filename
+        filename=$(basename "$old_path")
         local ext="${filename##*.}"
         ext="${ext,,}" # 转换为小写扩展名
 
@@ -49188,7 +49585,8 @@ rename_original_images_phone() {
             continue
         fi
 
-        local new_filename=$(printf "%s-%03d.%s" "$prefix" "$counter" "$ext")
+        local new_filename
+        new_filename=$(printf "%s-%03d.%s" "$prefix" "$counter" "$ext")
 
         if [[ -e "./$new_filename" ]]; then
             log_warn "目标文件已存在，跳过: ${gl_huang}$new_filename${gl_bai}"
@@ -49209,7 +49607,8 @@ rename_original_images_phone() {
 
     log_info "正在清理临时文件夹 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     if [[ -d "$temp_folder" ]]; then
-        local remaining_files=$(ls -A "$temp_folder" 2>/dev/null | wc -l)
+        local remaining_files
+        remaining_files=$(ls -A "$temp_folder" 2>/dev/null | wc -l)
         if [[ $remaining_files -gt 0 ]]; then
             log_warn "临时文件夹中还有 ${gl_huang}$remaining_files${gl_bai} 个文件未处理"
             find "$temp_folder" -type f -exec mv -n -- "{}" ./ \; 2>/dev/null
@@ -49276,9 +49675,12 @@ compare_phone_directories() {
     fi
 
     log_info "正在统计: ${gl_lv}${name1} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    local total_files1=$(find "$dir1" -type f 2>/dev/null | wc -l)
-    local total_size_mb1=$(du -sm "$dir1" 2>/dev/null | awk '{print $1}')
-    local total_size_gb1=$(echo "scale=2; $total_size_mb1 / 1024" | bc 2>/dev/null || echo "0")
+    local total_files1
+    total_files1=$(find "$dir1" -type f 2>/dev/null | wc -l)
+    local total_size_mb1
+    total_size_mb1=$(du -sm "$dir1" 2>/dev/null | awk '{print $1}')
+    local total_size_gb1
+    total_size_gb1=$(echo "scale=2; $total_size_mb1 / 1024" | bc 2>/dev/null || echo "0")
 
     if [[ -z "$total_files1" ]]; then
         total_files1=0
@@ -49290,9 +49692,12 @@ compare_phone_directories() {
     fi
 
     log_info "正在统计: ${gl_lv}${name2} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    local total_files2=$(find "$dir2" -type f 2>/dev/null | wc -l)
-    local total_size_mb2=$(du -sm "$dir2" 2>/dev/null | awk '{print $1}')
-    local total_size_gb2=$(echo "scale=2; $total_size_mb2 / 1024" | bc 2>/dev/null || echo "0")
+    local total_files2
+    total_files2=$(find "$dir2" -type f 2>/dev/null | wc -l)
+    local total_size_mb2
+    total_size_mb2=$(du -sm "$dir2" 2>/dev/null | awk '{print $1}')
+    local total_size_gb2
+    total_size_gb2=$(echo "scale=2; $total_size_mb2 / 1024" | bc 2>/dev/null || echo "0")
 
     if [[ -z "$total_files2" ]]; then
         total_files2=0
@@ -49304,8 +49709,10 @@ compare_phone_directories() {
     fi
 
     local file_diff=$((total_files1 - total_files2))
-    local size_diff_mb=$(echo "$total_size_mb1 - $total_size_mb2" | bc 2>/dev/null || echo "0")
-    local size_diff_gb=$(echo "scale=2; $size_diff_mb / 1024" | bc 2>/dev/null || echo "0")
+    local size_diff_mb
+    size_diff_mb=$(echo "$total_size_mb1 - $total_size_mb2" | bc 2>/dev/null || echo "0")
+    local size_diff_gb
+    size_diff_gb=$(echo "scale=2; $size_diff_mb / 1024" | bc 2>/dev/null || echo "0")
 
     echo ""
     log_info "对比结果 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -49407,9 +49814,12 @@ compare_pc_directories() {
     fi
 
     log_info "正在统计: ${gl_lv}${name1} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    local total_files1=$(find "$dir1" -type f 2>/dev/null | wc -l)
-    local total_size_mb1=$(du -sm "$dir1" 2>/dev/null | awk '{print $1}')
-    local total_size_gb1=$(echo "scale=2; $total_size_mb1 / 1024" | bc 2>/dev/null || echo "0")
+    local total_files1
+    total_files1=$(find "$dir1" -type f 2>/dev/null | wc -l)
+    local total_size_mb1
+    total_size_mb1=$(du -sm "$dir1" 2>/dev/null | awk '{print $1}')
+    local total_size_gb1
+    total_size_gb1=$(echo "scale=2; $total_size_mb1 / 1024" | bc 2>/dev/null || echo "0")
 
     if [[ -z "$total_files1" ]]; then
         total_files1=0
@@ -49421,9 +49831,12 @@ compare_pc_directories() {
     fi
 
     log_info "正在统计: ${gl_lv}${name2} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    local total_files2=$(find "$dir2" -type f 2>/dev/null | wc -l)
-    local total_size_mb2=$(du -sm "$dir2" 2>/dev/null | awk '{print $1}')
-    local total_size_gb2=$(echo "scale=2; $total_size_mb2 / 1024" | bc 2>/dev/null || echo "0")
+    local total_files2
+    total_files2=$(find "$dir2" -type f 2>/dev/null | wc -l)
+    local total_size_mb2
+    total_size_mb2=$(du -sm "$dir2" 2>/dev/null | awk '{print $1}')
+    local total_size_gb2
+    total_size_gb2=$(echo "scale=2; $total_size_mb2 / 1024" | bc 2>/dev/null || echo "0")
 
     if [[ -z "$total_files2" ]]; then
         total_files2=0
@@ -49435,8 +49848,10 @@ compare_pc_directories() {
     fi
 
     local file_diff=$((total_files1 - total_files2))
-    local size_diff_mb=$(echo "$total_size_mb1 - $total_size_mb2" | bc 2>/dev/null || echo "0")
-    local size_diff_gb=$(echo "scale=2; $size_diff_mb / 1024" | bc 2>/dev/null || echo "0")
+    local size_diff_mb
+    size_diff_mb=$(echo "$total_size_mb1 - $total_size_mb2" | bc 2>/dev/null || echo "0")
+    local size_diff_gb
+    size_diff_gb=$(echo "scale=2; $size_diff_mb / 1024" | bc 2>/dev/null || echo "0")
 
     echo ""
     log_info "对比结果 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -49610,7 +50025,8 @@ wallpaper_pc_organizer_ffmpeg() {
                 [[ -f "$file" ]] || continue
                 total=$((total + 1))
 
-                local filename=$(basename "$file")
+                local filename
+                filename=$(basename "$file")
                 local name="${filename%.*}"
 
                 local output_file="${LANDSCAPE_DIR}/${name}.webp"
@@ -49807,7 +50223,8 @@ wallpaper_phone_organizer_ffmpeg() {
                 [[ -f "$file" ]] || continue
                 total=$((total + 1))
 
-                local filename=$(basename "$file")
+                local filename
+                filename=$(basename "$file")
                 local name="${filename%.*}"
 
                 local output_file="${LANDSCAPE_DIR}/${name}.webp"
@@ -49910,7 +50327,6 @@ wallpaper_pc_organizer_python() {
     local BACKUP_DIR="/vol2/1000/阿里云盘/教程文件/壁纸原图/电脑原图" # 壁纸原图目录
     local LANDSCAPE_DIR="$SCRIPT_DIR/landscape"       # 壁纸目录
     local PORTRAIT_DIR="$SCRIPT_DIR/portrait"         # 竖屏图片目录
-    local UNCLASSIFIED_DIR="$SCRIPT_DIR/unclassified" # 未分类目录
 
     local GITEE_SCRIPT_BASE_URL="https://gitee.com/meimolihan/script/raw/master/wallpaper/pc"
 
@@ -50031,7 +50447,8 @@ wallpaper_pc_organizer_python() {
         local file_count=${#files[@]}
 
         for ((i = 0; i < file_count; i++)); do
-            local filename=$(basename "${files[i]}")
+            local filename
+            filename=$(basename "${files[i]}")
             echo -e "  ${gl_huang}[$((i + 1))/$file_count]${gl_bai} 待处理: ${gl_lv}$filename${gl_bai}"
         done
 
@@ -50047,6 +50464,11 @@ wallpaper_pc_organizer_python() {
 
         if python3 classify.py; then
             log_ok "Python分类完成"
+
+            # 分类数量由外部 classify.py 产出，本函数无可靠来源，统一初始化为 0
+            local landscape_count=0
+            local portrait_count=0
+            local unclassified_count=0
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             log_ok "壁纸分类完成"
@@ -50135,7 +50557,6 @@ wallpaper_phone_organizer_python() {
     local BACKUP_DIR="/vol2/1000/阿里云盘/教程文件/壁纸原图/手机原图"      # 壁纸原图目录
     local PORTRAIT_DIR="$SCRIPT_DIR/portrait"                           # 竖屏图片目录
     local LANDSCAPE_DIR="$SCRIPT_DIR/landscape"                         # 横屏图片目录
-    local UNCLASSIFIED_DIR="$SCRIPT_DIR/unclassified"                   # 未分类目录
 
     local GITEE_SCRIPT_BASE_URL="https://gitee.com/meimolihan/script/raw/master/wallpaper/phone"
 
@@ -50240,7 +50661,8 @@ wallpaper_phone_organizer_python() {
         local file_count=${#files[@]}
 
         for ((i = 0; i < file_count; i++)); do
-            local filename=$(basename "${files[i]}")
+            local filename
+            filename=$(basename "${files[i]}")
             echo -e "  ${gl_huang}[$((i + 1))/$file_count]${gl_bai} 待处理: ${gl_lv}$filename${gl_bai}"
         done
 
@@ -50256,6 +50678,11 @@ wallpaper_phone_organizer_python() {
 
         if python3 classify.py; then
             log_ok "Python分类完成"
+
+            # 分类数量由外部 classify.py 产出，本函数无可靠来源，统一初始化为 0
+            local landscape_count=0
+            local portrait_count=0
+            local unclassified_count=0
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             log_ok "手机壁纸分类完成"
@@ -50379,7 +50806,7 @@ wallpaper_phone_original_sorter() {
 # 上传本地壁纸文件函数
 wallpaper_upload_local() {
     clear
-    cd /vol1/1000/compose/random-pic-api/photos
+    cd /vol1/1000/compose/random-pic-api/photos || return
     list_dir_colorful 0 4
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e ""
@@ -50565,10 +50992,14 @@ check_and_install_docker() {
 show_docker_global_status() {
     check_and_install_docker || return 1
     clear
-    local container_count=$(docker ps -a -q 2>/dev/null | wc -l)
-    local image_count=$(docker images -q 2>/dev/null | wc -l)
-    local network_count=$(docker network ls -q 2>/dev/null | wc -l)
-    local volume_count=$(docker volume ls -q 2>/dev/null | wc -l)
+    local container_count
+    container_count=$(docker ps -a -q 2>/dev/null | wc -l)
+    local image_count
+    image_count=$(docker images -q 2>/dev/null | wc -l)
+    local network_count
+    network_count=$(docker network ls -q 2>/dev/null | wc -l)
+    local volume_count
+    volume_count=$(docker volume ls -q 2>/dev/null | wc -l)
 
     echo -e ""
     echo -e "${gl_zi}>>> Docker全局状态${gl_bai}"
@@ -50749,7 +51180,7 @@ docker_volume_manager() {
                         ;;
                     [Nn]) ;;
                     0) cancel_return; return 1 ;;
-                    *) handle_y_n ;;  *) handle_invalid_input ;;
+                    *) handle_y_n ;;
                 esac
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
@@ -50773,7 +51204,7 @@ docker_system_prune() {
             docker system prune -af --volumes
             ;;
         [Nn]) ;;
-        *) handle_y_n ;;*) handle_invalid_input ;;
+        *) handle_y_n ;;
     esac
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -50806,8 +51237,7 @@ clone_docker_repo() {
 
         case "$create_choice" in
             y | Y | yes | YES)
-                mkdir -p "$work_dir"
-                if [ $? -eq 0 ]; then
+                if mkdir -p "$work_dir"; then
                     echo -e "${gl_lv}目录创建成功: $work_dir${gl_bai}"
                 else
                     echo -e "${gl_hong}目录创建失败: $work_dir${gl_bai}"
@@ -50857,7 +51287,7 @@ docker_compose_manager() {
                     echo -e "${gl_hong}已取消安装Docker，退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
                     return 1
                     ;;
-                *) handle_y_n ;;*) handle_invalid_input ;;
+                *) handle_y_n ;;
             esac
         done
     fi
@@ -50878,9 +51308,9 @@ docker_compose_manager() {
     clear
 
     case $(get_internal_ip | tr -d '[:space:]') in
-        10.10.10.251) cd /vol1/1000/compose ;;
-        10.10.10.246) cd /mnt/compose ;;
-        10.10.10.239) cd /mnt/compose ;;
+        10.10.10.251) cd /vol1/1000/compose || return ;;
+        10.10.10.246) cd /mnt/compose || return ;;
+        10.10.10.239) cd /mnt/compose || return ;;
         *) : ;;
     esac
 
@@ -51065,7 +51495,8 @@ auto_download_extract() {
         return 1
     }
 
-    local filename=$(basename "$url")
+    local filename
+    filename=$(basename "$url")
     local filepath="./$filename"
 
     echo -e "${gl_bai}正在下载: ${gl_huang}$filename${gl_bai}"
@@ -51205,7 +51636,7 @@ auto_download_extract() {
 
 # 下载Docker项目
 download_docker_repo() {
-    cd /vol1/1000/compose
+    cd /vol1/1000/compose || return
     echo -e ""
     echo -e "${gl_zi}>>> 下载Docker项目${gl_bai}"
     echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
@@ -51231,8 +51662,7 @@ download_docker_repo() {
 
         case "$create_choice" in
             y | Y | yes | YES)
-                mkdir -p "$work_dir"
-                if [ $? -eq 0 ]; then
+                if mkdir -p "$work_dir"; then
                     echo -e "${gl_lv}目录创建成功: $work_dir${gl_bai}"
                 else
                     echo -e "${gl_hong}目录创建失败: $work_dir${gl_bai}"
@@ -51240,7 +51670,7 @@ download_docker_repo() {
                     return 1
                 fi
                 ;;
-            *) handle_y_n ;;*) handle_invalid_input ;;
+            *) handle_y_n ;;
         esac
     fi
 
@@ -51492,7 +51922,8 @@ init_log_file() {
     local backup_dest_dir="$1"
     local logs_dir="${backup_dest_dir}/logs"
     mkdir -p "$logs_dir"
-    local timestamp=$(date +"%Y-%m-%d-%H-%M-%S")
+    local timestamp
+    timestamp=$(date +"%Y-%m-%d-%H-%M-%S")
     local log_file="${logs_dir}/${timestamp}.log"
     touch "$log_file"
     echo "$log_file"
@@ -51523,7 +51954,8 @@ write_log_footer() {
 get_human_size() {
     local file_path="$1"
     if [[ -f "$file_path" ]]; then
-        local size_bytes=$(stat -c%s "$file_path" 2>/dev/null || stat -f%z "$file_path" 2>/dev/null)
+        local size_bytes
+        size_bytes=$(stat -c%s "$file_path" 2>/dev/null || stat -f%z "$file_path" 2>/dev/null)
         if [[ -n "$size_bytes" ]]; then
             numfmt --to=iec-i --suffix=B "$size_bytes" 2>/dev/null || echo "${size_bytes}B"
         else
@@ -51539,12 +51971,13 @@ backup_compose_project() {
         install_trash
     fi
 
-    cd /vol1/1000/compose
+    cd /vol1/1000/compose || return
 
     local BACKUP_TEMP_DIR="/tmp"
     local BACKUP_DEST_DIR="/vol2/1000/file/myfile/compose/downloads"
     local LOG_FILE=""
-    local SCRIPT_START_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+    local SCRIPT_START_TIME
+    SCRIPT_START_TIME=$(date +"%Y-%m-%d %H:%M:%S")
     local BACKUP_TYPE=""
 
     mkdir -p "$BACKUP_DEST_DIR" || {
@@ -51627,7 +52060,8 @@ backup_compose_project() {
         if [[ "$choice" == "666" ]]; then
             backup_all_compose_projects "$LOG_FILE" "${list[@]}"
 
-            local SCRIPT_END_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+            local SCRIPT_END_TIME
+            SCRIPT_END_TIME=$(date +"%Y-%m-%d %H:%M:%S")
             write_log_footer "$LOG_FILE" "$SCRIPT_END_TIME" "$LOG_FILE"
 
             echo -e ""
@@ -51673,7 +52107,8 @@ backup_compose_project() {
 
         backup_single_compose_project "$target" "$format" "$BACKUP_TEMP_DIR" "$BACKUP_DEST_DIR" "$LOG_FILE" "false"
 
-        local SCRIPT_END_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+        local SCRIPT_END_TIME
+        SCRIPT_END_TIME=$(date +"%Y-%m-%d %H:%M:%S")
         write_log_footer "$LOG_FILE" "$SCRIPT_END_TIME" "$LOG_FILE"
 
         echo -e ""
@@ -51692,11 +52127,13 @@ backup_single_compose_project() {
     local log_file="$5"
     local is_batch_backup="${6:-false}"
 
-    local target_name=$(basename "$target")
+    local target_name
+    target_name=$(basename "$target")
     local backup_name="${target_name}.${format}"
     local temp_backup_path="$BACKUP_TEMP_DIR/$backup_name"
     local final_backup_path="$BACKUP_DEST_DIR/$backup_name"
-    local source_abs_path=$(cd "$(dirname "$target")" && pwd)/$(basename "$target")
+    local source_abs_path
+    source_abs_path=$(cd "$(dirname "$target")" && pwd)/$(basename "$target")
 
     echo -e ""
     echo -e "${gl_huang}>>> 开始备份: ${gl_lv}$target_name   ${gl_huang}格式: ${gl_lv}$format${gl_bai}"
@@ -51744,7 +52181,8 @@ backup_single_compose_project() {
     echo -e "${gl_bai}正在移动备份文件到目标目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
     if mv -f "$temp_backup_path" "$final_backup_path" 2>/dev/null; then
-        local file_size=$(get_human_size "$final_backup_path")
+        local file_size
+        file_size=$(get_human_size "$final_backup_path")
         echo -e "${gl_lv}备份完成！${gl_bai}"
         echo -e "${gl_bai}备份文件: ${gl_huang}$final_backup_path${gl_bai}"
         echo -e "${gl_bai}文件大小: ${gl_lv}$file_size${gl_bai}"
@@ -51839,7 +52277,7 @@ backup_all_compose_projects() {
 
 # 推送Compose项目
 git_project_manager() {
-    cd /vol1/1000/compose
+    cd /vol1/1000/compose || return
     local base_path="${1:-$(pwd)}"
     if [[ ! -d $base_path ]]; then
         echo -e ""
@@ -51896,7 +52334,7 @@ git_project_manager() {
             }
             log_ok "已选择项目：$selected_project，开始推送 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             git_safe_push
-            cd "$base_path"
+            cd "$base_path" || return
             ;;
         esac
     done
@@ -51994,7 +52432,7 @@ fnos_enable_bbr() {
             log_info "操作已取消"
             return 0
             ;;
-        *) handle_y_n ;;*) handle_invalid_input ;;
+        *) handle_y_n ;;
     esac
 
     echo ""
@@ -52019,9 +52457,11 @@ fnos_enable_bbr() {
         sed -i '/^net\.core\.default_qdisc=fq_codel$/d' /etc/sysctl.conf
     fi
 
-    echo -e "\n# BBR TCP Congestion Control Configuration" >> /etc/sysctl.conf
-    echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
-    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+    {
+        echo -e "\n# BBR TCP Congestion Control Configuration"
+        echo "net.core.default_qdisc=fq"
+        echo "net.ipv4.tcp_congestion_control=bbr"
+    } >> /etc/sysctl.conf
 
     log_ok "BBR 配置已写入 /etc/sysctl.conf"
 
@@ -52261,7 +52701,7 @@ linux_fnos_menu() {
         8)  docker_system_prune ;;                                          # 清理镜像容器网络
         9)  stop_all_compose_projects ;;                                    # Compose停止所有
         10) start_all_compose_projects ;;                                   # Compose启动所有
-        11) is_fnos_system || continue && cd /vol1/1000/compose; git_project_manager ;; # 推送Compose项目
+        11) is_fnos_system || continue && cd /vol1/1000/compose || return; git_project_manager ;; # 推送Compose项目
         12) clone_docker_repo ;;                                            # 克隆Compose项目
         13) backup_compose_project ;;                                       # 备份Compose项目
         14) download_docker_repo ;;                                         # 恢复Compose项目
@@ -52491,7 +52931,8 @@ view_nginx_status() {
         return
     fi
 
-    local ver=$(nginx -v 2>&1 | grep -oP 'nginx/\K[^ ]+')
+    local ver
+    ver=$(nginx -v 2>&1 | grep -oP 'nginx/\K[^ ]+')
 
     if ! command -v systemctl &>/dev/null; then
         if pgrep -x nginx &>/dev/null; then
@@ -52502,7 +52943,8 @@ view_nginx_status() {
         return
     fi
 
-    local active=$(systemctl is-active nginx 2>/dev/null)
+    local active
+    active=$(systemctl is-active nginx 2>/dev/null)
     case "$active" in
     active)
         local t sec day hr min
@@ -52685,7 +53127,8 @@ check_port_80_usage() {
     echo -e ""
     echo -e "${gl_zi}>>> 当前 ${gl_huang}80${gl_bai} 端口占用情况 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    local res=$(ss -tulnp | grep -E ':(80)\s')
+    local res
+    res=$(ss -tulnp | grep -E ':(80)\s')
 
     if [[ -n "$res" ]]; then
         echo -e "$res"
@@ -52836,16 +53279,16 @@ install_nginx() {
 
     rm -f /etc/nginx/nginx.conf /etc/nginx/sites-enabled/default
 
-    cd /etc/nginx
+    cd /etc/nginx || return
     wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/nginx.conf
 
-    cd /etc/nginx/sites-enabled
+    cd /etc/nginx/sites-enabled || return
     wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/sites-enabled/default
 
-    mkdir -pm 755 /etc/nginx/html && cd /etc/nginx/html
+    mkdir -pm 755 /etc/nginx/html && cd /etc/nginx/html || return
     wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/html/index.html
 
-    mkdir -pm 755 /etc/nginx/keyfile && cd /etc/nginx/keyfile
+    mkdir -pm 755 /etc/nginx/keyfile && cd /etc/nginx/keyfile || return
     wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/keyfile/mobufan.eu.org.pem
     wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/keyfile/mobufan.eu.org.key
 
@@ -52856,7 +53299,8 @@ install_nginx() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     nginx -t && systemctl restart nginx
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    local internal_ip=$(get_internal_ip)
+    local internal_ip
+    internal_ip=$(get_internal_ip)
     if [ -n "$internal_ip" ]; then
         log_ok "Nginx 测试页面：${gl_lv}http://${internal_ip}${gl_bai}"
     else
@@ -53013,8 +53457,8 @@ git_safe_push() {
 
     if [[ -z "$status_output" ]]; then
         local ahead_count=0
-        if git rev-parse @{u} >/dev/null 2>&1; then
-            ahead_count=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+        if git rev-parse '@{u}' >/dev/null 2>&1; then
+            ahead_count=$(git rev-list --count '@{u}'..HEAD 2>/dev/null || echo 0)
         fi
 
         if [[ "$ahead_count" -gt 0 ]]; then
@@ -53053,9 +53497,8 @@ git_safe_push() {
 
         if [[ "$has_unstaged_changes" == true ]] || [[ "$has_untracked_files" == true ]]; then
             log_info "正在添加所有未跟踪/修改的文件到暂存区 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            git add .
 
-            if [[ $? -ne 0 ]]; then
+            if ! git add .; then
                 log_error "添加文件失败"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
@@ -53072,9 +53515,8 @@ git_safe_push() {
 
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             log_info "正在提交更改 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            git commit -m "update $(date '+%Y-%m-%d %H:%M:%S')"
 
-            if [[ $? -ne 0 ]]; then
+            if ! git commit -m "update $(date '+%Y-%m-%d %H:%M:%S')"; then
                 log_error "提交失败，请检查 Git 状态。"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
@@ -53084,14 +53526,13 @@ git_safe_push() {
     fi
 
     local ahead_count=0
-    if git rev-parse @{u} >/dev/null 2>&1; then
-        ahead_count=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+    if git rev-parse '@{u}' >/dev/null 2>&1; then
+        ahead_count=$(git rev-list --count '@{u}'..HEAD 2>/dev/null || echo 0)
     fi
 
     if [[ "$ahead_count" -gt 0 ]]; then
         log_info "正在推送到远程仓库 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        git push
-        if [[ $? -ne 0 ]]; then
+        if ! git push; then
             log_error "推送失败，请检查网络连接或远程仓库配置。"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
@@ -53126,7 +53567,8 @@ git_safe_pull() {
         }
     fi
 
-    local upstream_branch=$(git rev-parse --abbrev-ref "@{upstream}" 2>/dev/null)
+    local upstream_branch
+    upstream_branch=$(git rev-parse --abbrev-ref "@{upstream}" 2>/dev/null)
 
     echo -e ""
     echo -e "${gl_zi}>>> 拉取当前项目更新${gl_bai}"
@@ -53162,7 +53604,8 @@ git_safe_pull() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     log_info "检查工作目录状态 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    local status_output=$(git status --short 2>/dev/null)
+    local status_output
+    status_output=$(git status --short 2>/dev/null)
     if [[ -n "$status_output" ]]; then
         echo -e "${gl_bai}当前有未提交的更改:${gl_bai}"
         echo -e "${status_output}" | while IFS= read -r line; do
@@ -53222,7 +53665,7 @@ git_safe_pull() {
         return 5
     }
 
-    base_commit=$(git merge-base @ @{u}) || {
+    base_commit=$(git merge-base @ '@{u}') || {
         log_error "无法计算合并基础"
         return 6
     }
@@ -53355,7 +53798,7 @@ show_git_project_menu() {
             }
             log_ok "已选择项目：$selected_project"
             linux_git_menu
-            cd "$base_path"
+            cd "$base_path" || return
             ;;
         esac
     done
@@ -53672,7 +54115,8 @@ fix_git_safe_directories() {
         "/vol2/1000/compose"
     )
 
-    local safe_dirs_list=$(git config --global --get-all safe.directory 2>/dev/null)
+    local safe_dirs_list
+    safe_dirs_list=$(git config --global --get-all safe.directory 2>/dev/null)
 
     log_info "正在扫描所有 Git 仓库 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
@@ -53682,7 +54126,8 @@ fix_git_safe_directories() {
         if [[ -d "$preset_dir" ]]; then
             while IFS= read -r git_dir; do
                 [[ -z "$git_dir" ]] && continue
-                local repo_dir=$(dirname "$git_dir")
+                local repo_dir
+                repo_dir=$(dirname "$git_dir")
                 all_git_repos+=("$repo_dir")
             done < <(find "$preset_dir" -name ".git" -type d 2>/dev/null)
         fi
@@ -53711,7 +54156,8 @@ fix_git_safe_directories() {
 
     echo -e "${gl_bai}扫描到以下 Git 仓库:${gl_bai}"
     for repo in "${all_git_repos[@]}"; do
-        local repo_name=$(basename "$repo")
+        local repo_name
+        repo_name=$(basename "$repo")
         if echo "$safe_dirs_list" | grep -Fxq "$repo"; then
             echo -e "  ${gl_lv}●${gl_bai} ${gl_lv}${repo_name}${gl_bai} ${gl_lv}[已是安全目录]${gl_bai}"
         else
@@ -53769,7 +54215,8 @@ fix_git_safe_directories() {
     done
 
     for repo in "${all_git_repos[@]}"; do
-        local repo_name=$(basename "$repo")
+        local repo_name
+        repo_name=$(basename "$repo")
         if echo "$safe_dirs_list" | grep -Fxq "$repo"; then
             menu_options+=("${gl_huang}$repo_name ${gl_bai}[${gl_lv}已是安全目录${gl_bai}]${gl_bai}")
         else
@@ -53877,7 +54324,8 @@ fix_git_safe_directories() {
 
     for i in "${!target_repos[@]}"; do
         local repo_dir="${target_repos[i]}"
-        local repo_name=$(basename "$repo_dir")
+        local repo_name
+        repo_name=$(basename "$repo_dir")
 
         echo -e "正在处理 [${gl_huang}$((i + 1))/${#target_repos[@]}${gl_bai}]: ${gl_huang}$repo_name${gl_bai}"
         echo -e "  路径: ${gl_bai}$repo_dir${gl_bai}"
@@ -53977,7 +54425,8 @@ clone_repository() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bai}当前目录下的子目录: ${gl_bai}(${gl_bufan}序号选择目录${gl_bai})${gl_bai}"
     local dir_list=()
-    local current_path="$(pwd)"
+    local current_path
+    current_path="$(pwd)"
 
     if ! show_directory_list "$current_path" 4 false true dir_list; then
         echo -e "${gl_huang}当前目录没有可用的子目录${gl_bai}"
@@ -54014,8 +54463,7 @@ clone_repository() {
         read -r -e -p "$(echo -e "${gl_bai}是否创建此目录?  (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" create_choice
         case "$create_choice" in
         y | Y | yes | YES)
-            mkdir -p "$work_dir"
-            if [ $? -eq 0 ]; then
+            if mkdir -p "$work_dir"; then
                 echo -e "${gl_lv}目录创建成功: $work_dir${gl_bai}"
             else
                 echo -e "${gl_hong}目录创建失败: $work_dir${gl_bai}"
@@ -54053,8 +54501,7 @@ clone_compose_repositories() {
 
         case "$create_choice" in
         y | Y | yes | YES)
-            mkdir -p "$work_dir"
-            if [ $? -eq 0 ]; then
+            if mkdir -p "$work_dir"; then
                 echo -e "${gl_lv}目录创建成功: $work_dir${gl_bai}"
             else
                 echo -e "${gl_hong}目录创建失败: $work_dir${gl_bai}"
@@ -54174,8 +54621,7 @@ git_nuke_history() {
     echo -e "   清理前 .git 目录大小: ${gl_huang}$BEFORE_SIZE${gl_bai}"
 
     log_info "[2/6] 创建孤立分支 (orphan branch) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    git checkout --orphan __temp_clean_branch__
-    if [ $? -ne 0 ]; then
+    if ! git checkout --orphan __temp_clean_branch__; then
         log_error "创建孤立分支失败"
         git checkout "$CURRENT_BRANCH" 2>/dev/null || true
         return 1
@@ -54202,8 +54648,7 @@ git_nuke_history() {
 
     if [ "$DO_PUSH" = true ]; then
         log_info "[5/6] 强制推送到远程仓库. ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}.."
-        git push -f "$REMOTE_NAME" "$CURRENT_BRANCH"
-        if [ $? -ne 0 ]; then
+        if ! git push -f "$REMOTE_NAME" "$CURRENT_BRANCH"; then
             log_error "推送到远程失败"
             log_warn "本地分支已清理，但远程未同步"
         else
@@ -54432,7 +54877,8 @@ linux_git_menu() {
 
 ## 回收站功能
 check_rm_redirect_silent() {
-    local user_shell=$(basename "$SHELL")
+    local user_shell
+    user_shell=$(basename "$SHELL")
     local config_file=""
 
     case "$user_shell" in
@@ -54461,7 +54907,8 @@ show_trash_contents_and_stats() {
         return
     fi
 
-    local trash_json=$(get_trash_list)
+    local trash_json
+    trash_json=$(get_trash_list)
     local item_count=0
     local total_files=0
     local total_dirs=0
@@ -54496,7 +54943,8 @@ show_trash_contents_and_stats() {
             if [[ -d "$trash_dir" ]]; then
                 for item in "$trash_dir"/*; do
                     if [[ -e "$item" ]]; then
-                        local filename=$(basename "$item")
+                        local filename
+                        filename=$(basename "$item")
                         files+=("$index. $filename")
                         ((index++))
                         ((actual_items++))
@@ -54506,7 +54954,8 @@ show_trash_contents_and_stats() {
         elif [[ "$TRASH_CMD" == "trash-put" ]] && command -v trash-list &>/dev/null; then
             while IFS= read -r line; do
                 if [[ -n "$line" ]]; then
-                    local filename=$(echo "$line" | awk '{$1=$2=""; print substr($0,3)}' | sed 's/^ *//' | xargs basename)
+                    local filename
+                    filename=$(echo "$line" | awk '{$1=$2=""; print substr($0,3)}' | sed 's/^ *//' | xargs basename)
                     files+=("$index. $filename")
                     ((index++))
                     ((actual_items++))
@@ -54636,9 +55085,11 @@ show_trash_contents_and_stats() {
             fi
         else
             if command -v trash-list &>/dev/null; then
-                local trash_output=$(trash-list 2>/dev/null)
+                local trash_output
+                trash_output=$(trash-list 2>/dev/null)
                 if [[ -n "$trash_output" ]]; then
-                    local line_count=$(echo "$trash_output" | wc -l)
+                    local line_count
+                    line_count=$(echo "$trash_output" | wc -l)
                     echo -e "  ${gl_bufan}项目总数:${gl_bai} ${gl_huang}${line_count}${gl_bai}"
 
                     for trash_path in "$HOME/.local/share/Trash" "$HOME/.local/share/trash"; do
@@ -54682,9 +55133,11 @@ save_trash_config() {
     fi
 
     echo "# 回收站配置文件" >"$TRASH_CONFIG_FILE"
-    echo "# 最后更新时间: $(date '+%Y-%m-%d %H:%M:%S')" >>"$TRASH_CONFIG_FILE"
-    echo "" >>"$TRASH_CONFIG_FILE"
-    echo "$config_content" >>"$TRASH_CONFIG_FILE"
+    {
+        echo "# 最后更新时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo ""
+        echo "$config_content"
+    } >> "$TRASH_CONFIG_FILE"
 
     chmod 600 "$TRASH_CONFIG_FILE" 2>/dev/null
 }
@@ -54798,7 +55251,8 @@ auto_setup_trash() {
         echo -e "${gl_lv}回收站已初始化: $TRASH_CMD${gl_bai}"
     fi
 
-    local user_shell=$(basename "$SHELL")
+    local user_shell
+    user_shell=$(basename "$SHELL")
     local config_file=""
 
     case "$user_shell" in
@@ -54823,11 +55277,13 @@ auto_setup_trash() {
     echo -e "${gl_zi}>>> 正在自动配置${gl_huang}rm${gl_zi}命令重定向到回收站 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    echo "" >>"$config_file"
-    echo "# 自动配置：rm命令重定向到回收站" >>"$config_file"
-    echo "# 配置时间: $(date '+%Y-%m-%d %H:%M:%S')" >>"$config_file"
-    echo "alias rm='$TRASH_CMD'" >>"$config_file"
-    echo "" >>"$config_file"
+    {
+        echo ""
+        echo "# 自动配置：rm命令重定向到回收站"
+        echo "# 配置时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "alias rm='$TRASH_CMD'"
+        echo ""
+    } >> "$config_file"
 
     if [[ $? -eq 0 ]]; then
         log_ok "${gl_huang}rm${gl_bai}重定向配置成功"
@@ -54926,7 +55382,8 @@ get_trash_list() {
             local count=1
             for item in "$trash_dir/files"/*; do
                 if [[ -e "$item" ]]; then
-                    local filename=$(basename "$item")
+                    local filename
+                    filename=$(basename "$item")
                     local info_file="$trash_dir/info/${filename}.trashinfo"
                     local original_path=""
                     local deletion_date=""
@@ -54945,9 +55402,12 @@ get_trash_list() {
         local count=1
         while IFS= read -r line; do
             if [[ -n "$line" ]]; then
-                local deletion_date=$(echo "$line" | awk '{print $1 " " $2}')
-                local original_path=$(echo "$line" | awk '{$1=$2=""; print substr($0,3)}' | sed 's/^ *//')
-                local filename=$(basename "$original_path")
+                local deletion_date
+                deletion_date=$(echo "$line" | awk '{print $1 " " $2}')
+                local original_path
+                original_path=$(echo "$line" | awk '{$1=$2=""; print substr($0,3)}' | sed 's/^ *//')
+                local filename
+                filename=$(basename "$original_path")
 
                 trash_items+=("{\"index\":$count,\"name\":\"$filename\",\"original_path\":\"$original_path\",\"deletion_date\":\"$deletion_date\"}")
                 ((count++))
@@ -55058,7 +55518,8 @@ restore_trash_interactive() {
         return
     fi
 
-    local trash_json=$(get_trash_list)
+    local trash_json
+    trash_json=$(get_trash_list)
     local item_count=0
 
     if command -v jq &>/dev/null; then
@@ -55078,8 +55539,10 @@ restore_trash_interactive() {
 
     if command -v jq &>/dev/null; then
         echo "$trash_json" | jq -r '.[] | "\(.index). \(.name)"' | while read -r line; do
-            local index=$(echo "$line" | cut -d. -f1)
-            local filename=$(echo "$line" | cut -d. -f2- | sed 's/^ *//')
+            local index
+            index=$(echo "$line" | cut -d. -f1)
+            local filename
+            filename=$(echo "$line" | cut -d. -f2- | sed 's/^ *//')
             echo -e "  ${gl_huang}$index.${gl_bai} $filename"
         done
     else
@@ -55088,7 +55551,8 @@ restore_trash_interactive() {
             local trash_dir="$HOME/.local/share/Trash/files"
             for item in "$trash_dir"/*; do
                 if [[ -e "$item" ]]; then
-                    local filename=$(basename "$item")
+                    local filename
+                    filename=$(basename "$item")
                     echo -e "  ${gl_huang}$index.${gl_bai} $filename"
                     ((index++))
                 fi
@@ -55096,7 +55560,8 @@ restore_trash_interactive() {
         elif [[ "$TRASH_CMD" == "trash-put" ]] && command -v trash-list &>/dev/null; then
             trash-list | while read -r line; do
                 if [[ -n "$line" ]]; then
-                    local filename=$(echo "$line" | awk '{$1=$2=""; print substr($0,3)}' | sed 's/^ *//' | xargs basename)
+                    local filename
+                    filename=$(echo "$line" | awk '{$1=$2=""; print substr($0,3)}' | sed 's/^ *//' | xargs basename)
                     echo -e "  ${gl_huang}$index.${gl_bai} $filename"
                     ((index++))
                 fi
@@ -55134,7 +55599,8 @@ restore_trash_interactive() {
     echo -e "${gl_hong}即将恢复以下 ${#to_restore[@]} 个文件：${gl_bai}"
     for index in "${to_restore[@]}"; do
         if command -v jq &>/dev/null; then
-            local filename=$(echo "$trash_json" | jq -r ".[] | select(.index==$index) | .name")
+            local filename
+            filename=$(echo "$trash_json" | jq -r ".[] | select(.index==$index) | .name")
             echo -e "  ${gl_huang}$index. $filename${gl_bai}"
         else
             echo -e "  ${gl_huang}$index. 文件${gl_bai}"
@@ -55203,7 +55669,8 @@ restore_single_file() {
         fi
 
         if [[ -n "$original_path" && -e "$file_path" ]]; then
-            local target_dir=$(dirname "$original_path")
+            local target_dir
+            target_dir=$(dirname "$original_path")
             mkdir -p "$target_dir"
 
             if mv "$file_path" "$original_path" 2>/dev/null; then
@@ -55268,7 +55735,8 @@ test_trash_function() {
         return
     fi
 
-    local test_file="trash_test_$(date +%s).sh"
+    local test_file
+    test_file="trash_test_$(date +%s).sh"
     echo -e "${gl_huang}创建测试文件: $test_file${gl_bai}"
     touch "$test_file"
 
@@ -55285,7 +55753,8 @@ test_trash_function() {
         echo -e "${gl_hong}测试文件创建失败${gl_bai}"
     fi
 
-    local test_folder="trash_test_folder_$(date +%s)"
+    local test_folder
+    test_folder="trash_test_folder_$(date +%s)"
     echo -e "${gl_huang}创建测试文件夹: $test_folder${gl_bai}"
     mkdir -p "$test_folder"
 
@@ -55332,7 +55801,8 @@ setup_rm_redirect() {
         return
     fi
 
-    local user_shell=$(basename "$SHELL")
+    local user_shell
+    user_shell=$(basename "$SHELL")
     local config_file=""
 
     case "$user_shell" in
@@ -55366,9 +55836,11 @@ setup_rm_redirect() {
         sed -i '/alias rm=/d' "$config_file"
     fi
 
-    echo "# 配置rm命令重定向到回收站" >>"$config_file"
-    echo "# 配置时间: $(date '+%Y-%m-%d %H:%M:%S')" >>"$config_file"
-    echo "alias rm='$TRASH_CMD'" >>"$config_file"
+    {
+        echo "# 配置rm命令重定向到回收站"
+        echo "# 配置时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "alias rm='$TRASH_CMD'"
+    } >> "$config_file"
 
     if [[ $? -eq 0 ]]; then
         echo -e "${gl_lv}✓ 已成功配置 rm 命令重定向${gl_bai}"
@@ -55390,7 +55862,8 @@ remove_rm_redirect() {
     echo
     echo -e "${gl_zi}=== 移除 rm 命令重定向 ===${gl_bai}"
 
-    local user_shell=$(basename "$SHELL")
+    local user_shell
+    user_shell=$(basename "$SHELL")
     local config_file=""
 
     case "$user_shell" in
@@ -55420,9 +55893,8 @@ remove_rm_redirect() {
             return
         fi
 
-        sed -i '/alias rm=/d' "$config_file"
 
-        if [[ $? -eq 0 ]]; then
+        if sed -i '/alias rm=/d' "$config_file"; then
             echo -e "${gl_lv}✓ 已成功移除 rm 命令重定向${gl_bai}"
             echo -e "${gl_huang}请重新登录或运行: source $config_file${gl_bai}"
             echo
@@ -55444,7 +55916,8 @@ check_rm_redirect() {
     echo
     echo -e "${gl_zi}=== rm 命令重定向状态 ===${gl_bai}"
 
-    local user_shell=$(basename "$SHELL")
+    local user_shell
+    user_shell=$(basename "$SHELL")
     local config_file=""
 
     case "$user_shell" in
@@ -55479,7 +55952,8 @@ check_rm_redirect() {
 
 # 静默移除rm重定向（不显示提示）
 remove_rm_redirect_silent() {
-    local user_shell=$(basename "$SHELL")
+    local user_shell
+    user_shell=$(basename "$SHELL")
     local config_file=""
 
     case "$user_shell" in
@@ -55695,7 +56169,8 @@ one_click_auto_setup() {
 manage_trash_menu() {
     load_trash_config
 
-    local user_shell=$(basename "$SHELL")
+    local user_shell
+    user_shell=$(basename "$SHELL")
     local config_file=""
 
     case "$user_shell" in
@@ -56097,7 +56572,8 @@ extract_file() {
         ;;
     *.gz | *.img.gz)
         [[ "$auto_yes" != "true" ]] && {
-            local target_file="$output_dir/$(basename "${archive%.gz}")"
+            local target_file
+            target_file="$output_dir/$(basename "${archive%.gz}")"
             [[ -f "$target_file" ]] && {
                 safe_read "$(echo -e "${gl_bai}解压.img.gz文件将覆盖 $target_file，是否继续？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm "any"
                 [[ $confirm =~ ^[Yy]$ ]] || {
@@ -56145,8 +56621,10 @@ extract_file() {
         result=$?
         ;;
     *.gz | *.img.gz)
-        local target_file="$output_dir/$(basename "${archive%.gz}")"
-        local archive_name=$(basename "$archive")
+        local target_file
+        target_file="$output_dir/$(basename "${archive%.gz}")"
+        local archive_name
+        archive_name=$(basename "$archive")
         echo -e "${gl_huang}解压到: ${gl_lv}$target_file${gl_bai}"
 
         if [[ "$output_dir" != "." ]] && [[ "$output_dir" != "$PWD" ]]; then
@@ -56178,8 +56656,10 @@ extract_file() {
             echo -e "${gl_lv}✓ gzip -kd 解压成功${gl_bai}"
             echo -e "${gl_hui}gzip输出: $gzip_output${gl_bai}"
 
-            local extracted_size=$(du -h "$extracted_file" 2>/dev/null | cut -f1 || echo "未知")
-            local file_type=$(file -b "$extracted_file" 2>/dev/null | head -c 100 || echo "未知")
+            local extracted_size
+            extracted_size=$(du -h "$extracted_file" 2>/dev/null | cut -f1 || echo "未知")
+            local file_type
+            file_type=$(file -b "$extracted_file" 2>/dev/null | head -c 100 || echo "未知")
             echo -e "${gl_lv}解压成功！${gl_bai}"
             echo -e "${gl_lv}文件大小: ${gl_bai}$extracted_size"
             echo -e "${gl_lv}文件类型: ${gl_bai}$file_type"
@@ -56196,8 +56676,10 @@ extract_file() {
                 if [[ -f "$extracted_file" ]] && [[ -s "$extracted_file" ]]; then
                     echo -e "${gl_lv}✓ gzip -d 解压成功${gl_bai}"
 
-                    local extracted_size=$(du -h "$extracted_file" 2>/dev/null | cut -f1 || echo "未知")
-                    local file_type=$(file -b "$extracted_file" 2>/dev/null | head -c 100 || echo "未知")
+                    local extracted_size
+                    extracted_size=$(du -h "$extracted_file" 2>/dev/null | cut -f1 || echo "未知")
+                    local file_type
+                    file_type=$(file -b "$extracted_file" 2>/dev/null | head -c 100 || echo "未知")
                     echo -e "${gl_lv}解压成功！${gl_bai}"
                     echo -e "${gl_lv}文件大小: ${gl_bai}$extracted_size"
                     echo -e "${gl_lv}文件类型: ${gl_bai}$file_type"
@@ -56227,8 +56709,10 @@ extract_file() {
 
                 if [[ "$decompress_success" == true ]]; then
                     result=0
-                    local extracted_size=$(du -h "$extracted_file" 2>/dev/null | cut -f1 || echo "未知")
-                    local file_type=$(file -b "$extracted_file" 2>/dev/null | head -c 100 || echo "未知")
+                    local extracted_size
+                    extracted_size=$(du -h "$extracted_file" 2>/dev/null | cut -f1 || echo "未知")
+                    local file_type
+                    file_type=$(file -b "$extracted_file" 2>/dev/null | head -c 100 || echo "未知")
                     echo -e "${gl_lv}解压成功！${gl_bai}"
                     echo -e "${gl_lv}文件大小: ${gl_bai}$extracted_size"
                     echo -e "${gl_lv}文件类型: ${gl_bai}$file_type"
@@ -56272,7 +56756,8 @@ display_horizontal_list() {
         ((len > max_length)) && max_length=$len
     done
 
-    local term_width=$(tput cols 2>/dev/null || echo 80)
+    local term_width
+    term_width=$(tput cols 2>/dev/null || echo 80)
     local col_spacing=$((min_spacing + 2)) # 基础间距
 
     if ((term_width > 0)); then
@@ -56329,7 +56814,6 @@ display_horizontal_list() {
 
     ((count % items_per_line != 0)) && echo ""
 
-    DISPLAY_COLS_USED=$items_per_line
     DISPLAY_SPACING_USED=$col_spacing
 }
 
@@ -56515,7 +56999,8 @@ interactive_extract() {
         ((len > max_length)) && max_length=$len
     done
 
-    local term_width=$(tput cols 2>/dev/null || echo 80)
+    local term_width
+    term_width=$(tput cols 2>/dev/null || echo 80)
     if ((term_width > 120)); then
         items_per_line=4
     elif ((term_width > 80)); then
@@ -56804,16 +57289,16 @@ compress_tool() {
 
             case "$compress_format" in
                 "zip")
-                    zip -r "$output_name" "$dir" >/dev/null 2>&1 && ((success++)) || ((failed++))
+                    if zip -r "$output_name" "$dir" >/dev/null 2>&1; then ((success++)); else ((failed++)); fi
                     ;;
                 "tar")
-                    tar -cvf "$output_name" "$dir" >/dev/null 2>&1 && ((success++)) || ((failed++))
+                    if tar -cvf "$output_name" "$dir" >/dev/null 2>&1; then ((success++)); else ((failed++)); fi
                     ;;
                 "tar.gz")
-                    tar -czvf "$output_name" "$dir" >/dev/null 2>&1 && ((success++)) || ((failed++))
+                    if tar -czvf "$output_name" "$dir" >/dev/null 2>&1; then ((success++)); else ((failed++)); fi
                     ;;
                 "7z")
-                    7z a "$output_name" "$dir" >/dev/null 2>&1 && ((success++)) || ((failed++))
+                    if 7z a "$output_name" "$dir" >/dev/null 2>&1; then ((success++)); else ((failed++)); fi
                     ;;
             esac
         done
@@ -56852,7 +57337,7 @@ compress_tool() {
 
             1)  interactive_compress ;;                             # 压缩文件/目录
             2)  interactive_extract ;;                              # 解压文件
-            1)  enter_directory "Linux压缩/解压工具" ;;              # 进入指定目录
+            3)  enter_directory "Linux压缩/解压工具" ;;              # 进入指定目录
             4)  cd .. ;;                                            # 返回上一级目录
             5)  linux_file "." "文件管理工具" "Linux压缩/解压工具";;  # 文件管理工具
             6)  download_file ;;                                    # 文件下载工具
@@ -56870,7 +57355,6 @@ compress_tool() {
     while [[ $# -gt 0 ]]; do
         case $1 in
         --install-only)
-            install_only=true
             shift
             ;;
         --compress)
@@ -57013,8 +57497,10 @@ download_single() {
     local url="$1"
     [[ -z "$url" ]] && return 1 # 保险
 
-    local raw_name=$(echo "$url" | sed 's/^.*\///' | sed 's/?.*$//')
-    local filename=$(printf '%b' "${raw_name//%/\\x}" 2>/dev/null || echo "$raw_name")
+    local raw_name
+    raw_name=$(echo "$url" | sed 's/^.*\///' | sed 's/?.*$//')
+    local filename
+    filename=$(printf '%b' "${raw_name//%/\\x}" 2>/dev/null || echo "$raw_name")
     [[ -z "$filename" || "$filename" == "/" ]] && filename="downloaded_file"
     filename=$(echo "$filename" | tr -d '\000-\037' | tr '/' '_' | tr ':' '_' | tr '()[]{}<>' '_' | tr '*?&' '_')
 
@@ -57049,7 +57535,7 @@ download_single() {
         echo -e ""
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}错误：未找到可用的下载工具 (wget/curl)${gl_bai}"
-        read -n 1 -p "$(echo -e "按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} ")"
+        read -r -n 1 -p "$(echo -e "按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} ")"
         return 1
     fi
 
@@ -57073,7 +57559,8 @@ download_single() {
         local s=$((sec % 60))
         printf "%02d:%02d:%02d" "$h" "$m" "$s"
     }
-    local start_ts=$(date +%s)
+    local start_ts
+    start_ts=$(date +%s)
     echo -e "${gl_lv}开始下载 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
     local exit_code=0
@@ -57088,16 +57575,18 @@ download_single() {
         ;;
     esac
 
-    local end_ts=$(date +%s)
+    local end_ts
+    end_ts=$(date +%s)
     local elapsed=$((end_ts - start_ts))
     echo -e "${gl_lv}下载耗时：${gl_bai}$(fmt_time "$elapsed")"
 
     [[ $exit_code -ne 0 ]] && echo -e "${gl_hong}下载失败！错误代码: $exit_code${gl_bai}" && return 1
-    local actual_size=$(stat -c%s "$filename" 2>/dev/null || echo 0)
+    local actual_size
+    actual_size=$(stat -c%s "$filename" 2>/dev/null || echo 0)
     if [[ "$expected_size" -gt 0 && "$actual_size" -ne "$expected_size" ]]; then
         echo -e "${gl_hong}文件大小不匹配，下载不完整！${gl_bai}"
         echo -e "${gl_hong}实际: ${gl_lv}$(numfmt --to=iec "$actual_size")${gl_hong}，期望: ${gl_lv}$(numfmt --to=iec "$expected_size")${gl_bai}"
-        read -n 1 -p "$(echo -e "${gl_hong}按任意键退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+        read -r -n 1 -p "$(echo -e "${gl_hong}按任意键退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
         return 1
     fi
     echo -e "${gl_lv}✓ 下载成功！文件大小完整。${gl_bai}"
@@ -57106,13 +57595,18 @@ download_single() {
     echo -e "${gl_huang}>>> 下载文件信息：${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     if [[ -f "$filename" ]]; then
-        local file_path=$(realpath "$filename" 2>/dev/null || echo "$filename")
+        local file_path
+        file_path=$(realpath "$filename" 2>/dev/null || echo "$filename")
         local file_size_human
         file_size_human=$(stat -c %s "$filename" 2>/dev/null | numfmt --to=iec 2>/dev/null || echo "未知")
-        local file_bytes=$(stat -c%s "$filename" 2>/dev/null || echo 0)
-        local file_type=$(file -b "$filename" 2>/dev/null || echo "未知")
-        local mod_time=$(stat -c "%y" "$filename" 2>/dev/null | cut -d'.' -f1 || echo "未知")
-        local md5sum=$(md5sum "$filename" 2>/dev/null | cut -d' ' -f1 || echo "计算失败")
+        local file_bytes
+        file_bytes=$(stat -c%s "$filename" 2>/dev/null || echo 0)
+        local file_type
+        file_type=$(file -b "$filename" 2>/dev/null || echo "未知")
+        local mod_time
+        mod_time=$(stat -c "%y" "$filename" 2>/dev/null | cut -d'.' -f1 || echo "未知")
+        local md5sum
+        md5sum=$(md5sum "$filename" 2>/dev/null | cut -d' ' -f1 || echo "计算失败")
 
         echo -e "${gl_bai}文件路径: ${gl_lv}$file_path${gl_bai}"
         echo -e "${gl_bai}文件大小: ${gl_lv}$file_size_human (${file_bytes} 字节)${gl_bai}"
@@ -57150,8 +57644,8 @@ download_file() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入下载链接（${gl_huang}0${gl_bai}返回）：")" url
         [ "$url" = "0" ] && { cancel_return; return 1; }
-        [[ -z "$url" ]] && echo -e "${gl_hong}错误：链接不能为空！${gl_bai}" && read -n 1 -p "$(echo -e "按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} ")" && continue
-        url=$(echo "$url" | sed 's|https://https://|https://|g')
+        [[ -z "$url" ]] && echo -e "${gl_hong}错误：链接不能为空！${gl_bai}" && read -r -n 1 -p "$(echo -e "按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} ")" && continue
+        url="${url//https:\/\/https:\/\//https:\/\/}"
 
         if [[ ! "$url" =~ ^https?:// ]]; then
             echo -e "${gl_hong}错误：链接必须以http://或https://开头！${gl_bai}"
@@ -57279,7 +57773,7 @@ linux_work() {
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 echo -e "${gl_huang}0. ${gl_bai}返回上一级选单"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                read -e -p "请输入你的选择: " gongzuoqu_del
+                read -r -e -p "请输入你的选择: " gongzuoqu_del
 
                 case "$gongzuoqu_del" in
                 1)
@@ -57308,7 +57802,7 @@ linux_work() {
             ;;
         24)
             read -r -e -p "请输入要删除的工作区名称: " gongzuoqu_name
-            tmux kill-window -t $gongzuoqu_name
+            tmux kill-window -t "$gongzuoqu_name"
             ;;
         0) cancel_return "主菜单"; break ;;
         00 | 000 | 0000) exit_script ;;
@@ -57339,8 +57833,7 @@ istoreos_check_style_installed() {
         log_ok "检测到 luci-app-filetransfer 已安装"
     else
         log_info "未检测到 luci-app-filetransfer，正在恢复一键iStoreOS风格化 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        wget -O /tmp/restore.sh https://gitee.com/wukongdaily/gl_onescript/raw/master/restore.sh && sh /tmp/restore.sh
-        if [ $? -eq 0 ]; then
+        if wget -O /tmp/restore.sh https://gitee.com/wukongdaily/gl_onescript/raw/master/restore.sh && sh /tmp/restore.sh; then
             log_ok "iStoreOS风格化恢复完成"
         else
             log_error "iStoreOS风格化恢复失败"
@@ -57388,9 +57881,8 @@ OpenClash_install_optimized() {
     fi
 
     echo -e "${gl_bai}正在安装：${gl_huang}${pkg} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    ${OPENCLASH_PKG_MANAGER} install "$pkg"
 
-    if [ $? -eq 0 ]; then
+    if ${OPENCLASH_PKG_MANAGER} install "$pkg"; then
         log_ok "${pkg} 安装成功"
     else
         log_error "${pkg} 安装失败"
@@ -57840,13 +58332,19 @@ istoreos_remove_custom() {
 }
 
 istoreos_network_info() {
-    local gateway=$(uci get network.lan.gateway 2>/dev/null)
-    local ipaddr=$(uci get network.lan.ipaddr 2>/dev/null)
-    local dns=$(uci get network.lan.dns 2>/dev/null)
+    local gateway
+    gateway=$(uci get network.lan.gateway 2>/dev/null)
+    local ipaddr
+    ipaddr=$(uci get network.lan.ipaddr 2>/dev/null)
+    local dns
+    dns=$(uci get network.lan.dns 2>/dev/null)
 
-    local hostname=$(uname -n)
-    local kernel_release=$(uname -r)
-    local machine=$(uname -m)
+    local hostname
+    hostname=$(uname -n)
+    local kernel_release
+    kernel_release=$(uname -r)
+    local machine
+    machine=$(uname -m)
 
     command -v OpenClash_init_env &>/dev/null && ! OpenClash_init_env && return 1
 
@@ -57854,7 +58352,6 @@ istoreos_network_info() {
     local WHITE="${gl_bai}"
 
     local first_col_width=20
-    local second_col_width=25
 
     printf "主机名称：${GREEN}%s${WHITE}" "$hostname"
     local hostname_len=${#hostname}
@@ -57888,13 +58385,17 @@ print_disk_info() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     local disk_dev="/dev/sda"
 
-    local total_size=$(fdisk -l 2>/dev/null | grep -E "^Disk ${disk_dev}:" | awk '{print $3, $4}' | tr -d ',')
+    local total_size
+    total_size=$(fdisk -l 2>/dev/null | grep -E "^Disk ${disk_dev}:" | awk '{print $3, $4}' | tr -d ',')
 
-    local disk_model=$(fdisk -l 2>/dev/null | grep "Disk model:" | sed 's/Disk model: //')
+    local disk_model
+    disk_model=$(fdisk -l 2>/dev/null | grep "Disk model:" | sed 's/Disk model: //')
 
-    local sector_size=$(fdisk -l 2>/dev/null | grep "Sector size" | awk '{print $4}')
+    local sector_size
+    sector_size=$(fdisk -l 2>/dev/null | grep "Sector size" | awk '{print $4}')
 
-    local disklabel=$(fdisk -l 2>/dev/null | grep "Disklabel type:" | awk '{print $3}')
+    local disklabel
+    disklabel=$(fdisk -l 2>/dev/null | grep "Disklabel type:" | awk '{print $3}')
 
     echo "磁盘设备：${disk_dev}"
     echo "总容量：${total_size:-未知}"
@@ -57906,13 +58407,19 @@ print_disk_info() {
 
     printf "%-12s %-10s %-10s %-10s %-8s %s\n" "设备" "起始" "结束" "扇区数" "大小" "类型"
 
-    fdisk -l 2>/dev/null | grep "^/dev/sda" | while read line; do
-        local dev=$(echo "$line" | awk '{print $1}')
-        local start=$(echo "$line" | awk '{print $2}')
-        local end=$(echo "$line" | awk '{print $3}')
-        local sectors=$(echo "$line" | awk '{print $4}')
-        local size=$(echo "$line" | awk '{print $5}')
-        local type=$(echo "$line" | awk '{print $6, $7, $8}' | sed 's/ *$//')
+    fdisk -l 2>/dev/null | grep "^/dev/sda" | while read -r line; do
+        local dev
+        dev=$(echo "$line" | awk '{print $1}')
+        local start
+        start=$(echo "$line" | awk '{print $2}')
+        local end
+        end=$(echo "$line" | awk '{print $3}')
+        local sectors
+        sectors=$(echo "$line" | awk '{print $4}')
+        local size
+        size=$(echo "$line" | awk '{print $5}')
+        local type
+        type=$(echo "$line" | awk '{print $6, $7, $8}' | sed 's/ *$//')
 
         printf "%-12s %-10s %-10s %-10s %-8s %s\n" "$dev" "$start" "$end" "$sectors" "$size" "$type"
     done
@@ -57941,8 +58448,8 @@ istoreos_clean() {
 
     rm -rf /tmp/opkg-* /var/opkg-lists/* 2>/dev/null
 
-    > /var/log/messages 2>/dev/null
-    > /var/log/daemon.log 2>/dev/null
+    true > /var/log/messages 2>/dev/null
+    true > /var/log/daemon.log 2>/dev/null
 
     rm -rf /tmp/luci-* /tmp/sessions/* 2>/dev/null
 
@@ -57957,11 +58464,11 @@ istoreos_clean() {
         fi
 
         rm -rf /root/.cache/* 2>/dev/null
-        > /root/.ash_history 2>/dev/null
+        true > /root/.ash_history 2>/dev/null
 
         rm -rf /var/log/*.gz /var/log.* 2>/dev/null
-        > /var/log/syslog 2>/dev/null
-        > /var/log/cloudflared.log 2>/dev/null
+        true > /var/log/syslog 2>/dev/null
+        true > /var/log/cloudflared.log 2>/dev/null
 
         find /tmp -atime +3 -type f -delete 2>/dev/null
 
@@ -58079,8 +58586,7 @@ wukongdaily_backup_system() {
     fi
 
     log_info "正在创建备份目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    mkdir -p "$backup_path" 2>/dev/null
-    if [ $? -ne 0 ]; then
+    if ! mkdir -p "$backup_path" 2>/dev/null; then
         log_error "无法创建目录 '${gl_huang}${backup_path}${gl_hong}'，请检查权限或路径是否正确 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         exit_animation
         return 1
@@ -58090,9 +58596,8 @@ wukongdaily_backup_system() {
     log_info "备份时间: ${gl_huang}${current_date}${gl_bai}"
 
     local full_path="$backup_path/${current_date}"
-    mkdir -p "$full_path"
 
-    if [ $? -ne 0 ]; then
+    if ! mkdir -p "$full_path"; then
         log_error "无法创建备份子目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         exit_animation
         return 1
@@ -58113,9 +58618,8 @@ wukongdaily_backup_system() {
     log_info "正在备份系统文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    tar --strip-components=1 -czvf backup.tar.gz -C / overlay
 
-    if [ $? -eq 0 ]; then
+    if tar --strip-components=1 -czvf backup.tar.gz -C / overlay; then
         log_ok "备份完成${gl_hong}!${gl_huang}!${gl_lv}!${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_info "系统备份文件已保存至: ${gl_huang}${full_path}/backup.tar.gz${gl_bai}"
@@ -58156,7 +58660,7 @@ wukongdaily_restore_system() {
             log_info "使用序号参数: ${gl_huang}${param}${gl_bai}"
 
             if [ -d "$DEFAULT_BACKUP_DIR" ]; then
-                restore_list=($(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r))
+                mapfile -t restore_list < <(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
                 if [ ${#restore_list[@]} -eq 0 ]; then
                     log_error "在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong} 中未找到备份文件"
@@ -58186,7 +58690,7 @@ wukongdaily_restore_system() {
         if [ -d "$DEFAULT_BACKUP_DIR" ]; then
             log_info "正在扫描备份目录: ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_bai}"
 
-            restore_list=($(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r))
+            mapfile -t restore_list < <(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
             if [ ${#restore_list[@]} -eq 0 ]; then
                 echo -e "${gl_bai}在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_bai} 中未找到备份文件${gl_bai}"
@@ -58212,10 +58716,14 @@ wukongdaily_restore_system() {
                 for i in "${!restore_list[@]}"; do
                     local idx=$((i+1))
                     local backup_file="${restore_list[$i]}"
-                    local file_size=$(ls -lh "$backup_file" 2>/dev/null | awk '{print $5}')
-                    local mod_time=$(stat -c "%y" "$backup_file" 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1)
-                    local backup_dir=$(dirname "$backup_file")
-                    local backup_name=$(basename "$backup_dir")
+                    local file_size
+                    file_size=$(ls -lh "$backup_file" 2>/dev/null | awk '{print $5}')
+                    local mod_time
+                    mod_time=$(stat -c "%y" "$backup_file" 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1)
+                    local backup_dir
+                    backup_dir=$(dirname "$backup_file")
+                    local backup_name
+                    backup_name=$(basename "$backup_dir")
 
                     echo -e "${gl_bufan}${idx}. ${gl_bai}${backup_name}/backup.tar.gz"
                     echo -e "   ${gl_hui}大小: ${gl_huang}${file_size}${gl_hui} 修改时间: ${gl_huang}${mod_time}${gl_bai}"
@@ -58396,7 +58904,7 @@ wukongdaily_manage_backup_files() {
 
     while true; do
 
-        backup_list=($(find "$backup_dir" -name "backup.tar.gz" -type f 2>/dev/null | sort -r))
+        mapfile -t backup_list < <(find "$backup_dir" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
         if [ ${#backup_list[@]} -eq 0 ]; then
             log_error "未找到备份文件"
@@ -58411,10 +58919,12 @@ wukongdaily_manage_backup_files() {
         for i in "${!backup_list[@]}"; do
             local idx=$((i+1))
             local file="${backup_list[$i]}"
-            local file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
-            local mod_time=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
+            local file_size
+            file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
+            local mod_time
+            mod_time=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
 
-            echo -e "${gl_bufan}${idx}. ${gl_bai}$(basename $(dirname "$file"))/backup.tar.gz"
+            echo -e "${gl_bufan}${idx}. ${gl_bai}$(basename "$(dirname "$file")")/backup.tar.gz"
             echo -e "   ${gl_hui}大小: ${gl_huang}${file_size}${gl_hui} 修改时间: ${gl_huang}${mod_time}${gl_bai}"
         done
 
@@ -58466,14 +58976,14 @@ wukongdaily_manage_backup_files() {
                 elif [[ "$file_idx" =~ ^[0-9]+$ ]] && [ "$file_idx" -ge 1 ] && [ "$file_idx" -le ${#backup_list[@]} ]; then
                     local idx=$((file_idx-1))
                     local selected_file="${backup_list[$idx]}"
-                    local backup_dir_path="$(dirname "$selected_file")"
+                    local backup_dir_path
+                    backup_dir_path="$(dirname "$selected_file")"
 
                     echo -e "${gl_bai}将要删除备份: ${gl_huang}${backup_dir_path}${gl_bai}"
                     read -r -e -p "$(echo -e "${gl_hong}确定要删除吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ")" confirm
 
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                        rm -rf "$backup_dir_path"
-                        if [ $? -eq 0 ]; then
+                        if rm -rf "$backup_dir_path"; then
                             log_ok "已删除备份: ${gl_huang}${backup_dir_path}${gl_bai}"
                             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                             break_end
@@ -58688,10 +59198,10 @@ wukongdaily_backup_restore_menu() {
         if [ ! -d "$backup_dir" ]; then
             mkdir -p "$backup_dir"
             chmod 755 "$backup_dir"
-            cd "$backup_dir"
+            cd "$backup_dir" || return
         fi
 
-        backup_list=($(find "$backup_dir" -name "backup.tar.gz" -type f 2>/dev/null | sort -r))
+        mapfile -t backup_list < <(find "$backup_dir" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
 
         echo -e "${gl_huang}>>> 可用悟空备份文件列表: ${gl_huang}${backup_dir}${gl_bai}"
@@ -58704,10 +59214,12 @@ wukongdaily_backup_restore_menu() {
         for i in "${!backup_list[@]}"; do
             local idx=$((i+1))
             local file="${backup_list[$i]}"
-            local file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
-            local mod_time=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
+            local file_size
+            file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
+            local mod_time
+            mod_time=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
 
-            echo -e "${gl_bufan}${idx}. ${gl_bai}$(basename $(dirname "$file"))/backup.tar.gz"
+            echo -e "${gl_bufan}${idx}. ${gl_bai}$(basename "$(dirname "$file")")/backup.tar.gz"
             echo -e "   ${gl_hui}大小: ${gl_huang}${file_size}${gl_hui} 修改时间: ${gl_huang}${mod_time}${gl_bai}"
         done
 
@@ -58768,8 +59280,7 @@ istoreos_backup_system() {
     fi
 
     log_info "正在创建备份目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    mkdir -p "$backup_path" 2>/dev/null
-    if [ $? -ne 0 ]; then
+    if ! mkdir -p "$backup_path" 2>/dev/null; then
         log_error "无法创建目录 '${gl_huang}${backup_path}${gl_hong}'，请检查权限或路径是否正确 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         exit_animation
         return 1
@@ -58779,9 +59290,8 @@ istoreos_backup_system() {
     log_info "备份时间: ${gl_huang}${current_date}${gl_bai}"
 
     local full_path="$backup_path/${current_date}"
-    mkdir -p "$full_path"
 
-    if [ $? -ne 0 ]; then
+    if ! mkdir -p "$full_path"; then
         log_error "无法创建备份子目录 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         exit_animation
         return 1
@@ -58805,9 +59315,8 @@ istoreos_backup_system() {
     local backup_file="backup.tar.gz"
 
     echo -e "${gl_hui}正在执行: ${gl_huang}sysupgrade -b $backup_file${gl_bai}"
-    sysupgrade -b "$backup_file"
 
-    if [ $? -eq 0 ]; then
+    if sysupgrade -b "$backup_file"; then
         log_ok "✅ sysupgrade 备份完成${gl_hong}!${gl_huang}!${gl_lv}!${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_info "系统配置备份已保存至: ${gl_huang}${full_path}/${backup_file}${gl_bai}"
@@ -58822,7 +59331,7 @@ istoreos_backup_system() {
 
         log_info "查看备份内容列表:"
         echo -e "${gl_hui}$(sysupgrade -l 2>/dev/null | head -20)${gl_bai}"
-        if [ $(sysupgrade -l 2>/dev/null | wc -l) -gt 20 ]; then
+        if [ "$(sysupgrade -l 2>/dev/null | wc -l)" -gt 20 ]; then
             echo -e "{gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}更多内容请运行 ${gl_lv}'sysupgrade -l' ${gl_bai}查看${gl_bai}"
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -58892,7 +59401,7 @@ istoreos_restore_system() {
             log_info "使用序号参数: ${gl_huang}${param}${gl_bai}"
 
             if [ -d "$DEFAULT_BACKUP_DIR" ]; then
-                restore_list=($(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r))
+                mapfile -t restore_list < <(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
                 if [ ${#restore_list[@]} -eq 0 ]; then
                     log_error "在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong} 中未找到备份文件"
@@ -58922,7 +59431,7 @@ istoreos_restore_system() {
         if [ -d "$DEFAULT_BACKUP_DIR" ]; then
             log_info "正在扫描备份目录: ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_bai}"
 
-            restore_list=($(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r))
+            mapfile -t restore_list < <(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
             if [ ${#restore_list[@]} -eq 0 ]; then
                 echo -e "${gl_bai}在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_bai} 中未找到备份文件${gl_bai}"
@@ -58948,10 +59457,14 @@ istoreos_restore_system() {
                 for i in "${!restore_list[@]}"; do
                     local idx=$((i+1))
                     local backup_file="${restore_list[$i]}"
-                    local file_size=$(ls -lh "$backup_file" 2>/dev/null | awk '{print $5}')
-                    local mod_time=$(stat -c "%y" "$backup_file" 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1)
-                    local backup_dir=$(dirname "$backup_file")
-                    local backup_name=$(basename "$backup_dir")
+                    local file_size
+                    file_size=$(ls -lh "$backup_file" 2>/dev/null | awk '{print $5}')
+                    local mod_time
+                    mod_time=$(stat -c "%y" "$backup_file" 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1)
+                    local backup_dir
+                    backup_dir=$(dirname "$backup_file")
+                    local backup_name
+                    backup_name=$(basename "$backup_dir")
 
                     echo -e "${gl_bufan}${idx}. ${gl_bai}${backup_name}/backup.tar.gz"
                     echo -e "   ${gl_hui}大小: ${gl_huang}${file_size}${gl_hui} 修改时间: ${gl_huang}${mod_time}${gl_bai}"
@@ -59175,7 +59688,7 @@ istoreos_manage_backup_files() {
 
     while true; do
 
-        backup_list=($(find "$backup_dir" -name "backup.tar.gz" -type f 2>/dev/null | sort -r))
+        mapfile -t backup_list < <(find "$backup_dir" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
         if [ ${#backup_list[@]} -eq 0 ]; then
             log_error "未找到备份文件"
@@ -59190,10 +59703,12 @@ istoreos_manage_backup_files() {
         for i in "${!backup_list[@]}"; do
             local idx=$((i+1))
             local file="${backup_list[$i]}"
-            local file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
-            local mod_time=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
+            local file_size
+            file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
+            local mod_time
+            mod_time=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
 
-            echo -e "${gl_bufan}${idx}. ${gl_bai}$(basename $(dirname "$file"))/backup.tar.gz"
+            echo -e "${gl_bufan}${idx}. ${gl_bai}$(basename "$(dirname "$file")")/backup.tar.gz"
             echo -e "   ${gl_hui}大小: ${gl_huang}${file_size}${gl_hui} 修改时间: ${gl_huang}${mod_time}${gl_bai}"
         done
 
@@ -59251,14 +59766,14 @@ istoreos_manage_backup_files() {
                 elif [[ "$file_idx" =~ ^[0-9]+$ ]] && [ "$file_idx" -ge 1 ] && [ "$file_idx" -le ${#backup_list[@]} ]; then
                     local idx=$((file_idx-1))
                     local selected_file="${backup_list[$idx]}"
-                    local backup_dir_path="$(dirname "$selected_file")"
+                    local backup_dir_path
+                    backup_dir_path="$(dirname "$selected_file")"
 
                     echo -e "${gl_bai}将要删除备份: ${gl_huang}${backup_dir_path}${gl_bai}"
                     read -r -e -p "$(echo -e "${gl_hong}确定要删除吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ")" confirm
 
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                        rm -rf "$backup_dir_path"
-                        if [ $? -eq 0 ]; then
+                        if rm -rf "$backup_dir_path"; then
                             log_ok "已删除备份: ${gl_huang}${backup_dir_path}${gl_bai}"
                             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                             break_end
@@ -59318,7 +59833,8 @@ istoreos_manage_backup_files() {
                             echo -e "${gl_hong}⚠️ 不是标准的 sysupgrade 备份${gl_bai}"
                         fi
 
-                        local file_count=$(tar -tzf "$selected_file" 2>/dev/null | wc -l)
+                        local file_count
+                        file_count=$(tar -tzf "$selected_file" 2>/dev/null | wc -l)
                         echo -e "${gl_bai}备份包含 ${gl_huang}${file_count}${gl_bai} 个文件"
                     else
                         echo -e "${gl_hong}❌ 备份文件损坏或格式不正确${gl_bai}"
@@ -59537,10 +60053,10 @@ istoreos_backup_restore_menu() {
         if [ ! -d "$backup_dir" ]; then
             mkdir -p "$backup_dir"
             chmod 755 "$backup_dir"
-            cd "$backup_dir"
+            cd "$backup_dir" || return
         fi
 
-        backup_list=($(find "$backup_dir" -name "backup.tar.gz" -type f 2>/dev/null | sort -r))
+        mapfile -t backup_list < <(find "$backup_dir" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
         echo -e "${gl_huang}>>> 可用官方备份文件列表: ${gl_lv}${backup_dir}${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -59551,10 +60067,12 @@ istoreos_backup_restore_menu() {
             for i in "${!backup_list[@]}"; do
                 local idx=$((i+1))
                 local file="${backup_list[$i]}"
-                local file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
-                local mod_time=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
+                local file_size
+                file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
+                local mod_time
+                mod_time=$(stat -c "%y" "$file" 2>/dev/null | cut -d'.' -f1 2>/dev/null || echo "未知")
 
-                echo -e "${gl_bufan}${idx}. ${gl_bai}$(basename $(dirname "$file"))/backup.tar.gz"
+                echo -e "${gl_bufan}${idx}. ${gl_bai}$(basename "$(dirname "$file")")/backup.tar.gz"
                 echo -e "   ${gl_hui}大小: ${gl_huang}${file_size}${gl_hui} 修改时间: ${gl_huang}${mod_time}${gl_bai}"
             done
         fi
@@ -59618,11 +60136,12 @@ istoreos_system_update() {
 
         echo ""
 
-        local current_dir="$(pwd)"
+        local current_dir
+        current_dir="$(pwd)"
         cd "$download_path" || {
             echo -e "${gl_hong}错误: 无法进入下载路径 ${download_path}${gl_bai}"
             exit_animation
-            cd "$current_dir"
+            cd "$current_dir" || return
             break
         }
 
@@ -59634,7 +60153,7 @@ istoreos_system_update() {
             read -r -n 1 -s redo
             echo ""
 
-            cd "$current_dir"
+            cd "$current_dir" || return
             if [[ "$redo" =~ [Yy] ]]; then
                 echo -e "${gl_bai}按任意键重新下载 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
                 read -r -n 1 -s
@@ -59650,8 +60169,10 @@ istoreos_system_update() {
         if [[ -f "downloaded_file" ]]; then
             firmware_path="${download_path}/downloaded_file"
         else
-            local raw_name=$(echo "$firmware_url" | sed 's/^.*\///' | sed 's/?.*$//')
-            local filename=$(printf '%b' "${raw_name//%/\\x}" 2>/dev/null || echo "$raw_name")
+            local raw_name
+            raw_name=$(echo "$firmware_url" | sed 's/^.*\///' | sed 's/?.*$//')
+            local filename
+            filename=$(printf '%b' "${raw_name//%/\\x}" 2>/dev/null || echo "$raw_name")
             [[ -z "$filename" || "$filename" == "/" ]] && filename="downloaded_file"
             filename=$(echo "$filename" | tr -d '\000-\037' | tr '/' '_' | tr ':' '_' | tr '()[]{}<>' '_' | tr '*?&' '_')
 
@@ -59664,7 +60185,7 @@ istoreos_system_update() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入下载的固件文件路径: ")" firmware_path
                 if [[ ! -f "$firmware_path" ]]; then
                     log_error "指定的文件不存在: ${firmware_path}"
-                    cd "$current_dir"
+                    cd "$current_dir" || return
                     echo -e "${gl_bai}按任意键返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
                     read -r -n 1 -s
                     break
@@ -59672,7 +60193,7 @@ istoreos_system_update() {
             fi
         fi
 
-        cd "$current_dir"
+        cd "$current_dir" || return
 
         echo ""
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -59688,8 +60209,10 @@ istoreos_system_update() {
                 [Yy])
                     echo -e "${gl_bai}开始解压固件文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
-                    local base_name=$(basename "${firmware_path%.gz}")
-                    local output_dir=$(dirname "$firmware_path")
+                    local base_name
+                    base_name=$(basename "${firmware_path%.gz}")
+                    local output_dir
+                    output_dir=$(dirname "$firmware_path")
                     extracted_firmware="${output_dir}/${base_name}"
 
                     if [[ -f "$extracted_firmware" ]]; then
@@ -59849,7 +60372,7 @@ remove_crontab_confirm() {
             [Nn])
                 log_warn "已取消删除操作"
                 ;;
-            0) cancel_return "上一级选单"; break ;;
+            0) cancel_return "上一级选单"; return ;;
             *) handle_y_n ;;
         esac
     else
@@ -60212,7 +60735,7 @@ else
         ;;
     fnos | 飞牛)
         clear
-        cd /vol1/1000/compose
+        cd /vol1/1000/compose || return
         if show_compose_project_menu; then
             :
         else
