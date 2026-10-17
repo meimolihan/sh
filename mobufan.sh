@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.6.9"
+sh_v="1.7.0"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -11,7 +11,6 @@ list_color_init() {
     export gl_zi=$'\033[38;5;13m'
     export gl_bufan=$'\033[38;5;14m'
     export reset=$'\033[0m'
-    # 补充：脚本中被引用但此前未定义的颜色变量
     export gl_cheng=$'\033[38;5;214m' # 橙
     export gl_tian=$'\033[38;5;117m'  # 天蓝
     export gl_qing=$'\033[38;5;51m'   # 青
@@ -44737,16 +44736,59 @@ show_compose_commands_menu() {
             ;;
         25)
             local TARGET_SERVICE="$MAIN_SERVICE"
-            if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
-                local selected_service
-                selected_service=$(select_service)
-                [[ -n "$selected_service" ]] && TARGET_SERVICE="$selected_service"
+            if [[ -f "docker-compose.yml" ]]; then
+                local compose_file="docker-compose.yml"
+            elif [[ -f "docker-compose.yaml" ]]; then
+                local compose_file="docker-compose.yaml"
+            else
+                compose_file=""
             fi
+
+            local -a services=()
+            if [[ -n "$compose_file" ]]; then
+                # 只取 services: 下第一层缩进且以冒号结尾的键（真正的服务名），忽略属性行
+                local service_list
+                service_list=$(awk '
+                    /^services:/ {in_svc=1; first=""; next}
+                    in_svc && /^[^ \t#]/ {in_svc=0}
+                    in_svc && !/^[ \t]*#/ && /:[[:space:]]*$/ {
+                        if (match($0, /^[ \t]+/)) { indent = RLENGTH } else { indent = 0 }
+                        if (first == "") { first = indent }
+                        if (indent == first) {
+                            name = $0
+                            sub(/^[ \t]+/, "", name)
+                            sub(/:[[:space:]]*$/, "", name)
+                            print name
+                        }
+                    }
+                ' "$compose_file")
+                while IFS= read -r line; do
+                    [[ -n "$line" ]] && services+=("$line")
+                done <<< "$service_list"
+            fi
+
+            # 单服务：自动进入，不再弹选择
+            if [[ ${#services[@]} -eq 1 ]]; then
+                TARGET_SERVICE="${services[0]}"
+            elif [[ ${#services[@]} -gt 1 ]]; then
+                clear
+                echo -e "${gl_zi}\n>>> 选择Compose服务${gl_bai}"
+                for i in "${!services[@]}"; do
+                    echo -e "${gl_bai}$((i+1)). ${gl_lv}${services[$i]}${gl_bai}"
+                done
+                echo -e "${gl_bai}0. 返回${gl_bai}"
+                read -r -p "$(echo -e "${gl_bai}请输入序号: ")" s_choice
+                if [[ "$s_choice" == "0" ]]; then break_end; continue; fi
+                if ! [[ "$s_choice" =~ ^[0-9]+$ ]] || [[ "$s_choice" -lt 1 ]] || [[ "$s_choice" -gt ${#services[@]} ]]; then
+                    log_error "输入序号无效"; sleep 1; break_end; continue
+                fi
+                TARGET_SERVICE="${services[$((s_choice-1))]}"
+            fi
+
             if [[ -z "$TARGET_SERVICE" ]]; then
-                echo -e "${gl_hong}未找到可进入的服务${gl_bai}"
-                break_end
-                continue
+                echo -e "${gl_hong}未找到可进入的服务${gl_bai}"; break_end; continue
             fi
+
             echo -e ""
             echo -e "${gl_bai}进入 ${gl_huang}$TARGET_SERVICE${gl_bai} 服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -44754,22 +44796,18 @@ show_compose_commands_menu() {
                 echo -e "${gl_hong}容器 $TARGET_SERVICE 不存在${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}是否启动容器？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" start_choice
                 if [[ "$start_choice" =~ ^[Yy]$ ]]; then
-                    docker-compose up -d "$TARGET_SERVICE"
-                    sleep 2
+                    docker-compose up -d "$TARGET_SERVICE"; sleep 2
                 else
-                    break_end
-                    continue
+                    break_end; continue
                 fi
             fi
             if ! docker inspect -f '{{.State.Running}}' "$TARGET_SERVICE" 2>/dev/null | grep -q "true"; then
                 echo -e "${gl_hong}容器 $TARGET_SERVICE 未运行${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}是否启动容器？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" start_choice
                 if [[ "$start_choice" =~ ^[Yy]$ ]]; then
-                    docker-compose up -d "$TARGET_SERVICE"
-                    sleep 2
+                    docker-compose up -d "$TARGET_SERVICE"; sleep 2
                 else
-                    break_end
-                    continue
+                    break_end; continue
                 fi
             fi
             if ! docker exec -it "$TARGET_SERVICE" bash 2>/dev/null; then
@@ -44781,32 +44819,72 @@ show_compose_commands_menu() {
             ;;
         26)
             local TARGET_SERVICE="$MAIN_SERVICE"
-            if [[ -f "docker-compose.yml" ]] || [[ -f "docker-compose.yaml" ]]; then
-                local selected_service
-                selected_service=$(select_service)
-                [[ -n "$selected_service" ]] && TARGET_SERVICE="$selected_service"
+            if [[ -f "docker-compose.yml" ]]; then
+                local compose_file="docker-compose.yml"
+            elif [[ -f "docker-compose.yaml" ]]; then
+                local compose_file="docker-compose.yaml"
+            else
+                compose_file=""
             fi
+
+            local -a services=()
+            if [[ -n "$compose_file" ]]; then
+                # awk 仅提取services下第一层服务名，过滤build/image/ports这类子属性
+                local service_list
+                service_list=$(awk '
+                    /^services:/ {in_svc=1; first=""; next}
+                    in_svc && /^[^ \t#]/ {in_svc=0}
+                    in_svc && !/^[ \t]*#/ && /:[[:space:]]*$/ {
+                        if (match($0, /^[ \t]+/)) { indent = RLENGTH } else { indent = 0 }
+                        if (first == "") { first = indent }
+                        if (indent == first) {
+                            name = $0
+                            sub(/^[ \t]+/, "", name)
+                            sub(/:[[:space:]]*$/, "", name)
+                            print name
+                        }
+                    }
+                ' "$compose_file")
+                while IFS= read -r line; do
+                    [[ -n "$line" ]] && services+=("$line")
+                done <<< "$service_list"
+            fi
+
+            # 单服务自动选中，不弹出选择；多服务才弹出列表
+            if [[ ${#services[@]} -eq 1 ]]; then
+                TARGET_SERVICE="${services[0]}"
+            elif [[ ${#services[@]} -gt 1 ]]; then
+                clear
+                echo -e "${gl_zi}\n>>> 选择Compose服务${gl_bai}"
+                for i in "${!services[@]}"; do
+                    echo -e "${gl_bai}$((i+1)). ${gl_lv}${services[$i]}${gl_bai}"
+                done
+                echo -e "${gl_bai}0. 返回${gl_bai}"
+                read -r -p "$(echo -e "${gl_bai}请输入序号: ")" s_choice
+                if [[ "$s_choice" == "0" ]]; then
+                    break_end
+                    continue
+                fi
+                if ! [[ "$s_choice" =~ ^[0-9]+$ ]] || [[ "$s_choice" -lt 1 ]] || [[ "$s_choice" -gt ${#services[@]} ]]; then
+                    log_error "输入序号无效"
+                    sleep 1
+                    break_end
+                    continue
+                fi
+                TARGET_SERVICE="${services[$((s_choice-1))]}"
+            fi
+
             if [[ -z "$TARGET_SERVICE" ]]; then
                 echo -e "${gl_hong}未找到可修改的服务${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
                 continue
             fi
-            install yq
+
             clear
             echo -e ""
             echo -e "${gl_zi}>>> 永久修改重启策略 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            if [ ! -f "docker-compose.yml" ] && [ ! -f "docker-compose.yaml" ]; then
-                echo -e "${gl_hong}❌ 未找到 docker-compose.yml 文件${gl_bai}"
-                echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-                break_end
-                continue
-            fi
-            compose_file="docker-compose.yml"
-            if [ ! -f "$compose_file" ]; then
-                compose_file="docker-compose.yaml"
-            fi
             echo -e "${gl_bai}配置文件: ${gl_huang}$compose_file${gl_bai}"
             echo -e "${gl_bai}目标服务: ${gl_huang}$TARGET_SERVICE${gl_bai}"
             echo -e ""
@@ -44837,17 +44915,17 @@ show_compose_commands_menu() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -p "请输入选择 [0-5]: " policy_choice
             case $policy_choice in
-            1) new_policy="no" ;;
-            2) new_policy="always" ;;
-            3) new_policy="on-failure" ;;
-            4) new_policy="unless-stopped" ;;
-            5)
-                read -r -e -p "$(echo -e "${gl_bai}请输入自定义策略${gl_huang}on-failure:3${gl_bai}(${gl_huang}0${gl_bai}返回): ")" new_policy
-                [ "$new_policy" == "0" ] && { cancel_return "上一级选单"; continue; }
-                ;;
-            0) cancel_return; continue ;;
-            00|000|0000) exit_script; return 0 ;;
-            *) handle_invalid_input ;;
+                1) new_policy="no" ;;
+                2) new_policy="always" ;;
+                3) new_policy="on-failure" ;;
+                4) new_policy="unless-stopped" ;;
+                5)
+                    read -r -e -p "$(echo -e "${gl_bai}请输入自定义策略${gl_huang}on-failure:3${gl_bai}(${gl_huang}0${gl_bai}返回): ")" new_policy
+                    [ "$new_policy" == "0" ] && { cancel_return "上一级选单"; continue; }
+                    ;;
+                0) cancel_return; continue ;;
+                00|000|0000) exit_script; return 0 ;;
+                *) handle_invalid_input ;;
             esac
             echo -e ""
             if grep -q "^\s*restart:" "$compose_file"; then
