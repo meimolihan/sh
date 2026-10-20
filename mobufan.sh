@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.7.0"
+sh_v="1.7.1"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -11,11 +11,11 @@ list_color_init() {
     export gl_zi=$'\033[38;5;13m'
     export gl_bufan=$'\033[38;5;14m'
     export reset=$'\033[0m'
-    export gl_cheng=$'\033[38;5;214m' # 橙
-    export gl_tian=$'\033[38;5;117m'  # 天蓝
-    export gl_qing=$'\033[38;5;51m'   # 青
-    export gl_ok=$'\033[38;5;46m'     # 成功绿
-    export gl_reset=$'\033[0m'        # 重置（与 reset 同义，兼容旧写法）
+    export gl_cheng=$'\033[38;5;214m'
+    export gl_tian=$'\033[38;5;117m'
+    export gl_qing=$'\033[38;5;51m'
+    export gl_ok=$'\033[38;5;46m'
+    export gl_reset=$'\033[0m'
 }
 list_color_init
 
@@ -24,7 +24,6 @@ log_ok() { echo -e "${gl_lv}[成功]${gl_bai} $*"; }
 log_warn() { echo -e "${gl_huang}[警告]${gl_bai} $*"; }
 log_error() { echo -e "${gl_hong}[错误]${gl_bai} $*" >&2; }
 
-# 暂停函数
 sleep_fractional() {
     local seconds=$1
     if sleep "$seconds" 2>/dev/null; then return 0; fi
@@ -52732,6 +52731,38 @@ fnos_check_bbr() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 }
 
+compose_restore_local() {
+    local src_dir="$1"
+    local dst_dir="$2"
+
+    if [ $# -ne 2 ]; then
+        echo -e "用法: ${gl_huang}compose_restore_local ${gl_lv}<备份源目录> <compose目标目录>${gl_bai}"
+        echo -e "示例: ${gl_huang}compose_restore_local ${gl_lv}/vol2/1000/file/compose/downloads /vol1/1000/compose${gl_bai}"
+        return 1
+    fi
+
+    if [ ! -d "${src_dir}" ]; then
+        echo -e "${gl_hong}错误：源目录不存在 -> ${src_dir}${gl_bai}"
+        return 1
+    fi
+
+    if [ ! -d "${dst_dir}" ]; then
+        echo
+        echo -e "${gl_huang}警告：目标目录不存在 -> ${dst_dir}${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        read -r -e -p "$(echo -e "${gl_bai}是否自动创建目标目录？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" ans
+        if [[ "${ans}" =~ ^[Yy]$ ]]; then
+            mkdir -p "${dst_dir}"
+            echo -e "已创建目录：${gl_lv}${dst_dir}${gl_bai}"
+        else
+            echo "终止操作"
+            return 1
+        fi
+    fi
+
+    bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/compose_restore_local.sh) "${src_dir}" "${dst_dir}"
+}
+
 # 函数_FnOS命令
 linux_fnos_menu() {
     while true; do
@@ -52750,16 +52781,16 @@ linux_fnos_menu() {
         echo -e "${gl_bufan}9.  ${gl_bai}Compose停止所有     ${gl_bufan}10. ${gl_bai}Compose启动所有"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}11. ${gl_bai}推送Compose项目     ${gl_bufan}12. ${gl_bai}克隆Compose项目"
-        echo -e "${gl_bufan}13. ${gl_bai}备份Compose项目     ${gl_bufan}14. ${gl_bai}恢复Compose项目"
-        echo -e "${gl_bufan}15. ${gl_bai}配置文件管理器      ${gl_bufan}16. ${gl_bai}临时目录管理器"
-        echo -e "${gl_bufan}17. ${gl_bai}备份/迁移Docker镜像 ${gl_bufan}18. ${gl_bai}备份/迁移Compose项目"
-        echo -e "${gl_bufan}19. ${gl_bai}智能GPU检测工具     ${gl_bufan}20. ${gl_bai}FnOS系统安全工具"
+        echo -e "${gl_bufan}13. ${gl_bai}远程备份Compose     ${gl_bufan}14. ${gl_bai}远程恢复Compose"
+        echo -e "${gl_bufan}15. ${gl_bai}本地备份Compose     ${gl_bufan}16. ${gl_bai}本地恢复Compose"
+        echo -e "${gl_bufan}17. ${gl_bai}配置文件管理器      ${gl_bufan}18. ${gl_bai}临时目录管理器"
+        echo -e "${gl_bufan}19. ${gl_bai}备份/迁移Docker镜像 ${gl_bufan}20. ${gl_bai}备份/迁移Compose项目"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}21. ${gl_bai}清理错误内核        ${gl_bufan}22. ${gl_bai}修复固件缺失错误"
-        echo -e "${gl_bufan}23. ${gl_bai}随机壁纸管理        ${gl_bufan}24. ${gl_bai}电视剧集重命名"
-        echo -e "${gl_bufan}25. ${gl_bai}FnOS开启BBR         ${gl_bufan}26. ${gl_bai}FnOS关闭BBR"
-        echo -e "${gl_bufan}27. ${gl_bai}硬盘分区管理        ${gl_bufan}28. ${gl_bai}常用目录管理"
-        echo -e "${gl_bufan}29. ${gl_bai}CmdBox项目管理"
+        echo -e "${gl_bufan}21. ${gl_bai}智能GPU检测工具     ${gl_bufan}22. ${gl_bai}FnOS系统安全工具"
+        echo -e "${gl_bufan}23. ${gl_bai}清理错误内核        ${gl_bufan}24. ${gl_bai}修复固件缺失错误"
+        echo -e "${gl_bufan}25. ${gl_bai}随机壁纸管理        ${gl_bufan}26. ${gl_bai}电视剧集重命名"
+        echo -e "${gl_bufan}27. ${gl_bai}FnOS开启BBR         ${gl_bufan}28. ${gl_bai}FnOS关闭BBR"
+        echo -e "${gl_bufan}29. ${gl_bai}硬盘分区管理        ${gl_bufan}30. ${gl_bai}常用目录管理"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_lv}66. ${gl_bai}安装${gl_bufan}Docker${gl_bai}环境      ${gl_hong}99. ${gl_bai}卸载${gl_bufan}Docker${gl_bai}环境"
         echo -e "${gl_lv}666.${gl_bai}安装${gl_bufan}Compose${gl_bai}环境     ${gl_hong}999.${gl_bai}卸载${gl_bufan}Compose${gl_bai}环境"
@@ -52781,23 +52812,23 @@ linux_fnos_menu() {
         10) start_all_compose_projects ;;                                   # Compose启动所有
         11) is_fnos_system || continue && cd /vol1/1000/compose || return; git_project_manager ;; # 推送Compose项目
         12) clone_docker_repo ;;                                            # 克隆Compose项目
-        13) backup_compose_project ;;                                       # 备份Compose项目
+        13 | 15) backup_compose_project ;;                                  # 备份Compose项目
         14) download_docker_repo ;;                                         # 恢复Compose项目
-        15) docker_compose_manager ;;                                       # 配置文件管理器
-        16) is_fnos_system || continue && temp_dir_menu "/vol2/1000/tmp" "FnOS 管理" ;; # 临时目录管理器
-        17) docker_image_backup_tools ;;                                    # 备份Docker镜像
-        18) docker_compose_env_tools ;;                                     # 备份/迁移/还原 docker-compose 项目
-        19) fnos_check_gpu_info ;;                                          # 智能GPU检测工具
-        20) fnos_security_tool ;;                                           # FnOS系统安全工具
-        21) fnos_clean_broken_kernels ;;                                    # 清理错误内核
-        22) fnos_handle_firmware_missing ;;                                 # 修复固件缺失错误
-        23) random_wallpaper_menu ;;                                        # 随机壁纸管理
-        24) tv_rename_ultimate ;;                                           # 电视剧集重命名
-        25) fnos_enable_bbr ;;                                              # FnOS开启BBR
-        26) fnos_disable_bbr ;;                                             # FnOS关闭BBR
-        27) linux_disk_manager "测试项目" ;;                                 # 硬盘分区管理工具
-        28) manage_backup_files_simple "linux_file" ;;                      # 常用目录管理
-        29) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/cmdbox_admin_menu.sh) ;;
+        16) compose_restore_local /vol2/1000/file/compose/downloads /vol1/1000/compose ;;  # 恢复Compose项目
+        17) docker_compose_manager ;;                                       # 配置文件管理器
+        18) is_fnos_system || continue && temp_dir_menu "/vol2/1000/tmp" "FnOS 管理" ;; # 临时目录管理器
+        19) docker_image_backup_tools ;;                                    # 备份Docker镜像
+        20) docker_compose_env_tools ;;                                     # 备份/迁移/还原 docker-compose 项目
+        21) fnos_check_gpu_info ;;                                          # 智能GPU检测工具
+        22) fnos_security_tool ;;                                           # FnOS系统安全工具
+        23) fnos_clean_broken_kernels ;;                                    # 清理错误内核
+        24) fnos_handle_firmware_missing ;;                                 # 修复固件缺失错误
+        25) random_wallpaper_menu ;;                                        # 随机壁纸管理
+        26) tv_rename_ultimate ;;                                           # 电视剧集重命名
+        27) fnos_enable_bbr ;;                                              # FnOS开启BBR
+        28) fnos_disable_bbr ;;                                             # FnOS关闭BBR
+        29) linux_disk_manager "测试项目" ;;                                 # 硬盘分区管理工具
+        30) manage_backup_files_simple "linux_file" ;;                      # 常用目录管理
         66) install_add_docker ;;                                           # 安装更新Docker环境
         99) uninstall_docker_environment ;;                                 # 卸载Docker环境
         666) install_docker_compose ;;                                      # 安装Compose
