@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.7.1"
+sh_v="1.7.2"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -43180,36 +43180,74 @@ modify_grub_params() {
 }
 
 # 安装i915 SR-IOV驱动
-install_i915_sriov_driver() {
-    is_pve_system || return 1  # 非PVE系统退出
+# ===== i915 deb 下载，带代理回退；返回0成功，非0失败 =====
+download_with_fallback() {
+    local url="$1"
+    local out="$2"
+    local proxies=(
+        "https://ghfast.top/"
+        "https://ghproxy.net/"
+        "https://gh.xxooo.cf/"
+        "https://v6.gh-proxy.org/"
+        "https://githubproxy.cc/"
+    )
+    echo -e "${gl_huang}尝试直连（超时90s）${gl_bai}"
+    if wget -q --show-progress --connect-timeout=10 -T 90 --tries=2 "$url" -O "$out"; then
+        if [[ -s "$out" ]]; then
+            return 0
+        fi
+        echo -e "${gl_hong}文件下载成功但为空，视为失败${gl_bai}"
+        rm -f "$out"
+    fi
+    rm -f "$out"
+    local idx=0 p
+    for p in "${proxies[@]}"; do
+        idx=$((idx+1))
+        echo -e "${gl_huang}直连失败，尝试代理(${idx}/${#proxies[@]})：${gl_lv}${p}${gl_bai}"
+        if wget -q --show-progress --connect-timeout=10 -T 90 --tries=2 "${p}${url}" -O "$out"; then
+            if [[ -s "$out" ]]; then
+                return 0
+            fi
+            echo -e "${gl_hong}文件下载成功但为空，视为失败${gl_bai}"
+        fi
+        rm -f "$out"
+    done
+    return 1
+}
 
+install_i915_sriov_driver() {
+    is_pve_system || return 1
     echo -e ""
     echo -e "${gl_zi}>>> 安装i915 SR-IOV驱动${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_huang}i915-sriov-dkms 一键安装${gl_bai}"
+    echo -e "${gl_huang}i915-sriov-dkms 半自动安装${gl_bai}"
     echo -e "${gl_huang}作用：${gl_bai}"
-    echo -e "${gl_bufan}    ① ${gl_bai}为 PVE 系统编译并安装 strongtz/i915-sriov-dkms 最新发行包。"
-    echo -e "${gl_bufan}    ① ${gl_bai}使 Intel 11/12/13/14 代核显支持 SR-IOV，可在虚拟机中直通 vGPU。"
+    echo -e "${gl_bufan}    ① ${gl_bai}为 PVE 系统编译并安装 strongtz/i915-sriov-dkms deb 包。"
+    echo -e "${gl_bufan}    ② ${gl_bai}使 Intel 11/12/13/14 代核显支持 SR-IOV，可在虚拟机中直通 vGPU。"
+    echo -e "${gl_huang}deb 来源（二选一，手动指定）：${gl_bai}"
+    echo -e "${gl_bufan}    ① ${gl_bai}粘贴 .deb 的 http(s) 下载链接（GitHub 直链），脚本自动下载到当前目录。"
+    echo -e "${gl_bufan}    ② ${gl_bai}直接输入本地已下载的 .deb 绝对路径（如 /tmp/i915-sriov-dkms_2026.09.16_amd64.deb）。"
+    echo -e "${gl_huang}版本发布页（可先在此查看/复制最新直链）：${gl_bai}"
+    echo -e "${gl_lv}    https://github.com/strongtz/i915-sriov-dkms/releases${gl_bai}"
+    echo -e "${gl_huang}下载容错：${gl_bai}"
+    echo -e "${gl_bufan}    ① ${gl_bai}直连超时90s后，自动依次尝试 5 个 GitHub 加速代理。"
     echo -e "${gl_huang}前提：${gl_bai}"
     echo -e "${gl_bufan}    ① ${gl_bai}必须是 PVE 系统（检测 /var/lib/vz/template/iso）。"
-    echo -e "${gl_bufan}    ② ${gl_bai}已联网，能访问 GitHub；如需代理请提前 export https_proxy。"
+    echo -e "${gl_bufan}    ② ${gl_bai}已联网；如需代理请提前 export https_proxy。"
     echo -e "${gl_bufan}    ③ ${gl_bai}内核头文件（pve-headers-$(uname -r)）能正常安装。"
-    echo -e "${gl_huang}流程：${gl_bai}装依赖 → 取最新 release → 下载 *.deb → dpkg/补依赖 → 清理 → 提示重启。"
-    echo -e "${gl_huang}注意：${gl_bai}安装后必须重启宿主机；每个宿主机只需执行一次，升级内核时会自动重编。"
+    echo -e "${gl_huang}注意：${gl_bai}安装后必须重启宿主机；升级内核时会自动重编。"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定要安装i915 SR-IOV驱动吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")"
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消安装操作${gl_bai}"
         return 1
     fi
-
     apt update
     apt install -y jq curl wget
     clear
     echo -e ""
     echo -e "${gl_bai}当前内核的头文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
     apt install -y "pve-headers-$(uname -r)" || {
         log_error "内核头文件安装失败"
         exit_animation
@@ -43217,52 +43255,60 @@ install_i915_sriov_driver() {
     }
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e ""
-
-    echo -e "${gl_bai}正在检测 GitHub 最新版本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
-    VER=""
-    API="https://api.github.com/repos/strongtz/i915-sriov-dkms/releases/latest"
-    VER=$(curl -s --connect-timeout 10 --max-time 15 "$API" | jq -r .tag_name 2>/dev/null)
-
-    if [[ -z "$VER" || "$VER" == "null" ]]; then
-        VER=$(curl -s --connect-timeout 10 --max-time 15 "https://github.com/strongtz/i915-sriov-dkms/releases/latest" \
-            | grep -oP 'tag/\K[0-9.]+' | head -n1)
-    fi
-
-    if [[ -z "$VER" ]]; then
-        log_error "无法获取最新版本，请检查网络"
-        exit_animation
-        return 1
-    fi
-
-    DEB="i915-sriov-dkms_${VER}_amd64.deb"
-    URL="https://github.com/strongtz/i915-sriov-dkms/releases/download/${VER}/${DEB}"
-
-    echo -e "${gl_bai}准备下载 ${gl_lv}$DEB${gl_bai}"
+    echo -e "${gl_bai}请输入 deb 来源（${gl_lv}粘贴下载链接${gl_bai} 或 ${gl_huang}本地路径${gl_bai}），输入 ${gl_hong}q${gl_bai} 或直接回车取消：${gl_hui}"
+    echo -e "${gl_hui}发布页：https://github.com/strongtz/i915-sriov-dkms/releases${gl_bai}"
+    DEB=""
+    FROM_LOCAL="no"
+    while true; do
+        read -r -e -p "$(echo -e "${gl_bai}来源 > ${gl_bai}")" SRC
+        SRC="${SRC// /}"
+        SRC="${SRC//$'\t'/}"
+        if [[ -z "$SRC" || "$SRC" =~ ^[Qq]$ ]]; then
+            echo -e "${gl_huang}已取消安装，返回主菜单。${gl_bai}"
+            exit_animation
+            return 1
+        fi
+        if [[ "$SRC" =~ ^https?:// ]]; then
+            DEB="$(basename "$SRC")"
+            [[ "$DEB" != *.deb ]] && DEB="${DEB}.deb"
+            echo -e "${gl_bai}开始下载 ${gl_lv}$DEB${gl_bai}"
+            if ! download_with_fallback "$SRC" "$DEB"; then
+                log_error "下载失败！直连及全部 5 个代理均已超时，请检查网络或更换链接。"
+                rm -f "$DEB"
+                echo -e "${gl_hong}请重新输入（q 退出）。${gl_bai}"
+                continue
+            fi
+            FROM_LOCAL="no"
+            break
+        elif [[ -f "$SRC" ]]; then
+            if [[ "$SRC" != *.deb ]]; then
+                log_error "该文件不是 .deb 包，请重新输入。"
+                continue
+            fi
+            DEB="$SRC"
+            FROM_LOCAL="yes"
+            break
+        else
+            log_error "无法识别该输入（既不是链接，也不是存在的文件路径），请重新输入（q 退出）。"
+        fi
+    done
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    wget -q --show-progress --connect-timeout 10 --tries 3 -c "$URL" -O "$DEB" || {
-        log_error "下载失败！"
-        exit_animation
-        return 1
-    }
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e ""
-
     echo -e "${gl_bai}准备安装 ${gl_lv}$DEB${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -rp "$(echo -e "${gl_bai}确认安装？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
     case "$confirm" in
     [yY])
         dpkg -i "$DEB"
-        apt install -fy -q  # 静默修复依赖
+        apt install -fy -q
         ;;
     *)
         log_info "已取消安装，返回主菜单。"
+        [[ "$FROM_LOCAL" == "no" ]] && rm -f "$DEB"
         exit_animation
         return 1
         ;;
     esac
-
-    rm -f "$DEB"
+    [[ "$FROM_LOCAL" == "no" ]] && rm -f "$DEB"
     echo -e ""
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     log_info "i915 SR-IOV DKMS 驱动安装完成，请重启系统生效。"
