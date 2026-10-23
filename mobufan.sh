@@ -3542,7 +3542,7 @@ enable() {
 #            $2 - 每行列数（可选，默认自动计算）
 #      list_dir_colorful             # 不显示隐藏文件，自动列数
 #      list_dir_colorful 1           # 显示隐藏文件，自动列数
-#      list_dir_colorful 0 4         # 不显示隐藏文件，每行4列
+#      list_dir_colorful 0 2         # 不显示隐藏文件，每行4列
 #      list_dir_colorful 1 3         # 显示隐藏文件，每行3列
 list_dir_colorful() {
     local show_hidden="${1:-0}"
@@ -4157,7 +4157,7 @@ manual_file_search_and_process() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}当前目录为空${gl_bai}"
     else
-        list_dir_colorful 0 4
+        list_dir_colorful 0 2
     fi
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -4889,7 +4889,7 @@ manual_file_search_and_process() {
             fi
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             exit_animation
-            list_dir_colorful 0 4
+            list_dir_colorful 0 2
             continue
             ;;
         12) rz_download_files_to_local; continue ;;             # 下载文件到本地
@@ -4921,7 +4921,7 @@ remove_duplicate_files() {
         if [ -z "$(ls -A "$search_path" 2>/dev/null)" ]; then
             echo -e "${gl_huang}当前目录为空${gl_bai}"
         else
-            cd ${search_path} && list_dir_colorful 0 4
+            cd ${search_path} && list_dir_colorful 0 2
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
@@ -8779,7 +8779,7 @@ file_transfer_manager() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_huang}当前目录为空${gl_bai}"
         else
-            list_dir_colorful 0 4
+            list_dir_colorful 0 2
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
@@ -8916,7 +8916,7 @@ temp_dir_menu() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_huang}当前目录为空${gl_bai}"
         else
-            list_dir_colorful 0 4
+            list_dir_colorful 0 2
         fi
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -40354,7 +40354,7 @@ linux_file() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_huang}当前目录为空${gl_bai}"
         else
-            list_dir_colorful 0 4
+            list_dir_colorful 0 2
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
@@ -51240,7 +51240,7 @@ wallpaper_phone_original_sorter() {
 wallpaper_upload_local() {
     clear
     cd /vol1/1000/compose/random-pic-api/photos || return
-    list_dir_colorful 0 4
+    list_dir_colorful 0 2
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e ""
     echo -e "${gl_zi}>>> 上传本地壁纸文件 (rz)${gl_bai}"
@@ -51282,7 +51282,7 @@ wallpaper_upload_local() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     echo -e ""
-    list_dir_colorful 0 4
+    list_dir_colorful 0 2
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -51324,7 +51324,7 @@ random_wallpaper_menu() {
             total_count4=$((total_count4 + count))
         done
 
-        list_dir_colorful 0 4
+        list_dir_colorful 0 2
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
         echo -e "${gl_huang}>>> 电脑壁纸统计${gl_bai}"
@@ -51800,7 +51800,7 @@ download_and_extract() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}当前目录为空${gl_bai}"
     else
-        list_dir_colorful 0 4
+        list_dir_colorful 0 2
     fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e ""
@@ -55268,7 +55268,7 @@ linux_git_menu() {
     while true; do
         clear
         if [[ -z "$fast_jump" ]]; then
-            list_dir_colorful 0 4
+            list_dir_colorful 0 2
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e ""
             echo -e "${gl_zi}>>> ${gl_bufan}Git  ${gl_zi}管理${gl_bai}"
@@ -57784,7 +57784,7 @@ compress_tool() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             install zip 7zip gzip
             clear
-            list_dir_colorful 0 4 # 当前目录列表
+            list_dir_colorful 0 2 # 当前目录列表
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e ""
             echo -e "${gl_zi}>>> Linux压缩/解压工具${gl_bai}"
@@ -58101,7 +58101,7 @@ download_file() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_huang}当前目录为空${gl_bai}"
         else
-            list_dir_colorful 0 4
+            list_dir_colorful 0 2
         fi
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
