@@ -44638,9 +44638,10 @@ pve_onekey_sriov() {
 # 函数_PVE命令
 linux_pve_menu() {
     while true; do
+        is_pve_system || return 1  # 非PVE系统退出
         clear
         echo -e ""
-        echo -e "${gl_zi}>>> ${gl_bufan}PVE  ${gl_zi}管理${gl_bai}"
+        echo -e "${gl_zi}>>> PVE  管理${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         check_pve_version
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -53120,16 +53121,16 @@ linux_fnos_menu() {
     while true; do
         clear
         echo -e ""
-        echo -e "${gl_zi}>>> ${gl_bufan}FnOS ${gl_zi}管理${gl_bai}"
+        echo -e "${gl_zi}>>> FnOS 管理${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "$(check_fnos_version)  |  $(check_docker_compose)"
         echo -e "$(check_docker_version)   |  $(docker_status)"
         docker_tato
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}Compose容器管理     ${gl_bufan}2.  ${gl_bai}Docker全局状态"
-        echo -e "${gl_bufan}3.  ${gl_bai}Docker容器管理      ${gl_bufan}4.  ${gl_bai}Docker镜像管理"
-        echo -e "${gl_bufan}5.  ${gl_bai}Docker网络管理      ${gl_bufan}6.  ${gl_bai}Docker卷管理"
-        echo -e "${gl_bufan}7.  ${gl_bai}Docker镜像加速      ${gl_bufan}8.  ${gl_bai}清理镜像容器网络"
+        echo -e "${gl_bufan}3.  ${gl_bai}Docker 容器管理     ${gl_bufan}4.  ${gl_bai}Docker镜像管理"
+        echo -e "${gl_bufan}5.  ${gl_bai}Docker 网络管理     ${gl_bufan}6.  ${gl_bai}Docker卷管理"
+        echo -e "${gl_bufan}7.  ${gl_bai}Docker 镜像加速     ${gl_bufan}8.  ${gl_bai}清理镜像容器网络"
         echo -e "${gl_bufan}9.  ${gl_bai}Compose停止所有     ${gl_bufan}10. ${gl_bai}Compose启动所有"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}11. ${gl_bai}推送Compose项目     ${gl_bufan}12. ${gl_bai}克隆Compose项目"
