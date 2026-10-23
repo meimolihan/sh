@@ -8879,9 +8879,7 @@ go_parent_directory() {
 # 临时目录管理菜单
 temp_dir_menu() {
     root_use
-    local default_dir="/mnt/tmp"
-
-    local target_dir="${1:-$default_dir}"
+    local target_dir="${1:-$(pwd)}"
 
     local menu_name="${2:-上一级选单}"
 
@@ -8923,7 +8921,7 @@ temp_dir_menu() {
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e ""
-        echo -e "${gl_zi}>>> 测试项目${gl_bai}"
+        echo -e "${gl_zi}>>> 常用工具${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         echo -e "${gl_bufan}1.  ${gl_bai}进入指定目录         ${gl_bufan}2.  ${gl_bai}返回上一级目录"
@@ -61039,7 +61037,7 @@ mobufan_sh() {
         echo -e "${gl_bufan}12. ${gl_bai}iStoreOS"
         echo -e "${gl_bufan}13. ${gl_bai}Web 管理"
         echo -e "${gl_bufan}14. ${gl_bai}Git 管理"
-        echo -e "${gl_bufan}15. ${gl_bai}测试项目"
+        echo -e "${gl_bufan}15. ${gl_bai}常用工具"
         echo -e "${gl_bufan}16. ${gl_bai}后台工作"
         echo -e "${gl_bufan}18. ${gl_bai}个人项目"
         echo -e "${gl_bufan}————————————————————————${gl_bai}"
@@ -61064,7 +61062,7 @@ mobufan_sh() {
         12) linux_istoreos_menu ;;          # iStoreOS
         13) linux_nginx_menu "$@" ;;        # Web 管理
         14) linux_git_menu ;;               # Git 管理
-        15) temp_dir_menu "" "主菜单" ;;     # 测试项目
+        15) temp_dir_menu "" "主菜单" ;;     # 常用工具
         16) linux_work ;;                   # 后台工作
         18) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/ppm_tool.sh) ;;                   # 个人项目
         00) mobufan_update ;;               # 更新脚本
