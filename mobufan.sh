@@ -67,6 +67,7 @@ smb_cifs_cred_file() {
 
 # 退出动画函数
 exit_animation() {
+    sleep_fractional 0.8
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     local dots=(
         "${gl_hong}."
@@ -2813,7 +2814,7 @@ select_and_display_file_info() {
     clear
     if ! list_files "$target_dir" "$show_hidden" "$custom_cols"; then
         echo -e "${gl_lv}即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-        sleep_fractional 0.8
+        exit_animation
         return
     fi
 
@@ -2966,10 +2967,7 @@ check_directory_empty() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}错误：目录不存在 ${gl_huang}${dir}${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_lv}即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-        sleep_fractional 0.8
-        echo -ne "${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-        sleep_fractional 1
+        exit_animation
         return 2
     fi
 
@@ -17480,7 +17478,7 @@ unmount_partition() {
     echo -e "${gl_huang}将要卸载：${gl_lv}$target_dev${gl_bai}"
     echo -e "${gl_huang}挂载点：${gl_lv}$target_mp${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -r -p "$(echo -e "${gl_bai}确认卸载？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+    read -r -p "$(echo -e "${gl_bai}确认卸载吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
     [[ ! "$confirm" =~ ^[Yy]$ ]] && { log_info "已取消"; exit_animation; return; }
 
     echo ""
@@ -40446,13 +40444,9 @@ EOF
 
 # PVE 关闭已经开启的实例
 pve_shutdown_selector() {
-
-    is_pve_system || return 1  # 非PVE系统退出
-
-    check_and_install jq || return 1 # 检查 jq 是否安装（如果已安装直接继续）
-
+    is_pve_system || return 1
+    check_and_install jq || return 1
     clear
-
     get_running_instances() {
         RUNNING_INSTANCES=()
         INSTANCE_TYPES=()
@@ -40590,13 +40584,9 @@ pve_shutdown_selector() {
 
 # PVE 开启已经关闭的实例
 pve_start_selector() {
-
-    is_pve_system || return 1  # 非PVE系统退出
-
-    check_and_install jq || return 1 # 检查 jq 是否安装（如果已安装直接继续）
-
+    is_pve_system || return 1
+    check_and_install jq || return 1
     clear
-
     get_stopped_instances() {
         STOPPED_INSTANCES=()
         INSTANCE_TYPES=()
@@ -40738,7 +40728,7 @@ pve_start_selector() {
 
 pve_restart_selector() {
 
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
 
     check_and_install jq || return # 检查 jq 是否安装（如果已安装直接继续）
 
@@ -41148,7 +41138,7 @@ menu_edit_lxc_conf() {
 
 ### 销毁虚拟机
 qm_destroy_vm() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     clear
     echo -e "${gl_huang}>>> 虚拟机列表${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -41215,7 +41205,7 @@ qm_destroy_vm() {
 
 ### 清除虚拟机迁移/备份锁
 qm_unlock_vm() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     clear
     pve_check_locks
     echo -e ""
@@ -41244,7 +41234,7 @@ qm_unlock_vm() {
 
 ### PVE安装iStoreOS函数
 pve_install_istoreos() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     clear
     echo -e "${gl_zi}>>> PVE安装iStoreOS${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -41787,7 +41777,7 @@ pve_install_istoreos() {
 
 # 备份虚拟机
 backup_vm() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     clear
     echo -e "${gl_huang}>>> 虚拟机列表${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -41830,7 +41820,7 @@ backup_vm() {
 # 恢复虚拟机函数
 restore_vm() {
     while true; do
-        is_pve_system || return 1  # 非PVE系统退出
+        is_pve_system || return 1
         clear
         echo -e "${gl_huang}>>> 虚拟机列表${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -42770,7 +42760,7 @@ pve_check_locks() {
 
 # 查看内核版本
 show_kernel_version() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     echo -e ""
     echo -e "${gl_zi}>>> 查看内核版本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -42858,7 +42848,7 @@ show_pve_kernel() {
 
 # 安装内核并固化
 install_and_pin_kernel() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     clear
     echo -e ""
     echo -e "${gl_zi}>>> 安装内核并固化${gl_bai}"
@@ -42902,7 +42892,7 @@ install_and_pin_kernel() {
 
 # 重启应用新内核
 reboot_for_new_kernel() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
 
     echo -e ""
     echo -e "${gl_zi}>>> 重启应用新内核${gl_bai}"
@@ -42925,7 +42915,7 @@ reboot_for_new_kernel() {
 
 # 修改GRUB引导参数
 modify_grub_params() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     echo -e ""
     echo -e "${gl_zi}>>> 修改 GRUB 默认引导参数${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -43101,7 +43091,7 @@ install_i915_sriov_driver() {
 
 # 更新initramfs并重启
 update_initramfs_and_reboot() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
 
     echo -e "${gl_bai}正在更新 initramfs ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     update-initramfs -u -k all || {
@@ -43129,7 +43119,7 @@ update_initramfs_and_reboot() {
 
 # 检查SR-IOV状态
 check_sriov_status() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
 
     echo -e ""
     echo -e "${gl_huang}>>> 正在扫描 Intel i915 PF / VF 设备 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
@@ -43164,7 +43154,6 @@ check_sriov_status() {
 is_pve_system() {
     if [ ! -d "/var/lib/vz/template/iso" ]; then
         echo -e "\n${gl_hong}你这不是 ${gl_huang}PVE${gl_hong} 系统！${gl_bai}"
-        sleep_fractional 0.8
         exit_animation
         return 1
     fi
@@ -43176,7 +43165,6 @@ is_fnos_system() {
     if [ ! -d "/vol1/1000" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}FnOS${gl_hong} 系统！\c"
-        sleep_fractional 0.8
         exit_animation
         return 1   # 检测失败，返回非0
     fi
@@ -43188,7 +43176,6 @@ exit_if_fnos_system() {
     if [ -d "/vol1/1000" ]; then
         echo -e ""
         echo -en "\r${gl_hong}检测到 ${gl_huang}FnOS${gl_hong} 系统，不支持此系统! \c"
-        sleep_fractional 0.8
         exit_animation
         return 1
     fi
@@ -43200,7 +43187,6 @@ is_istoreos_system() {
     if [ ! -d "/usr/lib/lua/luci/controller" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}iStoreOS${gl_hong} 系统！即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-        sleep_fractional 0.8
         exit_animation
         return 1   # 检测失败，返回非0
     fi
@@ -43209,7 +43195,7 @@ is_istoreos_system() {
 
 # 显示存储信息
 show_storage_info() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     echo -e ""
     echo -e "${gl_zi}>>> 磁盘分配详情${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -43226,7 +43212,7 @@ show_storage_info() {
 
 # PVE优化脚本
 pve_optimize_script() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     clear
     wget -q -O /root/pve_source.tar.gz 'https://gitee.com/meimolihan/script/raw/master/sh/pve/pve_source.tar.gz' && tar zxvf /root/pve_source.tar.gz && /root/./pve_source
     break_end
@@ -43234,7 +43220,7 @@ pve_optimize_script() {
 
 # 所有虚拟机状态
 show_all_vm_status() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     clear
     pvesh get /cluster/resources
     break_end
@@ -43242,7 +43228,7 @@ show_all_vm_status() {
 
 # 列出VM/LXC磁盘文件
 list_vm_lxc_disk_files() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     clear
     echo -e ""
     echo -e "${gl_zi}>>> 列出VM/LXC磁盘文件${gl_bai}"
@@ -43259,7 +43245,7 @@ list_vm_lxc_disk_files() {
 
 # 执行FastPVE安装配置脚本
 install_fastpve() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     echo -e ""
     echo -e "${gl_zi}>>> 正在安装 FastPVE 配置脚本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -43270,7 +43256,7 @@ install_fastpve() {
 
 # 查看核显使用率
 show_gpu_usage() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     check_and_install intel-gpu-tools && intel_gpu_top -d sriov
 }
 
@@ -44422,7 +44408,7 @@ pve_onekey_sriov() {
 
 # 函数_PVE命令
 linux_pve_menu() {
-    is_pve_system || return 1  # 非PVE系统退出
+    is_pve_system || return 1
     while true; do
         clear
         echo -e ""
@@ -44433,34 +44419,34 @@ linux_pve_menu() {
         pve_running_status_simple
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        echo -e "${gl_bufan}1.  ${gl_bai}交互关闭虚拟机     ${gl_bufan}2.  ${gl_bai}交互开启虚拟机"
-        echo -e "${gl_bufan}3.  ${gl_bai}交互重启虚拟机     ${gl_bufan}4.  ${gl_bai}手动管理虚拟机"
+        echo -e "${gl_bufan}1.  ${gl_bai}交互关闭虚拟机      ${gl_bufan}2.  ${gl_bai}交互开启虚拟机"
+        echo -e "${gl_bufan}3.  ${gl_bai}交互重启虚拟机      ${gl_bufan}4.  ${gl_bai}手动管理虚拟机"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         echo -e "${gl_huang}一键更新内核 ${gl_lv}111${gl_bai}"
-        echo -e "${gl_bufan}5.  ${gl_bai}查看内核版本       ${gl_bufan}6.  ${gl_bai}查看可用内核"
-        echo -e "${gl_bufan}7.  ${gl_bai}安装内核并固化     ${gl_bufan}8.  ${gl_bai}重启应用新内核"
+        echo -e "${gl_bufan}5.  ${gl_bai}查看内核版本        ${gl_bufan}6.  ${gl_bai}查看可用内核"
+        echo -e "${gl_bufan}7.  ${gl_bai}安装内核并固化      ${gl_bufan}8.  ${gl_bai}重启应用新内核"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         echo -e "${gl_huang}一键编译SR-IOV ${gl_lv}222${gl_bai}"
-        echo -e "${gl_bufan}9.  ${gl_bai}修改GRUB引导参数   ${gl_bufan}10. ${gl_bai}安装i915 SR-IOV驱动"
-        echo -e "${gl_bufan}11. ${gl_bai}更新重启initramfs  ${gl_bufan}12. ${gl_bai}检查SR-IOV状态"
+        echo -e "${gl_bufan}9.  ${gl_bai}修改GRUB引导参数    ${gl_bufan}10. ${gl_bai}安装i915 SR-IOV驱动"
+        echo -e "${gl_bufan}11. ${gl_bai}更新重启initramfs   ${gl_bufan}12. ${gl_bai}检查SR-IOV状态"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        echo -e "${gl_bufan}13. ${gl_bai}编辑虚拟机配置     ${gl_bufan}14. ${gl_bai}编辑LXC容器配置"
-        echo -e "${gl_bufan}15. ${gl_bai}编辑软件源配置     ${gl_bufan}16. ${gl_bai}查看磁盘分配详情"
-        echo -e "${gl_bufan}17. ${gl_bai}管理备份目录       ${gl_bufan}18. ${gl_bai}管理固件目录"
-        echo -e "${gl_bufan}19. ${gl_bai}销毁虚拟机         ${gl_bufan}20. ${gl_bai}清除虚拟机迁移/备份锁"
-        echo -e "${gl_bufan}21. ${gl_bai}列出VM/LXC磁盘文件 ${gl_bufan}22. ${gl_bai}常用目录管理"
+        echo -e "${gl_bufan}13. ${gl_bai}编辑虚拟机配置      ${gl_bufan}14. ${gl_bai}编辑LXC容器配置"
+        echo -e "${gl_bufan}15. ${gl_bai}编辑软件源配置      ${gl_bufan}16. ${gl_bai}查看磁盘分配详情"
+        echo -e "${gl_bufan}17. ${gl_bai}管理备份目录        ${gl_bufan}18. ${gl_bai}管理固件目录"
+        echo -e "${gl_bufan}19. ${gl_bai}销毁虚拟机          ${gl_bufan}20. ${gl_bai}清除迁移/备份锁"
+        echo -e "${gl_bufan}21. ${gl_bai}列出VM/LXC磁盘文件  ${gl_bufan}22. ${gl_bai}常用目录管理"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        echo -e "${gl_bufan}23. ${gl_bai}所有虚拟机状态     ${gl_bufan}24. ${gl_bai}查看核显使用率"
-        echo -e "${gl_bufan}25. ${gl_bai}备份虚拟机         ${gl_bufan}26. ${gl_bai}恢复虚拟机"
-        echo -e "${gl_bufan}27. ${gl_bai}管理虚拟机备份     ${gl_bufan}28. ${gl_bai}FastPVE安装配置脚本"
+        echo -e "${gl_bufan}23. ${gl_bai}所有虚拟机状态      ${gl_bufan}24. ${gl_bai}查看核显使用率"
+        echo -e "${gl_bufan}25. ${gl_bai}备份虚拟机          ${gl_bufan}26. ${gl_bai}恢复虚拟机"
+        echo -e "${gl_bufan}27. ${gl_bai}管理虚拟机备份      ${gl_bufan}28. ${gl_bai}FastPVE安装配置脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        echo -e "${gl_bufan}29. ${gl_bai}PVE优化脚本        ${gl_bufan}30. ${gl_bai}PVE安装iStoreOS"
-        echo -e "${gl_bufan}31. ${gl_bai}虚拟机ID和名称修改 ${gl_bufan}32. ${gl_bai}LXC容器ID和名称修改"
+        echo -e "${gl_bufan}29. ${gl_bai}PVE 优化脚本        ${gl_bufan}30. ${gl_bai}PVE 安装 iStoreOS"
+        echo -e "${gl_bufan}31. ${gl_bai}虚拟机ID和名称修改  ${gl_bufan}32. ${gl_bai}LXC容器ID和名称修改"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         echo -e "${gl_huang}0.  ${gl_bai}返回主菜单         ${gl_hong}00. ${gl_bai}退出脚本"
@@ -52912,28 +52898,28 @@ linux_fnos_menu() {
         echo -e "$(check_docker_version)   |  $(docker_status)"
         docker_tato
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}1.  ${gl_bai}Compose容器管理     ${gl_bufan}2.  ${gl_bai}Docker全局状态"
-        echo -e "${gl_bufan}3.  ${gl_bai}Docker 容器管理     ${gl_bufan}4.  ${gl_bai}Docker镜像管理"
-        echo -e "${gl_bufan}5.  ${gl_bai}Docker 网络管理     ${gl_bufan}6.  ${gl_bai}Docker卷管理"
-        echo -e "${gl_bufan}7.  ${gl_bai}Docker 镜像加速     ${gl_bufan}8.  ${gl_bai}清理镜像容器网络"
-        echo -e "${gl_bufan}9.  ${gl_bai}Compose停止所有     ${gl_bufan}10. ${gl_bai}Compose启动所有"
+        echo -e "${gl_bufan}1.  ${gl_bai}Compose容器管理      ${gl_bufan}2.  ${gl_bai}Docker 全局状态"
+        echo -e "${gl_bufan}3.  ${gl_bai}Docker 容器管理      ${gl_bufan}4.  ${gl_bai}Docker 镜像管理"
+        echo -e "${gl_bufan}5.  ${gl_bai}Docker 网络管理      ${gl_bufan}6.  ${gl_bai}Docker 卷管理"
+        echo -e "${gl_bufan}7.  ${gl_bai}Docker 镜像加速      ${gl_bufan}8.  ${gl_bai}Docker 清理"
+        echo -e "${gl_bufan}9.  ${gl_bai}Compose停止所有      ${gl_bufan}10. ${gl_bai}Compose启动所有"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}11. ${gl_bai}推送Compose项目     ${gl_bufan}12. ${gl_bai}克隆Compose项目"
-        echo -e "${gl_bufan}13. ${gl_bai}远程备份Compose     ${gl_bufan}14. ${gl_bai}远程恢复Compose"
-        echo -e "${gl_bufan}15. ${gl_bai}本地备份Compose     ${gl_bufan}16. ${gl_bai}本地恢复Compose"
-        echo -e "${gl_bufan}17. ${gl_bai}配置文件管理器      ${gl_bufan}18. ${gl_bai}临时目录管理器"
-        echo -e "${gl_bufan}19. ${gl_bai}备份/迁移Docker镜像 ${gl_bufan}20. ${gl_bai}备份/迁移Compose项目"
+        echo -e "${gl_bufan}11. ${gl_bai}推送项目Compose      ${gl_bufan}12. ${gl_bai}克隆项目Compose"
+        echo -e "${gl_bufan}13. ${gl_bai}远程备份Compose      ${gl_bufan}14. ${gl_bai}远程恢复Compose"
+        echo -e "${gl_bufan}15. ${gl_bai}本地备份Compose      ${gl_bufan}16. ${gl_bai}本地恢复Compose"
+        echo -e "${gl_bufan}17. ${gl_bai}配置文件管理器       ${gl_bufan}18. ${gl_bai}临时目录管理器"
+        echo -e "${gl_bufan}19. ${gl_bai}备份迁移Docker镜像   ${gl_bufan}20. ${gl_bai}备份迁移Compose项目"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}21. ${gl_bai}智能GPU检测工具     ${gl_bufan}22. ${gl_bai}FnOS系统安全工具"
-        echo -e "${gl_bufan}23. ${gl_bai}清理错误内核        ${gl_bufan}24. ${gl_bai}修复固件缺失错误"
-        echo -e "${gl_bufan}25. ${gl_bai}随机壁纸管理        ${gl_bufan}26. ${gl_bai}电视剧集重命名"
-        echo -e "${gl_bufan}27. ${gl_bai}FnOS开启BBR         ${gl_bufan}28. ${gl_bai}FnOS关闭BBR"
-        echo -e "${gl_bufan}29. ${gl_bai}硬盘分区管理        ${gl_bufan}30. ${gl_bai}常用目录管理"
+        echo -e "${gl_bufan}21. ${gl_bai}智能GPU检测工具      ${gl_bufan}22. ${gl_bai}FnOS系统安全工具"
+        echo -e "${gl_bufan}23. ${gl_bai}清理错误内核         ${gl_bufan}24. ${gl_bai}修复固件缺失错误"
+        echo -e "${gl_bufan}25. ${gl_bai}随机壁纸管理         ${gl_bufan}26. ${gl_bai}电视剧集重命名"
+        echo -e "${gl_bufan}27. ${gl_bai}FnOS开启BBR          ${gl_bufan}28. ${gl_bai}FnOS关闭BBR"
+        echo -e "${gl_bufan}29. ${gl_bai}硬盘分区管理         ${gl_bufan}30. ${gl_bai}常用目录管理"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_lv}66. ${gl_bai}安装${gl_bufan}Docker${gl_bai}环境      ${gl_hong}99. ${gl_bai}卸载${gl_bufan}Docker${gl_bai}环境"
-        echo -e "${gl_lv}666.${gl_bai}安装${gl_bufan}Compose${gl_bai}环境     ${gl_hong}999.${gl_bai}卸载${gl_bufan}Compose${gl_bai}环境"
+        echo -e "${gl_lv}66. ${gl_bai}安装${gl_bufan}Docker${gl_bai}环境       ${gl_hong}99. ${gl_bai}卸载${gl_bufan}Docker${gl_bai}环境"
+        echo -e "${gl_lv}666.${gl_bai}安装${gl_bufan}Compose${gl_bai}环境      ${gl_hong}999.${gl_bai}卸载${gl_bufan}Compose${gl_bai}环境"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_huang}0.  ${gl_bai}返回主菜单          ${gl_hong}00. ${gl_bai}退出脚本"
+        echo -e "${gl_huang}0.  ${gl_bai}返回主菜单           ${gl_hong}00. ${gl_bai}退出脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "请输入你的选择: " sub_choice
 
