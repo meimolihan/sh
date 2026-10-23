@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.7.3"
+sh_v="1.7.4"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -33,6 +33,36 @@ sleep_fractional() {
     local int_seconds
     int_seconds=$(echo "$seconds" | awk '{print int($1+0.999)}')
     sleep "$int_seconds"
+}
+
+# 读取 SMB 服务器凭据（按服务器 IP 保存到 ~/.mobufan_smb_<ip>，权限 600）
+# 首次使用提示输入并保存，避免在脚本中硬编码明文密码
+smb_load_cred() {
+    local server="$1"
+    local cred_file="$HOME/.mobufan_smb_${server//./_}"
+    SMB_USER=""
+    SMB_PASS=""
+    if [[ -f "$cred_file" ]]; then
+        SMB_USER=$(sed -n 's/^username=//p' "$cred_file" | head -1)
+        SMB_PASS=$(sed -n 's/^password=//p' "$cred_file" | head -1)
+    fi
+    if [[ -z "$SMB_USER" || -z "$SMB_PASS" ]]; then
+        read -r -e -p "请输入 SMB 服务器 ${server} 的用户名: " SMB_USER
+        read -r -s -e -p "请输入 SMB 密码（输入不回显）: " SMB_PASS
+        echo ""
+        printf 'username=%s\npassword=%s\n' "$SMB_USER" "$SMB_PASS" >"$cred_file"
+        chmod 600 "$cred_file"
+        log_ok "凭据已保存到 ${cred_file}"
+    fi
+}
+
+# 生成 CIFS 挂载参数：凭据通过临时 credentials 文件传递，不出现在命令行和 mount 表中
+# 用法：smb_cifs_cred_file <服务器IP>  （设置 SMB_CRED_FILE 变量）
+smb_cifs_cred_file() {
+    smb_load_cred "$1"
+    SMB_CRED_FILE=$(mktemp /tmp/cifs_cred.XXXXXX)
+    printf 'username=%s\npassword=%s\n' "$SMB_USER" "$SMB_PASS" >"$SMB_CRED_FILE"
+    chmod 600 "$SMB_CRED_FILE"
 }
 
 # 退出动画函数
@@ -914,7 +944,9 @@ list_beautify_nic_info() {
         printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "接口名" "状态" "IPv4地址" "MAC地址" "MTU" "速度" "$reset"
         printf "%s%s\t%s\t%s\t%s\t%s\t%s%s\n" "$gl_hui" "--------" "--------" "------------------" "--------------------" "----" "----" "$reset"
 
-        for nic in $(ls /sys/class/net 2>/dev/null); do
+        for nic in /sys/class/net/*; do
+            [ -e "$nic" ] || continue
+            nic="${nic##*/}"
             state=$(cat "/sys/class/net/$nic/operstate" 2>/dev/null)
             ipaddr=$(ip -4 addr show "$nic" 2>/dev/null | awk '/inet /{print $2}' | head -n1)
             mac=$(cat "/sys/class/net/$nic/address" 2>/dev/null)
@@ -2966,52 +2998,71 @@ mobufan() {
     mobufan_sh "$@"
 }
 
-# 根据参数设置全局代理和执行标志的配置函数。
-quanju_canshu() {
-    if [ "$canshu" = "CN" ]; then
-        zhushi=0
-        gh_proxy="https://gh.kejilion.pro/"
-    elif [ "$canshu" = "V6" ]; then
-        zhushi=1
-        gh_proxy="https://gh.kejilion.pro/"
+# GitHub 代理前缀：默认直连；国内服务器如需加速可改为 https://gh.kejilion.pro/
+gh_proxy="https://"
+
+# 版本比较：version_ge v1 v2 —— v1 >= v2 时返回 0
+version_ge() {
+    [ "$1" = "$2" ] && return 0
+    local v1 v2 i a b
+    v1=$(echo "$1" | tr '.' ' ')
+    v2=$(echo "$2" | tr '.' ' ')
+    for i in 1 2 3; do
+        a=$(echo "$v1" | awk -v n="$i" '{print $n}')
+        b=$(echo "$v2" | awk -v n="$i" '{print $n}')
+        a=${a:-0}
+        b=${b:-0}
+        [ "$a" -gt "$b" ] && return 0
+        [ "$a" -lt "$b" ] && return 1
+    done
+    return 0
+}
+
+# 部署自身为 m 命令（幂等：不会用旧副本覆盖新版本，优先使用软链）
+deploy_self() {
+    local src
+    src=$(realpath "$1" 2>/dev/null || echo "$1")
+    [[ -f "$src" ]] || return 0
+
+    # 只清理脚本自身历史遗留的 alias，不动用户自己定义的 alias
+    sed -i '/^alias m=.*mobufan/d' ~/.bashrc 2>/dev/null
+    sed -i '/^alias m=.*mobufan/d' ~/.profile 2>/dev/null
+    sed -i '/^alias m=.*mobufan/d' ~/.bash_profile 2>/dev/null
+
+    # 家中副本不存在或为空时直接部署；否则仅当运行版本不低于已安装版本才覆盖，防止旧副本降级
+    if [[ ! -s ~/mobufan.sh ]]; then
+        cp -f "$src" ~/mobufan.sh 2>/dev/null
     else
-        zhushi=1 # 0 表示执行，1 表示不执行
-        gh_proxy="https://"
+        local dst_v src_v
+        dst_v=$(grep -m1 '^sh_v=' ~/mobufan.sh 2>/dev/null | cut -d'"' -f2)
+        src_v=$(grep -m1 '^sh_v=' "$src" 2>/dev/null | cut -d'"' -f2)
+        if [[ -n "$src_v" && -n "$dst_v" ]] && version_ge "$src_v" "$dst_v"; then
+            cp -f "$src" ~/mobufan.sh 2>/dev/null
+        fi
+    fi
+
+    # 全局 m 命令：软链指向家中副本；旧版实体文件且版本落后时刷新，非本脚本文件则不动
+    if [[ -L /usr/local/bin/m ]]; then
+        ln -sf ~/mobufan.sh /usr/local/bin/m 2>/dev/null
+    elif [[ ! -e /usr/local/bin/m ]]; then
+        ln -sf ~/mobufan.sh /usr/local/bin/m 2>/dev/null || {
+            cp -f ~/mobufan.sh /usr/local/bin/m 2>/dev/null
+            chmod +x /usr/local/bin/m 2>/dev/null
+        }
+    else
+        local m_v home_v
+        m_v=$(grep -m1 '^sh_v=' /usr/local/bin/m 2>/dev/null | cut -d'"' -f2)
+        home_v=$(grep -m1 '^sh_v=' ~/mobufan.sh 2>/dev/null | cut -d'"' -f2)
+        if [[ -n "$m_v" && -n "$home_v" ]] && version_ge "$home_v" "$m_v"; then
+            rm -f /usr/local/bin/m
+            ln -sf ~/mobufan.sh /usr/local/bin/m 2>/dev/null || {
+                cp -f ~/mobufan.sh /usr/local/bin/m 2>/dev/null
+                chmod +x /usr/local/bin/m 2>/dev/null
+            }
+        fi
     fi
 }
-quanju_canshu
-
-canshu_v6() {
-    if grep -q '^canshu="V6"' /usr/local/bin/m >/dev/null 2>&1; then
-        sed -i 's/^canshu="default"/canshu="V6"/' ~/mobufan.sh
-    fi
-}
-
-CheckFirstRun_true() {
-    if grep -q '^permission_granted="true"' /usr/local/bin/m >/dev/null 2>&1; then
-        sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/mobufan.sh
-    fi
-}
-
-yinsiyuanquan2() {
-    if grep -q '^ENABLE_STATS="false"' /usr/local/bin/m >/dev/null 2>&1; then
-        sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/mobufan.sh
-    fi
-}
-
-# 执行配置同步函数
-canshu_v6
-CheckFirstRun_true
-yinsiyuanquan2
-
-# 清理旧别名并部署新脚本
-sed -i '/^alias m=/d' ~/.bashrc >/dev/null 2>&1
-sed -i '/^alias m=/d' ~/.profile >/dev/null 2>&1
-sed -i '/^alias m=/d' ~/.bash_profile >/dev/null 2>&1
-cp -f ./mobufan.sh ~/mobufan.sh >/dev/null 2>&1
-cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
-# shellcheck source=/dev/null
-# source ~/.bashrc
+deploy_self "$0"
 
 # 提示用户同意条款
 CheckUserAgreement() {
@@ -3875,7 +3926,7 @@ safe_rm() {
     if [[ "$force_mode" == true ]]; then
         echo -e "${gl_bai}强制删除模式 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         rm -rf ./*
-        rm -rf ./..* 2>/dev/null # 尝试删除隐藏文件，忽略错误
+        find . -maxdepth 1 -name ".*" ! -name "." ! -name ".." -exec rm -rf {} + 2>/dev/null
         popd >/dev/null || return
         echo -e "${gl_lv}删除完成${gl_bai}"
         exit_animation
@@ -3901,7 +3952,8 @@ safe_rm() {
     0) cancel_return; return 2 ;;
     *)
         echo -e "${gl_bai}错误：请输入 ${gl_lv}y ${gl_bai}或 ${gl_hong}N${gl_bai}"
-        exit 1
+        cancel_return "上一级选单"
+        return 2
         ;;
     esac
 
@@ -5405,7 +5457,7 @@ get_duplicate_groups() {
     for checksum in "${!duplicate_groups[@]}"; do
         IFS='|' read -ra files <<<"${duplicate_groups[$checksum]}"
         if [[ ${#files[@]} -le 1 ]]; then
-            unset duplicate_groups["$checksum"]
+            unset 'duplicate_groups[$checksum]'
         fi
     done
 }
@@ -9340,7 +9392,7 @@ safe_read() {
             ;;
         file)
             local expanded
-            eval "expanded=\"$raw\""
+            expanded="${raw/#\~/$HOME}"
             [[ -f $expanded ]] || {
                 echo "错误：文件 '$raw' 不存在"
                 return
@@ -9348,7 +9400,7 @@ safe_read() {
             ;;
         dir)
             local expanded
-            eval "expanded=\"$raw\""
+            expanded="${raw/#\~/$HOME}"
             [[ -d $expanded ]] || {
                 echo "错误：目录 '$raw' 不存在"
                 return
@@ -11676,7 +11728,13 @@ repeat_add_yuming() {
 add_yuming() {
     ip_address
     echo -e "先将域名解析到本机IP: ${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
-    read -r -e -p "请输入你的IP或者解析过的域名: " yuming
+    while true; do
+        read -r -e -p "请输入你的IP或者解析过的域名: " yuming
+        [[ "$yuming" =~ ^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]] && break
+        [[ "$yuming" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] && break
+        [[ "$yuming" == *:* && "$yuming" =~ ^[0-9A-Fa-f:]+$ ]] && break
+        echo -e "${gl_hong}格式无效，请输入域名或 IP 地址${gl_bai}"
+    done
 }
 
 add_db() {
@@ -11738,27 +11796,6 @@ nginx_upgrade() {
     echo "更新${ldnmp_pods}完成"
 }
 
-phpmyadmin_upgrade() {
-    local ldnmp_pods="phpmyadmin"
-    local docker_port=8877
-    local dbuse
-    dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
-    local dbusepasswd
-    dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
-    cd /etc/nginx/ || return
-    docker rm -f $ldnmp_pods >/dev/null 2>&1
-    docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi >/dev/null 2>&1
-    curl -sS -O https://raw.githubusercontent.com/kejilion/docker/refs/heads/main/docker-compose.phpmyadmin.yml
-    docker compose -f docker-compose.phpmyadmin.yml up -d
-    clear
-    ip_address
-
-    check_docker_app_ip
-    echo "登录信息: "
-    echo "用户名: $dbuse"
-    echo "密码: $dbusepasswd"
-    echo
-}
 
 cf_purge_cache() {
     local CONFIG_FILE="/etc/nginx/config/cf-purge-cache.txt"
@@ -15665,11 +15702,11 @@ new_ssh_port() {
     sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
 
     correct_ssh_config
+    [[ -d /etc/ssh/sshd_config.d ]] && cp -r /etc/ssh/sshd_config.d "/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null
     rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 
     restart_ssh
     open_port "$new_port"
-    remove iptables-persistent ufw firewalld iptables-services >/dev/null 2>&1
 
     echo -e "${gl_bai}已修改 SSH 端口为: ${gl_huang}$new_port${gl_bai}"
     sleep_fractional 1
@@ -15680,12 +15717,13 @@ add_sshkey() {
     mkdir -p ~/.ssh
     chmod 700 ~/.ssh
     touch ~/.ssh/authorized_keys
-    ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f ~/.ssh/sshkey -N ""
+    ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)-$(date +%Y%m%d)" -f ~/.ssh/sshkey -N ""
     cat ~/.ssh/sshkey.pub >>~/.ssh/authorized_keys
     chmod 600 ~/.ssh/authorized_keys
 
     ip_address
     echo -e "私钥信息已生成，务必复制保存，可保存成 ${gl_huang}${ipv4_address}_ssh.key${gl_bai} 文件，用于以后的SSH登录"
+    echo -e "${gl_hong}警告：下方私钥只会显示这一次，请立即复制并妥善保存，切勿泄露给他人！${gl_bai}"
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     cat ~/.ssh/sshkey
@@ -15694,6 +15732,7 @@ add_sshkey() {
         -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
         -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
         -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+    [[ -d /etc/ssh/sshd_config.d ]] && cp -r /etc/ssh/sshd_config.d "/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null
     rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
     restart_ssh
     echo -e "${gl_lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
@@ -15740,7 +15779,7 @@ fetch_remote_ssh_keys() {
     local temp_file
 
     if [[ -z "${keys_url}" ]]; then
-        echo -e "${gl_lv}https://dufs.mobufan.eu.org:666/ssh/mobufan_ssh.txt${gl_bai}"
+        echo -e "${gl_lv}https://example.com/ssh/your_ssh_key.txt${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入您的远端公钥URL(${gl_huang}0${gl_bai}返回)"：)" keys_url
         [[ -z "$keys_url" ]] && { cancel_empty "上一级选单"; return 1; }
         [[ "$keys_url" == "0" ]] && { cancel_return; return 1; }
@@ -16309,7 +16348,7 @@ clamav_scan() {
         clamav/clamav-debian:latest \
         clamscan -r --log=/var/log/clamav/scan.log "$SCAN_PARAMS"
 
-    echo -e "${gl_lv}$@ 扫描完成，病毒报告存放在${gl_huang}/home/docker/clamav/log/scan.log${gl_bai}"
+    echo -e "${gl_lv}$* 扫描完成，病毒报告存放在${gl_huang}/home/docker/clamav/log/scan.log${gl_bai}"
     echo -e "${gl_lv}如果有病毒请在${gl_huang}scan.log${gl_lv}文件中搜索FOUND关键字确认病毒位置 ${gl_bai}"
 
 }
@@ -18272,7 +18311,6 @@ format_disk() {
     fi
     break_end
 }
-
 
 
 # 添加到fstab实现开机自动挂载
@@ -26652,63 +26690,6 @@ install_samba() {
     fi
 }
 
-# 检查并启动Samba服务
-check_samba_service() {
-    log_info "检查Samba服务状态 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-
-    sleep_fractional 2
-
-    if [ -f /lib/systemd/system/smbd.service ] || [ -f /usr/lib/systemd/system/smbd.service ]; then
-        local service_name="smbd"
-    elif [ -f /lib/systemd/system/smb.service ] || [ -f /usr/lib/systemd/system/smb.service ]; then
-        local service_name="smb"
-    elif [ -f /lib/systemd/system/samba.service ] || [ -f /usr/lib/systemd/system/samba.service ]; then
-        local service_name="samba"
-    else
-        log_error "未找到Samba服务文件，尝试手动启动 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if systemctl start smbd 2>/dev/null; then
-            log_ok "Samba 服务启动成功"
-            return 0
-        fi
-        return 1
-    fi
-
-    log_info "检测到Samba服务: ${service_name}"
-
-    if systemctl daemon-reload &>/dev/null; then
-        log_info "已重载systemd配置"
-    fi
-
-    if systemctl is-active --quiet "$service_name"; then
-        log_ok "Samba 服务正在运行"
-    else
-        log_warn "Samba 服务未运行，正在启动 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if systemctl start "$service_name"; then
-            log_ok "Samba 服务启动成功"
-        else
-            log_error "Samba 服务启动失败，尝试启动smbd和nmbd ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            systemctl start smbd nmbd 2>/dev/null && {
-                log_ok "Samba 服务启动成功"
-                return 0
-            }
-            return 1
-        fi
-    fi
-
-    if ! systemctl is-enabled --quiet "$service_name"; then
-        log_info "设置Samba开机自启 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if systemctl enable "$service_name"; then
-            log_ok "Samba 开机自启已设置"
-        else
-            log_warn "Samba 开机自启设置失败，尝试启用smbd和nmbd ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            systemctl enable smbd nmbd 2>/dev/null || log_warn "开机自启设置失败"
-        fi
-    else
-        log_ok "Samba 已设置开机自启"
-    fi
-
-    return 0
-}
 
 # 卸载Samba服务
 uninstall_samba() {
@@ -26779,47 +26760,6 @@ uninstall_samba() {
     fi
 }
 
-# 选择性卸载（保留配置文件）
-uninstall_samba_keep_configs() {
-    log_info "正在卸载 Samba 服务（保留配置文件） ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-
-    if systemctl is-active --quiet smbd 2>/dev/null; then
-        systemctl stop smbd nmb
-    fi
-
-    systemctl disable smbd nmb 2>/dev/null
-
-    local uninstall_success=1
-
-    if command -v apt &>/dev/null; then
-        apt remove samba samba-common-bin -y
-        uninstall_success=$?
-
-    elif command -v yum &>/dev/null; then
-        yum remove samba samba-client -y
-        uninstall_success=$?
-
-    elif command -v dnf &>/dev/null; then
-        dnf remove samba samba-client -y
-        uninstall_success=$?
-
-    elif command -v pacman &>/dev/null; then
-        pacman -R samba --noconfirm
-        uninstall_success=$?
-
-    elif command -v zypper &>/dev/null; then
-        zypper remove samba samba-client -y
-        uninstall_success=$?
-    fi
-
-    if [ $uninstall_success -eq 0 ]; then
-        log_ok "Samba 服务已卸载（配置文件保留在 /etc/samba/）"
-        return 0
-    else
-        log_error "Samba 卸载失败"
-        return 1
-    fi
-}
 
 # ---------------- 列出所有 cifs 服务 ----------------
 list_cifs_services() {
@@ -28683,7 +28623,9 @@ local_mount_win11d_menu() {
     echo -e "${gl_zi}>>> 挂载Win11-D${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     mkdir -pm 777 /vol2/1000/mydisk/Win11-D
-    mount -t cifs //10.10.10.248/D /vol2/1000/mydisk/Win11-D -o "username=Administrator,password=241313,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
+    smb_cifs_cred_file "10.10.10.248"
+    mount -t cifs //10.10.10.248/D /vol2/1000/mydisk/Win11-D -o "credentials=$SMB_CRED_FILE,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
+    rm -f "$SMB_CRED_FILE"
     ls /vol2/1000/mydisk/Win11-D
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -28902,7 +28844,9 @@ samba_mount_pve() {
     echo -e "${gl_zi}>>> 挂载SMB_PVE${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     mkdir -pm 777 /vol2/1000/mydisk/SMB_PVE
-    mount -t cifs //10.10.10.254/PVE-VZ /vol2/1000/mydisk/SMB_PVE -o "username=admin,password=yifan0719,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
+    smb_cifs_cred_file "10.10.10.254"
+    mount -t cifs //10.10.10.254/PVE-VZ /vol2/1000/mydisk/SMB_PVE -o "credentials=$SMB_CRED_FILE,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
+    rm -f "$SMB_CRED_FILE"
     ls /vol2/1000/mydisk/SMB_PVE
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -28926,7 +28870,9 @@ samba_mount_win11_r() {
     echo -e "${gl_zi}>>> 挂载Win11-R${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     mkdir -pm 777 /vol2/1000/mydisk/Win11-R
-    mount -t cifs //10.10.10.248/R /vol2/1000/mydisk/Win11-R -o "username=Administrator,password=241313,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
+    smb_cifs_cred_file "10.10.10.248"
+    mount -t cifs //10.10.10.248/R /vol2/1000/mydisk/Win11-R -o "credentials=$SMB_CRED_FILE,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
+    rm -f "$SMB_CRED_FILE"
     ls /vol2/1000/mydisk/Win11-R
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -29370,54 +29316,6 @@ EOF
     fi
 }
 
-# 简化版Netplan配置（备用方案）
-configure_static_ip_netplan_simple() {
-    local interface=$1
-    local ip_address=$2
-    local gateway=$3
-    local dns_servers=$4
-    local config_file=$5
-
-    local dns_array=()
-    IFS=',' read -ra dns_array <<<"$dns_servers"
-
-    local temp_config
-    temp_config=$(mktemp)
-
-    cat >"$temp_config" <<EOF
-network:
-  version: 2
-  ethernets:
-    $interface:
-      dhcp4: false
-      addresses: [$ip_address]
-EOF
-
-    if [ -n "$gateway" ]; then
-        cat >>"$temp_config" <<EOF
-      gateway4: $gateway
-EOF
-    fi
-
-    if [ ${#dns_array[@]} -gt 0 ]; then
-        local dns_str="["
-        for dns in "${dns_array[@]}"; do
-            dns_str+="\"$(echo $dns | xargs)\", "
-        done
-        dns_str="${dns_str%, }]"
-
-        cat >>"$temp_config" <<EOF
-      nameservers:
-        addresses: $dns_str
-EOF
-    fi
-
-    cp "$temp_config" "$config_file"
-    chmod 600 "$config_file"
-    rm -f "$temp_config"
-
-    return 0
-}
 
 # 主静态IP配置函数
 configure_static_ip() {
@@ -30318,7 +30216,7 @@ EOF
     elif [[ -f /etc/arch-release ]]; then
         _set_gateway_arch "$gateway" "$interface"
         exit_code=$?
-    elif [[ -f /etc/SuSE-release ]] || [[ -f /etc/os-release && $(grep -i opensuse /etc/os-release 2>/dev/null) ]]; then
+    elif [[ -f /etc/SuSE-release ]] || { [[ -f /etc/os-release ]] && grep -iq opensuse /etc/os-release 2>/dev/null; }; then
         _set_gateway_suse "$gateway" "$interface"
         exit_code=$?
     else
@@ -30800,7 +30698,7 @@ linux_sshkey_panel() {
             echo -e ""
             echo -e "${gl_zi}>>> 从URL导入已有公钥${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bai}公钥格式：${gl_lv}https://dufs.mobufan.eu.org:666/ssh/mobufan_ssh.txt${gl_bai}"
+            echo -e "${gl_bai}公钥格式：${gl_lv}https://example.com/ssh/your_ssh_key.txt${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入您的远端公钥URL(${gl_huang}0${gl_bai}返回)"：)" keys_url
             [[ "$keys_url" == "0" ]] && { cancel_return "ROOT私钥登录模式"; continue; }
             [ -z "$confirm_clean" ] && { cancel_empty "上一级选单"; return 1; }
@@ -32336,20 +32234,6 @@ local_reverse_sync_menu() {
     local_run_task_reverse "$task_num"
 }
 
-# 修复权限问题菜单函数
-local_fix_permission_menu() {
-    clear
-    echo ""
-    echo -e "${gl_huang}>>> 修复权限问题${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}常见权限问题解决方案:${gl_bai}"
-    echo -e "  ${gl_bufan}1. ${gl_bai}重新创建任务，选择'权限友好模式'"
-    echo -e "  ${gl_bufan}2. ${gl_bai}在高级选项中选择'排除Windows系统目录'"
-    echo -e "  ${gl_bufan}3. ${gl_bai}使用sudo权限执行同步"
-    echo -e "  ${gl_bufan}4. ${gl_bai}修改源目录权限: chmod -R 755 /path/to/source"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    break_end
-}
 
 # 显示本地同步任务详细信息
 local_show_task_details() {
@@ -32772,22 +32656,6 @@ show_crontab_list() {
     fi
 }
 
-# 列出所有有效的cron任务（排除注释和空行）- 独立调用版本
-list_crontab() {
-    clear
-    echo -e "${gl_zi}>>> 查看所有有效的cron任务${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-    if ! command -v crontab &>/dev/null; then
-        log_error "crontab命令不存在，请检查系统"
-        exit_animation
-        return 1
-    fi
-
-    show_crontab_list
-
-    break_end
-}
 
 # 编辑crontab（使用默认编辑器）
 edit_crontab() {
@@ -36984,50 +36852,26 @@ linux_host_management() {
     done
 }
 
-# 隐私与安全设置函数
+# 隐私与安全说明（本脚本不采集任何用户数据，无统计开关）
 linux_privacy_security() {
     root_use
-    while true; do
-        clear
-        if grep -q '^ENABLE_STATS="true"' /usr/local/bin/m >/dev/null 2>&1; then
-            local status_message="${gl_lv}正在采集数据${gl_bai}"
-        elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/m >/dev/null 2>&1; then
-            local status_message="${gl_hui}采集已关闭${gl_bai}"
-        else
-            local status_message="无法确定的状态"
-        fi
-
-        echo -e "${gl_zi}>>> 隐私与安全${gl_bai}"
-        echo "脚本将收集用户使用功能的数据，优化脚本体验，制作更多好玩好用的功能"
-        echo "将收集脚本版本号，使用的时间，系统版本，CPU架构，机器所属国家和使用的功能的名称，"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "当前状态: $status_message"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}1.  ${gl_bai}开启采集"
-        echo -e "${gl_bufan}2.  ${gl_bai}关闭采集"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
-        echo -e "${gl_hong}00. ${gl_bai}退出脚本"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        read -r -e -p "请输入你的选择: " sub_choice
-        case $sub_choice in
-        1)
-            cd ~ || return
-            sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' /usr/local/bin/m
-            sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' ~/mobufan.sh
-            echo "已开启采集"
-            ;;
-        2)
-            cd ~ || return
-            sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/m
-            sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/mobufan.sh
-            echo "已关闭采集"
-            ;;
-        0) cancel_return "系统工具"; break ;;
-        00 | 000 | 0000) exit_script ;;
-        *) handle_invalid_input ;;
-        esac
-    done
+    clear
+    echo -e "${gl_zi}>>> 隐私与安全${gl_bai}"
+    echo "本脚本不收集、不上传任何用户数据。"
+    echo ""
+    echo "仅在以下场景会产生对外的网络请求："
+    echo "  1. 检查脚本自身更新（访问 gitee.com）"
+    echo "  2. 获取本机公网 IP 与运营商信息（ipinfo.io，用于信息展示和 NAT 判断）"
+    echo "  3. 安装应用时访问对应的官方源、镜像站或作者个人文件服务"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_huang}0.  ${gl_bai}返回上一级选单"
+    echo -e "${gl_hong}00. ${gl_bai}退出脚本"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    read -r -e -p "请输入你的选择: " sub_choice
+    case "$sub_choice" in
+    00 | 000 | 0000) exit_script ;;
+    *) cancel_return "系统工具" ;;
+    esac
 }
 
 # TG-bot监控预警功能函数
@@ -37242,8 +37086,9 @@ linux_set_shortcut() {
         clear
         read -r -e -p "$(echo -e "${gl_bai}请输入你的快捷按键（${gl_huang}0${gl_bai}返回）: ")" kuaijiejian
         [ "$kuaijiejian" == "0" ] && { cancel_return "上一级选单"; break; }
-        [ -z "$repoUrl" ] && { cancel_empty "重新输入仓库地址"; continue; }
-        find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/m" && rm -f {}' \;
+        while IFS= read -r -d '' sc_link; do
+            [[ "$(readlink -f "$sc_link")" == "/usr/local/bin/m" ]] && rm -f "$sc_link"
+        done < <(find /usr/local/bin/ -maxdepth 1 -type l -print0 2>/dev/null)
         ln -s /usr/local/bin/m /usr/local/bin/"$kuaijiejian"
         echo "快捷键已设置"
         exit_animation
@@ -37311,8 +37156,6 @@ linux_system_optimization() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         local new_port=22
         new_ssh_port
-
-
 
 
         echo -e ""
@@ -40428,39 +40271,57 @@ linux_file() {
     done
 }
 
-cluster_python3() {
-    local py_task="$1"
-    install python3 python3-paramiko
-    cd ~/cluster/ || return
-    curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task"
-    python3 ~/cluster/"$py_task"
-}
-
-run_commands_on_servers() {
-
-    install sshpass
-
-    local SERVERS_FILE="$HOME/cluster/servers.py"
-    local SERVERS
-    SERVERS=$(grep -oP '{"name": "\K[^"]+|"hostname": "\K[^"]+|"port": \K[^,]+|"username": "\K[^"]+|"password": "\K[^"]+' "$SERVERS_FILE")
-
-    IFS=$'\n' read -r -r -d '' -a SERVER_ARRAY <<<"$SERVERS"
-
-    for ((i = 0; i < ${#SERVER_ARRAY[@]}; i += 5)); do
-        local name=${SERVER_ARRAY[i]}
-        local hostname=${SERVER_ARRAY[i + 1]}
-        local port=${SERVER_ARRAY[i + 2]}
-        local username=${SERVER_ARRAY[i + 3]}
-        local password=${SERVER_ARRAY[i + 4]}
-        echo
-        echo -e "${gl_huang}连接到 $name ($hostname) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no -p "$port" "$username@$hostname" "$1"
-    done
-    echo
-    break_end
-}
 
 # mobufan.sh 脚本更新
+# 校验下载到的脚本与官方发布的 sha256 是否一致
+# 官方未发布校验和文件时返回 0 并告警（不阻断更新）
+verify_script_checksum() {
+    local file="$1" url="$2"
+    local remote_sum local_sum
+    remote_sum=$(curl -sSL --connect-timeout 5 -A "Mozilla/5.0" "${url}.sha256" 2>/dev/null | awk '{print $1}')
+    if [[ -z "$remote_sum" ]]; then
+        log_warn "未获取到官方校验和文件（${url}.sha256），跳过完整性校验"
+        return 0
+    fi
+    if ! command -v sha256sum >/dev/null 2>&1; then
+        log_warn "系统无 sha256sum 命令，跳过完整性校验"
+        return 0
+    fi
+    local_sum=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
+    [[ "$local_sum" == "$remote_sum" ]]
+}
+
+# 下载并安装新版脚本：先下到临时文件，语法和校验都通过后才替换，并保留旧版备份
+install_downloaded_script() {
+    local tmp_sh="$HOME/.mobufan_update.sh"
+    rm -f "$tmp_sh"
+    if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$download_url" 2>/dev/null; then
+        curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$backup_url" 2>/dev/null || {
+            log_error "下载失败，请检查网络"
+            rm -f "$tmp_sh"
+            return 1
+        }
+    fi
+    [[ -s "$tmp_sh" ]] || { log_error "下载文件为空"; rm -f "$tmp_sh"; return 1; }
+    bash -n "$tmp_sh" 2>/dev/null || { log_error "下载的文件语法检查未通过，已取消更新"; rm -f "$tmp_sh"; return 1; }
+
+    if ! verify_script_checksum "$tmp_sh" "$download_url"; then
+        log_error "更新文件校验失败，已取消更新"
+        rm -f "$tmp_sh"
+        return 1
+    fi
+
+    [[ -s "$HOME/mobufan.sh" ]] && cp -f "$HOME/mobufan.sh" "$HOME/mobufan.sh.bak" 2>/dev/null
+    chmod +x "$tmp_sh"
+    mv -f "$tmp_sh" "$HOME/mobufan.sh"
+    rm -f /usr/local/bin/m
+    ln -sf "$HOME/mobufan.sh" /usr/local/bin/m 2>/dev/null || {
+        cp -f "$HOME/mobufan.sh" /usr/local/bin/m 2>/dev/null
+        chmod +x /usr/local/bin/m 2>/dev/null
+    }
+    return 0
+}
+
 mobufan_update() {
     cd ~ || return
     local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
@@ -40501,57 +40362,19 @@ mobufan_update() {
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}现在更新                 ${gl_bufan}2.  ${gl_bai}强制更新"
-        echo -e "${gl_bufan}3.  ${gl_bai}开启自动更新             ${gl_bufan}4.  ${gl_bai}关闭自动更新"
+        echo -e "${gl_bufan}3.  ${gl_bufan}开启自动更新             ${gl_bufan}4.  ${gl_bai}关闭自动更新"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}0.  ${gl_bai}返回主菜单               ${gl_hong}00. ${gl_bai}退出脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "请输入你的选择: " choice
 
         case "$choice" in
-        1)
+        1 | 2 | up)
             clear
-            if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null; then
-                curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$backup_url" 2>/dev/null || {
-                    log_error "下载失败，请检查网络"
-                    sleep_fractional 1
-                    continue
-                }
+            if ! install_downloaded_script; then
+                sleep_fractional 1
+                continue
             fi
-            [[ ! -s mobufan.sh ]] && { log_error "下载文件为空"; sleep_fractional 1; continue; }
-
-            chmod +x mobufan.sh
-            canshu_v6
-            CheckFirstRun_true
-            yinsiyuanquan2
-            cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
-            chmod +x /usr/local/bin/m 2>/dev/null
-
-            echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
-            echo -ne "${gl_bai}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_bai} 秒"
-            sleep_fractional 1
-            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_huang}1${gl_bai} 秒"
-            sleep_fractional 1
-            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_lv}0${gl_bai} 秒"
-            sleep_fractional 1
-            echo -e "\r${gl_bai}正在启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            bash ~/mobufan.sh
-            exit
-            ;;
-
-        2 | up)
-            clear
-            curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$download_url" 2>/dev/null
-            if [[ ! -s mobufan.sh ]]; then
-                curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -O "$backup_url" 2>/dev/null
-            fi
-            [[ ! -s mobufan.sh ]] && { log_error "下载失败，文件为空"; sleep_fractional 1; continue; }
-
-            chmod +x mobufan.sh
-            canshu_v6
-            CheckFirstRun_true
-            yinsiyuanquan2
-            cp -f ~/mobufan.sh /usr/local/bin/m >/dev/null 2>&1
-            chmod +x /usr/local/bin/m 2>/dev/null
 
             echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
             echo -ne "${gl_bai}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_bai} 秒"
@@ -40567,34 +40390,39 @@ mobufan_update() {
 
         3)
             clear
-            local country
-            country=$(curl -sSL -A "Mozilla/5.0" --max-time 2 ipinfo.io/country 2>/dev/null || echo "unknown")
-            local ipv6_address
-            ipv6_address=$(curl -sSL -A "Mozilla/5.0" --max-time 2 ipv6.ip.sb 2>/dev/null || echo "")
-
-            if [[ "$country" = "CN" ]]; then
-                SH_Update_task="curl -sSL -A \"Mozilla/5.0\" -O $download_url && chmod +x mobufan.sh && sed -i 's/canshu=\"default\"/canshu=\"CN\"/g' ./mobufan.sh"
-            elif [[ -n "$ipv6_address" ]]; then
-                SH_Update_task="curl -sSL -A \"Mozilla/5.0\" -O $download_url && chmod +x mobufan.sh && sed -i 's/canshu=\"default\"/canshu=\"V6\"/g' ./mobufan.sh"
-            else
-                SH_Update_task="curl -sSL -A \"Mozilla/5.0\" -O $download_url && chmod +x mobufan.sh"
-            fi
+            local updater="$HOME/.mobufan_auto_update.sh"
+            cat >"$updater" <<'EOF'
+#!/bin/bash
+# mobufan.sh 自动更新任务（由 mobufan_update 生成）
+# 先下载到临时文件，语法与 sha256 校验通过后才替换，失败则保留原版本
+download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
+tmp="$HOME/.mobufan_auto_update.download"
+curl -sSL -A "Mozilla/5.0" --connect-timeout 10 -o "$tmp" "$download_url" || exit 1
+[ -s "$tmp" ] || exit 1
+bash -n "$tmp" 2>/dev/null || exit 1
+sum=$(curl -sSL -A "Mozilla/5.0" --connect-timeout 5 "${download_url}.sha256" 2>/dev/null | awk '{print $1}')
+if [ -n "$sum" ] && command -v sha256sum >/dev/null 2>&1; then
+    [ "$(sha256sum "$tmp" | awk '{print $1}')" = "$sum" ] || exit 1
+fi
+mv -f "$tmp" "$HOME/mobufan.sh" && chmod +x "$HOME/mobufan.sh"
+EOF
+            chmod +x "$updater"
 
             check_crontab_installed
-            (crontab -l 2>/dev/null | grep -v "mobufan.sh") | crontab -
+            (crontab -l 2>/dev/null | grep -vE "mobufan(_auto_update)?\.sh") | crontab -
             (
                 crontab -l 2>/dev/null
-                echo "$(shuf -i 0-59 -n 1) 2 * * * bash -c \"$SH_Update_task\""
+                echo "$(shuf -i 0-59 -n 1) 2 * * * bash $updater"
             ) | crontab -
 
-            log_ok "自动更新已开启，每天凌晨2点自动更新"
+            log_ok "自动更新已开启，每天凌晨2点自动更新（带校验，失败保留原版本）"
             exit_animation
             continue
             ;;
 
         4)
             clear
-            (crontab -l 2>/dev/null | grep -v "mobufan.sh") | crontab -
+            (crontab -l 2>/dev/null | grep -vE "mobufan(_auto_update)?\.sh") | crontab -
             log_ok "自动更新已关闭"
             exit_animation
             continue
@@ -42667,30 +42495,6 @@ check_pve_version() {
     fi
 }
 
-pve_running_status_simple_test() {
-    if ! command -v qm &>/dev/null; then
-        log_error "qm命令未找到，可能不在PVE节点上"
-        return 1
-    fi
-
-    echo -e "${gl_bai}运行中的虚拟机:${gl_bai}"
-    if qm_output=$(qm list 2>/dev/null | grep -E "running"); then
-        echo "$qm_output" | while IFS= read -r line; do
-            echo -e " ${gl_lv}${line}${gl_bai}"
-        done
-    else
-        echo -e "    ${gl_huang}无运行中的虚拟机${gl_bai}"
-    fi
-
-    echo -e "${gl_bai}运行中的容器:${gl_bai}"
-    if pct_output=$(pct list 2>/dev/null | grep -E "running"); then
-        echo "   $pct_output" | while IFS= read -r line; do
-            echo -e "     ${gl_lan}${line}${gl_bai}"
-        done
-    else
-        echo -e "     ${gl_huang}无运行中的容器${gl_bai}"
-    fi
-}
 
 # PVE 全部实例列表 美化工具
 parse_qm_list() {
@@ -42963,28 +42767,6 @@ pve_check_locks() {
 
 }
 
-# 查看系统版本
-show_system_version() {
-    is_pve_system || return 1  # 非PVE系统退出
-    echo -e ""
-    echo -e "${gl_zi}>>> 查看系统版本${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    pveversion
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    break_end
-}
-
-# 更新并清理系统
-update_and_clean_system() {
-    is_pve_system || return 1  # 非PVE系统退出
-    clear
-    echo -e ""
-    echo -e "${gl_zi}>>> 更新并清理系统${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    sudo apt update && sudo apt -y dist-upgrade && sudo apt autoremove --purge && sudo apt clean
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    break_end
-}
 
 # 查看内核版本
 show_kernel_version() {
@@ -43382,7 +43164,7 @@ check_sriov_status() {
 is_pve_system() {
     if [ ! -d "/var/lib/vz/template/iso" ]; then
         echo -e "\n${gl_hong}你这不是 ${gl_huang}PVE${gl_hong} 系统！${gl_bai}"
-        sleep 0.8
+        sleep_fractional 0.8
         exit_animation
         return 1
     fi
@@ -43394,7 +43176,7 @@ is_fnos_system() {
     if [ ! -d "/vol1/1000" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}FnOS${gl_hong} 系统！\c"
-        sleep 0.8
+        sleep_fractional 0.8
         exit_animation
         return 1   # 检测失败，返回非0
     fi
@@ -43406,7 +43188,7 @@ exit_if_fnos_system() {
     if [ -d "/vol1/1000" ]; then
         echo -e ""
         echo -en "\r${gl_hong}检测到 ${gl_huang}FnOS${gl_hong} 系统，不支持此系统! \c"
-        sleep 0.8
+        sleep_fractional 0.8
         exit_animation
         return 1
     fi
@@ -43418,7 +43200,7 @@ is_istoreos_system() {
     if [ ! -d "/usr/lib/lua/luci/controller" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}iStoreOS${gl_hong} 系统！即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
-        sleep 0.8
+        sleep_fractional 0.8
         exit_animation
         return 1   # 检测失败，返回非0
     fi
@@ -45712,7 +45494,7 @@ set_mirrors() {
     tmp=$(mktemp)
     [[ -f /etc/docker/daemon.json ]] || echo '{}' | sudo tee /etc/docker/daemon.json >/dev/null
 
-    sudo jq --argjson m "$mirrors" '.["registry-mirrors"] = $m' /etc/docker/daemon.json >"$tmp" &&
+    sudo jq --argjson m "$mirrors" '.["registry-mirrors"] = $m' /etc/docker/daemon.json | sudo tee "$tmp" >/dev/null &&
         sudo mv "$tmp" /etc/docker/daemon.json
     sudo systemctl restart docker
     log_ok "镜像加速已切换并重启 Docker！"
@@ -52117,7 +51899,7 @@ download_docker_repo() {
 
 # 下载Docker项目（HTTP模式，替代Git克隆）
 download_docker_projects() {
-    DOCKER_PROJECTS_BASE_URL="https://dufs.mobufan.eu.org:666/compose/downloads"
+    DOCKER_PROJECTS_BASE_URL="${DOCKER_PROJECTS_BASE_URL:-https://dufs.mobufan.eu.org:666/compose/downloads}"
 
     declare -A projects=(
         [1]="1panel.tar.gz"
@@ -54200,11 +53982,13 @@ git_safe_pull() {
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_info "本地有未推送的提交:${gl_bai}"
-        git log --oneline "@{u}".."$local_commit" 2>/dev/null || echo -e "  ${gl_huang}无法获取未推送的提交${gl_bai}"
+        local rev_range="@{u}..${local_commit}"
+        git log --oneline "$rev_range" 2>/dev/null || echo -e "  ${gl_huang}无法获取未推送的提交${gl_bai}"
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_info "远程有未拉取的提交:${gl_bai}"
-        git log --oneline "$local_commit".."@{u}" 2>/dev/null || echo -e "  ${gl_huang}无法获取远程提交${gl_bai}"
+        local rev_range="${local_commit}..@{u}"
+        git log --oneline "$rev_range" 2>/dev/null || echo -e "  ${gl_huang}无法获取远程提交${gl_bai}"
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bai}建议的操作:${gl_bai}"
@@ -54983,31 +54767,6 @@ clone_compose_repositories() {
         return 1
     }
     git_clone_docker_projects
-}
-
-# 卸载Git
-uninstall_git() {
-    if ! command -v git &>/dev/null; then
-        echo -e ""
-        log_warn "Git 未安装，无需卸载"
-        exit_animation
-        return 1
-    fi
-
-    echo -e ""
-    echo -e "${gl_zi}>>> 正在卸载： ${gl_huang}Git ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -r -e -p "$(echo -e "${gl_bai}确定要卸载 Git 吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")"
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${gl_huang}已取消卸载操作${gl_bai}"
-        exit_animation
-        return 1
-    fi
-
-    clear
-    echo -e ""
-    remove git
-    break_end
 }
 
 
@@ -56241,179 +56000,6 @@ test_trash_function() {
     break_end
 }
 
-# 配置rm命令重定向到回收站
-setup_rm_redirect() {
-    echo
-    echo -e "${gl_zi}=== 配置 rm 命令重定向到回收站 ===${gl_bai}"
-
-    if [[ -z "$TRASH_CMD" ]]; then
-        echo -e "${gl_hong}回收站未启用，请先启用回收站${gl_bai}"
-        exit_animation
-        return
-    fi
-
-    echo -e "${gl_huang}此功能将创建一个别名，将 rm 命令重定向到回收站${gl_bai}"
-    echo -e "${gl_huang}这样使用 rm 删除的文件也会进入回收站${gl_bai}"
-    echo
-    echo -e "${gl_hong}警告：这可能会影响系统脚本和其他应用程序的行为${gl_bai}"
-    echo -e "${gl_huang}建议仅在交互式shell中使用此功能${gl_bai}"
-    echo
-
-    read -r -e -p "$(echo -e "${gl_bai}确认配置 rm 命令重定向? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" -n1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${gl_huang}已取消配置${gl_bai}"
-        return
-    fi
-
-    local user_shell
-    user_shell=$(basename "$SHELL")
-    local config_file=""
-
-    case "$user_shell" in
-    bash)
-        config_file="$HOME/.bashrc"
-        ;;
-    zsh)
-        config_file="$HOME/.zshrc"
-        ;;
-    *)
-        echo -e "${gl_hong}不支持的shell: $user_shell${gl_bai}"
-        echo -e "${gl_huang}请手动在您的shell配置文件中添加以下别名:${gl_bai}"
-        echo "alias rm='$TRASH_CMD'"
-        echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        read -r -n1 -s
-        return
-        ;;
-    esac
-
-    if grep -q "alias rm=" "$config_file" 2>/dev/null; then
-        echo -e "${gl_huang}检测到已存在 rm 别名配置${gl_bai}"
-        echo -e "${gl_huang}当前配置: $(grep "alias rm=" "$config_file")${gl_bai}"
-
-        read -r -e -p "$(echo -e "${gl_bai}是否覆盖现有配置? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" -n1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo -e "${gl_huang}已取消配置${gl_bai}"
-            return
-        fi
-
-        sed -i '/alias rm=/d' "$config_file"
-    fi
-
-    {
-        echo "# 配置rm命令重定向到回收站"
-        echo "# 配置时间: $(date '+%Y-%m-%d %H:%M:%S')"
-        echo "alias rm='$TRASH_CMD'"
-    } >> "$config_file"
-
-    if [[ $? -eq 0 ]]; then
-        echo -e "${gl_lv}✓ 已成功配置 rm 命令重定向${gl_bai}"
-        echo -e "${gl_huang}配置已添加到: $config_file${gl_bai}"
-        echo -e "${gl_huang}请重新登录或运行: source $config_file${gl_bai}"
-        echo
-        echo -e "${gl_lv}现在使用 rm 命令删除的文件将进入回收站${gl_bai}"
-    else
-        echo -e "${gl_hong}✗ 配置失败${gl_bai}"
-    fi
-
-    echo
-    echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-    read -r -n1 -s
-}
-
-# 移除rm命令重定向
-remove_rm_redirect() {
-    echo
-    echo -e "${gl_zi}=== 移除 rm 命令重定向 ===${gl_bai}"
-
-    local user_shell
-    user_shell=$(basename "$SHELL")
-    local config_file=""
-
-    case "$user_shell" in
-    bash)
-        config_file="$HOME/.bashrc"
-        ;;
-    zsh)
-        config_file="$HOME/.zshrc"
-        ;;
-    *)
-        echo -e "${gl_hong}不支持的shell: $user_shell${gl_bai}"
-        echo -e "${gl_huang}请手动从您的shell配置文件中移除 rm 别名${gl_bai}"
-        echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        read -r -n1 -s
-        return
-        ;;
-    esac
-
-    if grep -q "alias rm=" "$config_file" 2>/dev/null; then
-        echo -e "${gl_huang}检测到 rm 别名配置: $(grep "alias rm=" "$config_file")${gl_bai}"
-
-        read -r -e -p "$(echo -e "${gl_bai}确认移除 rm 命令重定向? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" -n1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo -e "${gl_huang}已取消操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
-            exit_animation
-            return
-        fi
-
-
-        if sed -i '/alias rm=/d' "$config_file"; then
-            echo -e "${gl_lv}✓ 已成功移除 rm 命令重定向${gl_bai}"
-            echo -e "${gl_huang}请重新登录或运行: source $config_file${gl_bai}"
-            echo
-            echo -e "${gl_lv}现在 rm 命令将恢复为系统默认行为${gl_bai}"
-        else
-            echo -e "${gl_hong}✗ 移除失败${gl_bai}"
-        fi
-    else
-        echo -e "${gl_huang}未找到 rm 命令重定向配置${gl_bai}"
-    fi
-
-    echo
-    echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    read -r -n1 -s
-}
-
-# 检查rm命令重定向状态
-check_rm_redirect() {
-    echo
-    echo -e "${gl_zi}=== rm 命令重定向状态 ===${gl_bai}"
-
-    local user_shell
-    user_shell=$(basename "$SHELL")
-    local config_file=""
-
-    case "$user_shell" in
-    bash)
-        config_file="$HOME/.bashrc"
-        ;;
-    zsh)
-        config_file="$HOME/.zshrc"
-        ;;
-    *)
-        echo -e "${gl_hong}不支持的shell: $user_shell${gl_bai}"
-        return
-        ;;
-    esac
-
-    if grep -q "alias rm=" "$config_file" 2>/dev/null; then
-        echo -e "${gl_lv}✓ rm 命令重定向已启用${gl_bai}"
-        echo -e "${gl_huang}当前配置: $(grep "alias rm=" "$config_file")${gl_bai}"
-        echo
-        echo -e "${gl_lv}使用 rm 命令删除的文件将进入回收站${gl_bai}"
-    else
-        echo -e "${gl_huang}✗ rm 命令重定向未启用${gl_bai}"
-        echo
-        echo -e "${gl_huang}使用 rm 命令删除的文件将永久删除${gl_bai}"
-        echo -e "${gl_huang}不会进入回收站${gl_bai}"
-    fi
-
-    echo
-    echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    read -r -n1 -s
-}
 
 # 静默移除rm重定向（不显示提示）
 remove_rm_redirect_silent() {
@@ -57194,7 +56780,7 @@ extract_file() {
 
         if [[ "$current_dir" != "$PWD" ]]; then
             [[ -f "$archive_name" ]] && rm -f "$archive_name"
-            cd "$current_dir" 2>/dev/null
+            cd "$current_dir" 2>/dev/null || echo -e "${gl_hong}无法切换回原目录: $current_dir${gl_bai}"
         fi
         ;;
     esac
@@ -57542,110 +57128,6 @@ interactive_extract() {
     break_end
 }
 
-# 快速解压当前目录下的压缩文件
-quick_extract() {
-    echo -e "${gl_zi}>>> 快速解压模式${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}当前工作目录: ${gl_huang}$(pwd)${gl_bai}"
-
-    local list=() file i choice archive dest
-
-    local extensions=("zip" "7z" "tar" "tar.gz" "tgz" "rar" "gz")
-    for ext in "${extensions[@]}"; do
-        for file in *."$ext"; do
-            if [[ -f "$file" ]]; then
-                list+=("$file")
-            fi
-        done
-    done
-
-    if ((${#list[@]} == 0)); then
-        echo -e "${gl_huang}当前目录无压缩包文件${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        break_end
-    fi
-
-    if ((${#list[@]} > 1)); then
-        echo -e "${gl_bufan}发现多个压缩文件：${gl_bai}"
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-        local count=0
-        local items_per_line=4
-        local max_length=0
-
-        for file in "${list[@]}"; do
-            local len=${#file}
-            if [ "$len" -gt "$max_length" ]; then
-                max_length=$len
-            fi
-        done
-
-        max_length=$((max_length + 4))
-
-        for i in "${!list[@]}"; do
-            count=$((count + 1))
-            printf "${gl_huang}%2d.${gl_bai} %-${max_length}s" "$count" "${list[i]}"
-            if [ $((count % items_per_line)) -eq 0 ]; then
-                echo ""
-            fi
-        done
-
-        if [ $((count % items_per_line)) -ne 0 ]; then
-            echo ""
-        fi
-        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
-        read -r -e -p "请选择要解压的文件序号（留空取消）: " choice
-        [[ -z "$choice" ]] && {
-            echo -e "${gl_huang}已取消${gl_bai}"
-            return
-        }
-
-        if [[ "$choice" =~ ^[0-9]+$ ]] && ((choice >= 1 && choice <= ${#list[@]})); then
-            archive="${list[$((choice - 1))]}"
-        else
-            echo -e "${gl_hong}无效序号！${gl_bai}"
-            return
-        fi
-    else
-        archive="${list[0]}"
-        echo -e "${gl_lv}发现压缩文件: $archive${gl_bai}"
-        echo -e "${gl_huang}将自动解压此文件${gl_bai}"
-    fi
-
-    [[ -f "$archive" ]] || {
-        echo -e "${gl_hong}错误：'$archive' 不存在！${gl_bai}"
-        return
-    }
-
-    read -r -e -p "请输入解压目标目录（留空则当前目录）: " dest
-    dest=${dest:-.}
-
-    extract_file "$archive" "$dest" "false"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    break_end
-}
-
-# 解压指定文件
-extract_specific() {
-    local archive="$1"
-    local dest="${2:-.}"
-
-    if [[ -z "$archive" ]]; then
-        echo -e "${gl_hong}错误：请指定要解压的文件${gl_bai}"
-        return 1
-    fi
-
-    [[ -f "$archive" ]] || {
-        echo -e "${gl_hong}错误：'$archive' 不存在！${gl_bai}"
-        return 1
-    }
-
-    echo -e "${gl_lv}正在解压: $archive → $dest${gl_bai}"
-    extract_file "$archive" "$dest" "false"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    break_end
-}
 
 # 函数_解压压缩工具
 compress_tool() {
@@ -58275,7 +57757,6 @@ linux_work() {
         esac
     done
 }
-
 
 
 # iStoreOS管理工具
@@ -61019,6 +60500,7 @@ linux_istoreos_menu() {
 
 
 mobufan_sh() {
+    mobufan_sh_update
     while true; do
         clear
         echo -e "${gl_zi}>>> mobufan 脚本工具箱 ${gl_huang}v$sh_v${gl_bai}"
@@ -61048,7 +60530,6 @@ mobufan_sh() {
         echo -e "${gl_lv}00. ${gl_bai}脚本更新"
         echo -e "${gl_hong}0.  ${gl_bai}退出脚本"
         echo -e "${gl_bufan}————————————————————————${gl_bai}"
-        mobufan_sh_update
         read -r -e -p "请输入你的选择: " choice
 
         case $choice in
@@ -61069,7 +60550,7 @@ mobufan_sh() {
         15) temp_dir_menu "" "主菜单" ;;     # 常用工具
         16) linux_work ;;                   # 后台工作
         18) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/ppm_tool.sh) ;;                   # 个人项目
-        00) mobufan_update ;;               # 更新脚本
+        00 | 666) mobufan_update ;;         # 更新脚本（666 为更新提示兼容入口）
         29 | 1129) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/cmdbox_admin_menu.sh) ;;
         0) exit_script ;;
         *) handle_invalid_input ;;
@@ -61092,7 +60573,7 @@ linux_m_info() {
     echo -e "${gl_bufan}更新脚本${gl_bai}            ${gl_huang}m g ${gl_hong}| ${gl_huang}m up${gl_bai}"
     echo -e "${gl_bufan}安全防御${gl_bai}            ${gl_huang}m fy ${gl_hong}| ${gl_huang}m f2b ${gl_hong}| ${gl_huang}m 安全防御${gl_bai}"
     echo -e "${gl_bufan}FnOS容器${gl_bai}            ${gl_huang}m fnos ${gl_hong}| ${gl_huang}m 飞牛${gl_bai}"
-    echo -e "${gl_bufan}私钥登录${gl_bai}            ${gl_huang}m sshkey${gl_hong}| ${gl_huang}m sshkey ${gl_lv}<url>${gl_bai} (导入公钥链接：m sshkey https://dufs.mobufan.eu.org:666/ssh/mobufan_ssh.txt)"
+    echo -e "${gl_bufan}私钥登录${gl_bai}            ${gl_huang}m sshkey${gl_hong}| ${gl_huang}m sshkey ${gl_lv}<url>${gl_bai} (导入公钥链接：m sshkey https://example.com/ssh/your_ssh_key.txt)"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bufan}压缩解压${gl_bai}            ${gl_huang}m zip ${gl_hong}| ${gl_huang}m gz ${gl_hong}| ${gl_huang}m rar${gl_bai}"
     echo -e "${gl_bufan}文件压缩${gl_bai}            ${gl_huang}m ys ${gl_hong}| ${gl_huang}m 压缩${gl_bai}"
