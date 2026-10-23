@@ -43381,12 +43381,12 @@ check_sriov_status() {
 # 检查是不是 PVE 系统
 is_pve_system() {
     if [ ! -d "/var/lib/vz/template/iso" ]; then
-        echo -e ""
-        echo -en "\r${gl_hong}你这不是 ${gl_huang}PVE${gl_hong} 系统！\c"
+        echo -e "\n${gl_hong}你这不是 ${gl_huang}PVE${gl_hong} 系统！${gl_bai}"
+        sleep 0.8
         exit_animation
-        return 1   # 检测失败，返回非0
+        return 1
     fi
-    return 0       # 检测成功，返回0
+    return 0
 }
 
 # 检查不是 FnOS 系统 退出
@@ -43394,6 +43394,7 @@ is_fnos_system() {
     if [ ! -d "/vol1/1000" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}FnOS${gl_hong} 系统！\c"
+        sleep 0.8
         exit_animation
         return 1   # 检测失败，返回非0
     fi
@@ -43405,6 +43406,7 @@ exit_if_fnos_system() {
     if [ -d "/vol1/1000" ]; then
         echo -e ""
         echo -en "\r${gl_hong}检测到 ${gl_huang}FnOS${gl_hong} 系统，不支持此系统! \c"
+        sleep 0.8
         exit_animation
         return 1
     fi
@@ -43416,6 +43418,7 @@ is_istoreos_system() {
     if [ ! -d "/usr/lib/lua/luci/controller" ]; then
         echo -e ""
         echo -en "\r${gl_hong}你这不是 ${gl_huang}iStoreOS${gl_hong} 系统！即将退出 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+        sleep 0.8
         exit_animation
         return 1   # 检测失败，返回非0
     fi
@@ -44637,8 +44640,8 @@ pve_onekey_sriov() {
 
 # 函数_PVE命令
 linux_pve_menu() {
+    is_pve_system || return 1  # 非PVE系统退出
     while true; do
-        is_pve_system || return 1  # 非PVE系统退出
         clear
         echo -e ""
         echo -e "${gl_zi}>>> PVE  管理${gl_bai}"
