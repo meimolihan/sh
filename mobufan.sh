@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.7.8"
+sh_v="1.7.8.1"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -40278,7 +40278,7 @@ linux_file() {
 verify_script_checksum() {
     local file="$1" url="$2"
     local remote_sum local_sum
-    remote_sum=$(curl -sSL --connect-timeout 5 -A "Mozilla/5.0" "${url}.sha256" 2>/dev/null | awk '{print $1}')
+    remote_sum=$(curl -fsSL --connect-timeout 5 -A "Mozilla/5.0" "${url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
     if [[ -z "$remote_sum" ]]; then
         log_warn "未获取到官方校验和文件（${url}.sha256），跳过完整性校验"
         return 0
@@ -40288,15 +40288,15 @@ verify_script_checksum() {
         return 0
     fi
     local_sum=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
-    [[ "$local_sum" == "$remote_sum" ]]
+    [[ -n "$local_sum" && "$local_sum" == "$remote_sum" ]]
 }
 
 # 下载并安装新版脚本：先下到临时文件，语法和校验都通过后才替换，并保留旧版备份
 install_downloaded_script() {
     local tmp_sh="$HOME/.mobufan_update.sh"
     rm -f "$tmp_sh"
-    if ! curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$download_url" 2>/dev/null; then
-        curl -sSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$backup_url" 2>/dev/null || {
+    if ! curl -fsSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$download_url" 2>/dev/null; then
+        curl -fsSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$backup_url" 2>/dev/null || {
             log_error "下载失败，请检查网络"
             rm -f "$tmp_sh"
             return 1
@@ -40362,7 +40362,7 @@ mobufan_update() {
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}现在更新                 ${gl_bufan}2.  ${gl_bai}强制更新"
-        echo -e "${gl_bufan}3.  ${gl_bufan}开启自动更新             ${gl_bufan}4.  ${gl_bai}关闭自动更新"
+        echo -e "${gl_bufan}3.  ${gl_bai}开启自动更新             ${gl_bufan}4.  ${gl_bai}关闭自动更新"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}0.  ${gl_bai}返回主菜单               ${gl_hong}00. ${gl_bai}退出脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -40397,10 +40397,10 @@ mobufan_update() {
 # 先下载到临时文件，语法与 sha256 校验通过后才替换，失败则保留原版本
 download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
 tmp="$HOME/.mobufan_auto_update.download"
-curl -sSL -A "Mozilla/5.0" --connect-timeout 10 -o "$tmp" "$download_url" || exit 1
+curl -fsSL -A "Mozilla/5.0" --connect-timeout 10 -o "$tmp" "$download_url" || exit 1
 [ -s "$tmp" ] || exit 1
 bash -n "$tmp" 2>/dev/null || exit 1
-sum=$(curl -sSL -A "Mozilla/5.0" --connect-timeout 5 "${download_url}.sha256" 2>/dev/null | awk '{print $1}')
+sum=$(curl -fsSL -A "Mozilla/5.0" --connect-timeout 5 "${download_url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
 if [ -n "$sum" ] && command -v sha256sum >/dev/null 2>&1; then
     [ "$(sha256sum "$tmp" | awk '{print $1}')" = "$sum" ] || exit 1
 fi
