@@ -1,34 +1,21 @@
 #!/bin/bash
-sh_v="1.7.5"
+sh_v="1.7.6"
 
-# ============================================================
-# 统一配色规范 v2.0（2026-10-23 重构，主题自适应）
-# 原则一：只使用标准 ANSI 色 + 粗体，由终端主题决定具体亮度，
-#         深色 / 浅色背景均不翻车；禁止再引入 256 色硬编码值。
-# 原则二：任何带色输出必须以 ${gl_bai}（纯重置）收尾，
-#         否则颜色会残留到后续输出（俗称"染色"）。
-# 语义角色一览：
-#   标题       gl_zi    粗体青    >>> 章节标题
-#   成功       gl_lv    绿        [成功] / 完成 / 通过
-#   警告/强调  gl_huang 粗体黄    [警告] / 关键值 / 待确认项
-#   错误       gl_hong  红        [错误] / 失败 / 危险操作
-#   信息       gl_lan   青        [信息] / 标签 / 次级值
-#   次要/注释  gl_hui   灰        补充说明 / 弱化信息
-#   分割线     gl_bufan 灰        ———— 分隔线 / 菜单编号点缀
-#   正文/重置  gl_bai   默认色    普通文字，兼作统一重置
-# 新增输出直接套用上述变量，不要发明新颜色。
-# ============================================================
 list_color_init() {
-    export gl_bai=$'\033[0m'      # 正文/重置：跟随终端默认前景色（深浅背景安全）
-    export reset=$'\033[0m'       # 历史别名，同 gl_bai
-    export gl_reset=$'\033[0m'    # 历史别名，同 gl_bai
-    export gl_hui=$'\033[90m'     # 次要信息/注释：终端主题灰（深浅背景可见）
-    export gl_bufan=$'\033[90m'   # 分割线/次级标注：与注释同色，退后不刺眼
-    export gl_hong=$'\033[31m'    # 错误：标准红（去掉荧光红）
-    export gl_lv=$'\033[32m'      # 成功：标准绿（去掉荧光绿）
-    export gl_huang=$'\033[1;33m' # 警告/强调值：粗体黄（浅色背景下为深黄，可读）
-    export gl_lan=$'\033[36m'     # 信息标签：青
-    export gl_zi=$'\033[1;36m'    # 标题：粗体青（深浅背景均清晰）
+    export gl_hui=$'\033[38;5;59m'
+    export gl_hong=$'\033[38;5;9m'
+    export gl_lv=$'\033[38;5;10m'
+    export gl_huang=$'\033[38;5;11m'
+    export gl_lan=$'\033[38;5;32m'
+    export gl_bai=$'\033[38;5;15m'
+    export gl_zi=$'\033[38;5;13m'
+    export gl_bufan=$'\033[38;5;14m'
+    export reset=$'\033[0m'
+    export gl_cheng=$'\033[38;5;214m'
+    export gl_tian=$'\033[38;5;117m'
+    export gl_qing=$'\033[38;5;51m'
+    export gl_ok=$'\033[38;5;46m'
+    export gl_reset=$'\033[0m'
 }
 list_color_init
 
@@ -78,18 +65,16 @@ smb_cifs_cred_file() {
     chmod 600 "$SMB_CRED_FILE"
 }
 
-# 统一退出/返回动画内核（原 4 处重复代码收敛于此，保证风格一致）
-# 用法：_exit_spinner "<进行中提示>" "<完成提示>"
-_exit_spinner() {
-    local doing_msg="$1" done_msg="$2"
+# 退出动画函数
+exit_animation() {
     local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
     local dots=(
-        "${gl_hong}.${gl_bai}"
-        "${gl_huang}.${gl_bai}"
-        "${gl_lv}.${gl_bai}"
-        "${gl_bufan}.${gl_bai}"
-        "${gl_zi}.${gl_bai}"
-        "${gl_lan}.${gl_bai}"
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
     )
     local dot_buffer=""
     local frame_len=${#frames[@]}
@@ -101,16 +86,11 @@ _exit_spinner() {
             dot_buffer+=${dots[$dot_idx]}
             ((dot_idx++))
         fi
-        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai} ${doing_msg} ${dot_buffer}"
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai} 正在退出 ${dot_buffer}"
         sleep_fractional 0.06
     done
-    echo -e "\r\033[K${gl_lv}✓${gl_bai} ${done_msg}\n"
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功退出\n"
     clear
-}
-
-# 退出动画函数
-exit_animation() {
-    _exit_spinner "正在退出" "成功退出"
 }
 
 # 按任意键继续...
@@ -122,44 +102,113 @@ break_end() {
     clear
 }
 
-# 无效的输入，倒计时后返回
+# 无效的输入,请重新输入!
 handle_invalid_input() {
-    echo -ne "\r${gl_hong}输入无效，${gl_zi}2${gl_hong} 秒后返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+    echo -ne "\r${gl_hong}无效的输入，请重新输入 ${gl_zi} 2 ${gl_hong}秒后返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.3
-    echo -ne "\r${gl_huang}输入无效，${gl_zi}1${gl_huang} 秒后返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+    echo -ne "\r${gl_huang}无效的输入，请重新输入 ${gl_zi} 1 ${gl_huang}秒后返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.3
-    echo -e "\r${gl_lv}输入无效，${gl_zi}0${gl_lv} 秒后返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+    echo -e "\r${gl_lv}无效的输入，请重新输入 ${gl_zi} 0 ${gl_lv}秒后返回 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.6
     return 2 # 2 表示“输入非法”
 }
 
 # 无效的输入,请输入(y或N)。
 handle_y_n() {
-    echo -ne "\r${gl_hong}无效选择，请输入 ${gl_bai}(${gl_lv}y${gl_bai}或${gl_hong}N${gl_bai}) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+    echo -ne "\r${gl_hong}无效的选择，请输入 ${gl_bai}(${gl_lv}y${gl_bai}或${gl_hong}N${gl_bai}) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.3
-    echo -ne "\r${gl_huang}无效选择，请输入 ${gl_bai}(${gl_lv}y${gl_bai}或${gl_hong}N${gl_bai}) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+    echo -ne "\r${gl_huang}无效的选择，请输入 ${gl_bai}(${gl_lv}y${gl_bai}或${gl_hong}N${gl_bai}) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.3
-    echo -e "\r${gl_lv}无效选择，请输入 ${gl_bai}(${gl_lv}y${gl_bai}或${gl_hong}N${gl_bai}) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
+    echo -ne "\r${gl_lv}无效的选择，请输入 ${gl_bai}(${gl_lv}y${gl_bai}或${gl_hong}N${gl_bai}) ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}\c"
     sleep_fractional 0.6
     return 2 # 2 表示“输入非法”
 }
 
 # 退出脚本
 exit_script() {
-    _exit_spinner "正在退出" "成功退出"
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai} 正在退出 ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功退出\n"
+    clear
     exit 0
 }
 
-# 空输入返回上一级
+# 返回上一级
 cancel_empty() {
     local menu_name="${1:-上一级选单}"
-    _exit_spinner "空输入，返回 ${menu_name}" "成功返回 ${menu_name}"
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai}空输入，返回 ${gl_huang}${menu_name} ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai}成功返回${gl_huang}${menu_name}${gl_bai} \n"
+    clear
 }
 
-# 返回上一级
+
 cancel_return() {
     local menu_name="${1:-上一级选单}"
-    _exit_spinner "即将返回 ${menu_name}" "成功返回 ${menu_name}"
+    local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local dots=(
+        "${gl_hong}."
+        "${gl_huang}."
+        "${gl_lv}."
+        "${gl_bufan}."
+        "${gl_zi}."
+        "${gl_cheng}."
+    )
+    local dot_buffer=""
+    local frame_len=${#frames[@]}
+    local dot_idx=0
+    local total_dots=6
+
+    for ((i=0; i<20; i++)); do
+        if (( i > 0 && i % 3 == 0 && dot_idx < total_dots )); then
+            dot_buffer+=${dots[$dot_idx]}
+            ((dot_idx++))
+        fi
+        echo -ne "\r\033[K${gl_bufan}${frames[i % frame_len]}${gl_bai}即将返回 ${gl_huang}${menu_name} ${dot_buffer}"
+        sleep_fractional 0.06
+    done
+    echo -e "\r\033[K${gl_lv}✓${gl_bai} 成功返回${gl_huang}${menu_name}${gl_bai} \n"
+    clear
 }
 
 ############################## 列表美化 ##############################
@@ -2176,7 +2225,7 @@ linux_info() {
                 if [[ "$value" =~ ^无法获取$|^未知$|^未知系统$|^未知CPU$|^未知用户$|^未知时区$ ]]; then
                         echo -e "${gl_bai}${label} : ${gl_huang}${value}${gl_bai}"
                 else
-                        echo -e "${gl_bai}${label} : ${gl_lv}${value}${gl_bai}"
+                        echo -e "${gl_bai}${label} : ${gl_lv}${value}"
                 fi
         }
 
@@ -2826,11 +2875,11 @@ select_and_display_file_info() {
                                 vim "$full_path"
                             else
                                 echo -e "${gl_hong}未找到可用的编辑器${gl_bai}"
-                                read -n1 -rp "$(echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+                                read -n1 -rp "$(echo -e ${gl_huang}"按任意键继续{gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"${gl_bai})"
                             fi
                         else
                             echo -e "${gl_hong}不能编辑目录${gl_bai}"
-                            read -n1 -rp "$(echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+                            read -n1 -rp "$(echo -e ${gl_huang}"按任意键继续{gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"${gl_bai})"
                         fi
                         clear
                         select_and_display_file_info "$target_dir" "$show_hidden" "$custom_cols"
@@ -2843,7 +2892,7 @@ select_and_display_file_info() {
                 esac
             else
                 echo -e "${gl_hong}无效的选择序号${gl_bai}"
-                read -n1 -rp "$(echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+                read -n1 -rp "$(echo -e ${gl_huang}"按任意键继续{gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"${gl_bai})"
                 clear
                 select_and_display_file_info "$target_dir" "$show_hidden" "$custom_cols"
             fi
@@ -2855,7 +2904,7 @@ select_and_display_file_info() {
         0) cancel_return; return 0 ;;
         *)
             echo -e "${gl_hong}无效的选择${gl_bai}"
-            read -n1 -rp "$(echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
+            read -n1 -rp "$(echo -e ${gl_huang}"按任意键继续{gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"${gl_bai})"
             clear
             select_and_display_file_info "$target_dir" "$show_hidden" "$custom_cols"
             ;;
@@ -5914,7 +5963,7 @@ linux_script_manager() {
         echo -e "${gl_zi}>>> 下载备份文件脚本${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bai}使用方法：${gl_lv}/root/scripts/docker-update-all.sh /vol1/1000/compose /vol2/1000/阿里云盘/教程文件/FnOS/backup/compose 7${gl_bai}"
-        echo -e "${gl_hong}/vol1/1000/compose${gl_bai}同步到${gl_huang}/vol2/1000/阿里云盘/教程文件/FnOS/backup/compose${gl_bai}保存数量${gl_lv}7${gl_bai}"
+        echo -e "${gl_hong}/vol1/1000/compose${gl_bai}同步到${gl_huang}/vol2/1000/阿里云盘/教程文件/FnOS/backup/compose${gl_bai}保存数量${gl_lv}7"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         download_script "2"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -6028,10 +6077,10 @@ linux_script_manager() {
 
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 echo -e "${gl_bai}当前cron表达式示例:${gl_bai}"
-                echo -e "${gl_hui}* * * * * 每分钟执行${gl_bai}"
-                echo -e "${gl_hui}0 * * * * 每小时执行${gl_bai}"
-                echo -e "${gl_hui}0 2 * * * 每天2点执行${gl_bai}"
-                echo -e "${gl_hui}0 2 * * 0 每周日2点执行${gl_bai}"
+                echo -e "${gl_hui}* * * * * 每分钟执行"
+                echo -e "${gl_hui}0 * * * * 每小时执行"
+                echo -e "${gl_hui}0 2 * * * 每天2点执行"
+                echo -e "${gl_hui}0 2 * * 0 每周日2点执行"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
                 read -r -e -p "$(echo -e "${gl_bai}请输入cron表达式 (${gl_huang}例如: 0 2 * * *${gl_bai}): ")" cron_expr
@@ -8139,7 +8188,7 @@ rz_download_folder() {
     done < <(find . -maxdepth 1 -type d -not -name ".*" -print0 2>/dev/null | sort -zV)
 
     if [[ ${#dir_array[@]} -eq 0 ]]; then
-        echo -e "${gl_huang}当前目录没有可下载的文件夹${gl_bai}"
+        echo -e "${gl_huang}当前目录没有可下载的文件夹"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         exit_animation
         return 1
@@ -8154,7 +8203,7 @@ rz_download_folder() {
         local file_count
         file_count=$(find "$dir" -type f 2>/dev/null | wc -l)
 
-        printf "${gl_bufan}%3d. ${gl_bai}%-30s ${gl_huang}大小: %-8s ${gl_lv}文件数: %d${gl_bai}\n" \
+        printf "${gl_bufan}%3d. ${gl_bai}%-30s ${gl_huang}大小: %-8s ${gl_lv}文件数: %d\n" \
                "$idx" "$dir_name" "$dir_size" "$file_count"
     done
 
@@ -8349,7 +8398,7 @@ rz_download_files_interactive() {
                 size_display="${file_size}B"
             fi
 
-            printf "${gl_bufan}%3d. ${gl_bai}%-40s ${gl_huang}%8s${gl_bai}\n" \
+            printf "${gl_bufan}%3d. ${gl_bai}%-40s ${gl_huang}%8s\n" \
                    "$file_index" "$(basename "$file")" "$size_display"
             interactive_files+=("$file")
             ((file_index++))
@@ -8591,7 +8640,7 @@ rz_view_transfer_history() {
             size_display="${file_size}B"
         fi
 
-        printf "${gl_bai}%-20s ${gl_huang}%8s ${gl_lv}%s\n${gl_bai}" "$file_date" "$size_display" "$(basename "$file_name")"
+        printf "${gl_bai}%-20s ${gl_huang}%8s ${gl_lv}%s\n" "$file_date" "$size_display" "$(basename "$file_name")"
     done
 
     echo -e "${gl_bai}当前目录中大文件 (>10MB):${gl_bai}"
@@ -8607,7 +8656,7 @@ rz_view_transfer_history() {
             size_display=$(echo "scale=2; $file_size/1048576" | bc)M
         fi
 
-        printf "${gl_bai}%-40s ${gl_huang}%8s\n${gl_bai}" "$(basename "$file")" "$size_display"
+        printf "${gl_bai}%-40s ${gl_huang}%8s\n" "$(basename "$file")" "$size_display"
     done | head -5
 
     local total_size
@@ -8664,7 +8713,7 @@ rz_clean_temp_files() {
                 size_display="${file_size}B"
             fi
 
-            printf "  ${gl_bufan}• ${gl_bai}%-40s ${gl_huang}%8s\n${gl_bai}" "$(basename "$file")" "$size_display"
+            printf "  ${gl_bufan}• ${gl_bai}%-40s ${gl_huang}%8s\n" "$(basename "$file")" "$size_display"
         done
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -9112,7 +9161,7 @@ search_file_here() {
             check_directory_empty "." "${gl_huang}文件${gl_zi}模糊搜索" "true" || return
 
             clear
-            echo -e "${gl_huang}>>> 当前 ${gl_lv}$(pwd) ${gl_huang}目录内容:${gl_bai}"
+            echo -e "${gl_huang}>>> 当前 ${gl_lv}$(pwd) ${gl_huang}目录内容:"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             if [ -z "$(ls -A)" ]; then
                 echo -e "${gl_huang}当前目录为空${gl_bai}"
@@ -9226,8 +9275,8 @@ search_file_here() {
             else
                 log_warn "未找到包含 \"${keyword}\" 的文件。"
                 log_info "搜索建议："
-                echo -e "  ${gl_hui}• 尝试不同的关键词${gl_bai}"
-                echo -e "  ${gl_hui}• 使用更通用的词汇${gl_bai}"
+                echo -e "  ${gl_hui}• 尝试不同的关键词"
+                echo -e "  ${gl_hui}• 使用更通用的词汇"
                 echo -e "  ${gl_hui}• 检查文件是否在其他位置${gl_bai}"
 
                 log_info "当前目录下的文件："
@@ -9288,7 +9337,7 @@ search_here() {
                 echo
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 log_ok "${file}"
-                log_ok "第 ${gl_zi}${line_num}${gl_lv} 行${gl_bai}"
+                log_ok "第 ${gl_zi}${line_num}${gl_lv} 行"
                 log_ok "${gl_hui}${content}${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 ((found++))
@@ -10585,10 +10634,10 @@ docker_image() {
 
                 if [[ $confirm == "y" || $confirm == "Y" ]]; then
                     if docker tag "$source_image" "$target_image"; then
-                        echo -e "${gl_lv}标签创建成功!${gl_bai}"
-                        echo -e "${gl_bufan}新镜像: $target_image${gl_bai}"
+                        echo -e "${gl_lv}标签创建成功!"
+                        echo -e "${gl_bufan}新镜像: $target_image"
                     else
-                        echo -e "${gl_hong}标签创建失败!${gl_bai}"
+                        echo -e "${gl_hong}标签创建失败!"
                     fi
                 else
                     echo "操作已取消"
@@ -12461,7 +12510,7 @@ iptables_manager() {
             ;;
         4)
             clear
-            echo -e "${gl_bufan}${gl_bai}"
+            echo -e "${gl_bufan}"
             echo -e "${gl_huang}>>> 当前规则列表${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             if iptables -L -n --line-numbers; then
@@ -13219,14 +13268,14 @@ web_security() {
 
         boot_en=$(systemctl is-enabled fail2ban 2>/dev/null)
         case "$boot_en" in
-        enabled) boot_zh="${gl_lv}已开启${gl_bai}" ;;
-        disabled) boot_zh="${gl_hui}已禁用${gl_bai}" ;;
-        *) boot_zh="${gl_hui}未知${gl_bai}" ;;
+        enabled) boot_zh="${gl_lv}已开启" ;;
+        disabled) boot_zh="${gl_hui}已禁用" ;;
+        *) boot_zh="${gl_hui}未知" ;;
         esac
         echo -e "${gl_bai}网站防御程序自启动：${boot_zh}"
 
         fb_ver=$(fail2ban-client version 2>/dev/null || echo -e "${gl_hui}未安装")
-        echo -e "${gl_bai}网站防御程序版本号：${gl_lv}${fb_ver}${gl_bai}"
+        echo -e "${gl_bai}网站防御程序版本号：${gl_lv}${fb_ver}"
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}停止防御程序          ${gl_bufan}2.  ${gl_bai}启动防御程序"
@@ -13434,7 +13483,7 @@ check_docker_app() {
 
 check_docker_app_ip() {
 echo -e ""
-echo -e "${gl_bai}访问地址:${gl_lv}${gl_bai}"
+echo -e "${gl_bai}访问地址:${gl_lv}"
 ip_address
 if [ -n "$ipv4_address" ]; then
     echo "http://$ipv4_address:${docker_port}"
@@ -14150,7 +14199,7 @@ update_fail2ban() {
     echo -e "${gl_bai}服务状态: ${gl_lv}$(systemctl is-active fail2ban)${gl_bai}" | sudo tee -a "$LOG_FILE"
     echo -e "${gl_bai}日志文件: ${gl_lv}$LOG_FILE${gl_bai}" | sudo tee -a "$LOG_FILE"
 
-    echo -e "${gl_bai}当前被封禁的 IP：${gl_huang}${gl_bai}" | sudo tee -a "$LOG_FILE"
+    echo -e "${gl_bai}当前被封禁的 IP：${gl_huang}" | sudo tee -a "$LOG_FILE"
     sudo fail2ban-client status | grep "Jail list" | sudo tee -a "$LOG_FILE${gl_bai}"
 
     return 0
@@ -14610,14 +14659,14 @@ ldnmp_web_status() {
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo ""
-        echo -e "${gl_bufan}数据库: ${db_output}${gl_bai}"
+        echo -e "${gl_bufan}数据库: ${db_output}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -e 'SHOW DATABASES;' 2>/dev/null |
             grep -Ev 'Database|information_schema|mysql|performance_schema|sys'
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo ""
-        echo -e "${gl_bufan}站点目录${gl_bai}"
+        echo -e "${gl_bufan}站点目录"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "数据 ${gl_hui}/etc/nginx/html${gl_bai}     证书 ${gl_hui}/etc/nginx/keyfile${gl_bai}     配置 ${gl_hui}/etc/nginx/conf.d${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -15578,12 +15627,12 @@ linux_set_dns_ui() {
         echo -e "${gl_lv}$(cat /etc/resolv.conf)${gl_reset}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}国外DNS优化: "
-        echo -e "${gl_huang} v4: 1.1.1.1 8.8.8.8${gl_bai}"
-        echo -e "${gl_huang} v6: 2606:4700:4700::1111 2001:4860:4860::8888${gl_bai}"
+        echo -e "${gl_huang} v4: 1.1.1.1 8.8.8.8"
+        echo -e "${gl_huang} v6: 2606:4700:4700::1111 2001:4860:4860::8888"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}2.  ${gl_bai}国内DNS优化: "
-        echo -e "${gl_huang} v4: 223.5.5.5 183.60.83.19${gl_bai}"
-        echo -e "${gl_huang} v6: 2400:3200::1 2400:da00::6666${gl_bai}"
+        echo -e "${gl_huang} v4: 223.5.5.5 183.60.83.19"
+        echo -e "${gl_huang} v6: 2400:3200::1 2400:da00::6666"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}3.  ${gl_bai}手动编辑DNS配置"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -16309,7 +16358,7 @@ linux_clamav() {
     while true; do
         clear
         echo -e "${gl_zi}>>> clamav病毒扫描工具${gl_bai}"
-        echo -e "${gl_bai}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1TqvZe4EQm?t=0.1${gl_bai}"
+        echo -e "${gl_bai}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1TqvZe4EQm?t=0.1"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
         echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
@@ -16521,16 +16570,16 @@ linux_Kernel_optimize() {
         clear
         echo -e "${gl_zi}>>> Linux系统内核参数优化${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bai}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1${gl_bai}"
+        echo -e "${gl_bai}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
         echo "提供多种系统参数调优模式，用户可以根据自身使用场景进行选择切换。"
         echo -e "${gl_huang}提示: ${gl_bai}生产环境请谨慎使用！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}1.  ${gl_bai}高性能优化模式：     ${gl_huang}最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。${gl_bai}"
-        echo -e "${gl_bufan}2.  ${gl_bai}均衡优化模式：       ${gl_huang}在性能与资源消耗之间取得平衡，适合日常使用。${gl_bai}"
-        echo -e "${gl_bufan}3.  ${gl_bai}网站优化模式：       ${gl_huang}针对网站服务器进行优化，提高并发连接处理能力、响应速度和整体性能。${gl_bai}"
-        echo -e "${gl_bufan}4.  ${gl_bai}直播优化模式：       ${gl_huang}针对直播推流的特殊需求进行优化，减少延迟，提高传输性能。${gl_bai}"
-        echo -e "${gl_bufan}5.  ${gl_bai}游戏服优化模式：     ${gl_huang}针对游戏服务器进行优化，提高并发处理能力和响应速度。${gl_bai}"
-        echo -e "${gl_bufan}6.  ${gl_bai}还原默认设置：       ${gl_huang}将系统设置还原为默认配置。${gl_bai}"
+        echo -e "${gl_bufan}1.  ${gl_bai}高性能优化模式：     ${gl_huang}最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。"
+        echo -e "${gl_bufan}2.  ${gl_bai}均衡优化模式：       ${gl_huang}在性能与资源消耗之间取得平衡，适合日常使用。"
+        echo -e "${gl_bufan}3.  ${gl_bai}网站优化模式：       ${gl_huang}针对网站服务器进行优化，提高并发连接处理能力、响应速度和整体性能。"
+        echo -e "${gl_bufan}4.  ${gl_bai}直播优化模式：       ${gl_huang}针对直播推流的特殊需求进行优化，减少延迟，提高传输性能。"
+        echo -e "${gl_bufan}5.  ${gl_bai}游戏服优化模式：     ${gl_huang}针对游戏服务器进行优化，提高并发处理能力和响应速度。"
+        echo -e "${gl_bufan}6.  ${gl_bai}还原默认设置：       ${gl_huang}将系统设置还原为默认配置。"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_hong}00. ${gl_bai}退出脚本${gl_bai}"
         echo -e "${gl_huang}0.  ${gl_bai}返回上一级菜单${gl_bai}"
@@ -16733,7 +16782,7 @@ linux_trash() {
         fi
 
         clear
-        echo -e "${gl_bufan}>>> 当前回收站 ${trash_status}${gl_bai}"
+        echo -e "${gl_bufan}>>> 当前回收站 ${trash_status}"
         echo -e "启用后rm删除的文件先进入回收站，防止误删重要文件！"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         ls -l --color=auto "$TRASH_DIR" 2>/dev/null || echo "回收站为空"
@@ -17134,7 +17183,7 @@ linux_ssh_manager() {
 
     while true; do
         clear
-        echo -e "${gl_zi}>>> SSH 远程连接工具${gl_bai}"
+        echo -e "${gl_zi}>>> SSH 远程连接工具"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo "可以通过SSH连接到其他Linux系统上"
         list_connections
@@ -17161,7 +17210,7 @@ linux_ssh_manager() {
 # 挂载分区
 mount_partition() {
     echo ""
-    echo -e "${gl_zi}>>> 挂载分区${gl_bai}"
+    echo -e "${gl_zi}>>> 挂载分区"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     echo -e "${gl_bai}可用的未挂载分区列表：${gl_bai}"
@@ -17274,12 +17323,12 @@ mount_partition() {
     fi
 
     echo -e ""
-    echo -e "${gl_bai}您选择了分区: ${gl_lv}/dev/$PARTITION${gl_bai}"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_huang}您选择了分区: ${gl_lv}/dev/$PARTITION${gl_bai}"
+    echo -e "${gl_hui}————————————————————————————————————————————————${gl_bai}"
 
     echo -e "${gl_bai}分区详细信息:${gl_bai}"
     lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT,TYPE,UUID,LABEL | grep -w "$PARTITION"
-    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_hui}————————————————————————————————————————————————${gl_bai}"
 
     read -r -p "$(echo -e "${gl_bai}是否确认挂载该分区? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" CONFIRM
     if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
@@ -17362,7 +17411,7 @@ mount_partition() {
 # 卸载分区（终极完美对齐版：严格列间距 + 统一美化格式）
 unmount_partition() {
     echo ""
-    echo -e "${gl_zi}>>> 卸载分区${gl_bai}"
+    echo -e "${gl_zi}>>> 卸载分区"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     local DEV_ARR=()
@@ -17520,7 +17569,7 @@ check_partition() {
 # 挂载Video分区
 mount_fnos_partition() {
     echo ""
-    echo -e "${gl_zi}>>> 挂载Video分区${gl_bai}"
+    echo -e "${gl_zi}>>> 挂载Video分区"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     PARTITIONS=()
@@ -17625,7 +17674,7 @@ mount_fnos_partition() {
 # 挂载USB分区
 mount_usb_partition() {
     echo ""
-    echo -e "${gl_zi}>>> 挂载USB分区${gl_bai}"
+    echo -e "${gl_zi}>>> 挂载USB分区"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     PARTITIONS=()
@@ -17730,7 +17779,7 @@ mount_usb_partition() {
 # 卸载Video分区 卸载USB分区
 unmount_by_path() {
     echo ""
-    echo -e "${gl_zi}>>> 卸载指定目录${gl_bai}"
+    echo -e "${gl_zi}>>> 卸载指定目录"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     if [ -n "$1" ]; then
@@ -17768,7 +17817,7 @@ unmount_by_path() {
 # 列出已挂载的分区
 list_mounted_partitions() {
     echo ""
-    echo -e "${gl_zi}>>> 列出已挂载的分区${gl_bai}"
+    echo -e "${gl_zi}>>> 列出已挂载的分区"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     list_beautify_disk_full
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -17778,7 +17827,7 @@ list_mounted_partitions() {
 # 格式化分区
 format_partition() {
     echo ""
-    echo -e "${gl_zi}>>> 格式化分区${gl_bai}"
+    echo -e "${gl_zi}>>> 格式化分区"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入要格式化的分区名称（例如 ${gl_huang}sda1${gl_bai})(${gl_huang}0${gl_bai}返回): ")" PARTITION
     [ "$PARTITION" = "0" ] && { cancel_return "硬盘分区管理"; return 1; }
@@ -17838,7 +17887,7 @@ format_partition() {
 # 格式化硬盘
 format_disk() {
     echo ""
-    echo -e "${gl_zi}>>> 格式化硬盘${gl_bai}"
+    echo -e "${gl_zi}>>> 格式化硬盘"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     echo -e "${gl_bai}可用的硬盘列表："
@@ -17997,7 +18046,7 @@ format_disk() {
                             log_error "无法卸载 $mountpoint，可能有进程正在使用"
                             echo -e "  ${gl_bai}尝试查找占用进程 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
                             lsof "$mountpoint" 2>/dev/null | head -10
-                            read -r -e -p "$(echo -e "${gl_hong}是否终止占用进程？(y/N): ${gl_bai}")" KILL_PROC
+                            read -r -e -p "$(echo -e "${gl_hong}是否终止占用进程？(y/N): ")" KILL_PROC
                             if [ "$KILL_PROC" = "y" ] || [ "$KILL_PROC" = "Y" ]; then
                                 fuser -km "$mountpoint" 2>/dev/null
                                 sleep_fractional 2
@@ -18267,7 +18316,7 @@ format_disk() {
 # 添加到fstab实现开机自动挂载
 add_to_fstab() {
     echo ""
-    echo -e "${gl_zi}>>> 添加到开机自动挂载${gl_bai}"
+    echo -e "${gl_zi}>>> 添加到开机自动挂载"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入分区名称（例如 ${gl_huang}sda1${gl_bai}）(${gl_huang}0 ${gl_bai}返回): ")" PARTITION
 
@@ -18344,7 +18393,7 @@ add_to_fstab() {
     esac
 
     echo ""
-    echo -e "${gl_hong}将要添加到 /etc/fstab 的内容：${gl_bai}"
+    echo -e "${gl_hong}将要添加到 /etc/fstab 的内容："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "UUID=$UUID  $MOUNT_POINT  $FSTYPE  $MOUNT_OPTS  0  2"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -18490,7 +18539,7 @@ list_tasks() {
 
     local line_num=1
     while IFS='|' read -r name local_path remote remote_path port options auth_method password_or_key; do
-        printf "${gl_bufan}%3d. ${gl_bai}- ${gl_zi}%-10s${gl_bai} ( ${gl_huang}%s${gl_bai} -> ${gl_lan}%s${gl_bai}:${gl_lv}%s${gl_bai} )\n" \
+        printf "${gl_bufan}%3d. ${gl_bai}- ${gl_zi}%-10s${gl_bai} ( ${gl_huang}%s${gl_bai} -> ${gl_tian}%s${gl_bai}:${gl_lv}%s${gl_bai} )\n" \
             "$line_num" "$name" "$local_path" "$remote" "$remote_path"
         ((line_num++))
     done <"$CONFIG_FILE"
@@ -19025,7 +19074,7 @@ remote_show_task_details() {
             echo -e "${gl_bufan}任务 #${line_num}${gl_bai}"
             echo -e "  ${gl_bai}任务名称: ${gl_zi}$name${gl_bai}"
             echo -e "  ${gl_bai}本地目录: ${gl_huang}$local_path${gl_bai}"
-            echo -e "  ${gl_bai}远程地址: ${gl_lan}$remote${gl_bai}"
+            echo -e "  ${gl_bai}远程地址: ${gl_tian}$remote${gl_bai}"
             echo -e "  ${gl_bai}远程目录: ${gl_lv}$remote_path${gl_bai}"
             echo -e "  ${gl_bai}SSH 端口: ${gl_bai}$port"
             echo -e "  ${gl_bai}同步选项: ${gl_zi}$options${gl_bai}"
@@ -19078,7 +19127,7 @@ remote_show_task_details() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "  ${gl_bai}任务名称: ${gl_zi}$name${gl_bai}"
         echo -e "  ${gl_bai}本地目录: ${gl_huang}$local_path${gl_bai}"
-        echo -e "  ${gl_bai}远程地址: ${gl_lan}$remote${gl_bai}"
+        echo -e "  ${gl_bai}远程地址: ${gl_tian}$remote${gl_bai}"
         echo -e "  ${gl_bai}远程目录: ${gl_lv}$remote_path${gl_bai}"
         echo -e "  ${gl_bai}SSH 端口: ${gl_bai}$port"
         echo -e "  ${gl_bai}同步选项: ${gl_zi}$options${gl_bai}"
@@ -19608,12 +19657,12 @@ tools_install_curl() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install curl
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}下载文件并保持原文件名：${gl_lv}curl -O https://example.com/file.zip${gl_bai}"
-    echo -e "${gl_bai}下载文件并自定义保存名：${gl_lv}curl -o myfile.zip https://example.com/file.zip${gl_bai}"
-    echo -e "${gl_bai}  下载文件并显示进度条：${gl_lv}curl -# -O https://example.com/largefile.zip${gl_bai}"
-    echo -e "${gl_bai}  下载并解压到指定目录：${gl_lv}curl -s https://example.com/archive.tar.gz | tar -xz -C /target/dir${gl_bai}"
+    echo -e "${gl_bai}下载文件并保持原文件名：${gl_lv}curl -O https://example.com/file.zip"
+    echo -e "${gl_bai}下载文件并自定义保存名：${gl_lv}curl -o myfile.zip https://example.com/file.zip"
+    echo -e "${gl_bai}  下载文件并显示进度条：${gl_lv}curl -# -O https://example.com/largefile.zip"
+    echo -e "${gl_bai}  下载并解压到指定目录：${gl_lv}curl -s https://example.com/archive.tar.gz | tar -xz -C /target/dir"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -19625,12 +19674,12 @@ tools_install_wget() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install wget
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}下载文件并保持原文件名：${gl_lv}wget https://example.com/file.zip${gl_bai}"
-    echo -e "${gl_bai}下载文件并自定义保存名：${gl_lv}wget -O myfile.zip https://example.com/file.zip${gl_bai}"
-    echo -e "${gl_bai}  继续上次未完成的下载：${gl_lv}wget -c https://example.com/largefile.zip${gl_bai}"
-    echo -e "${gl_bai}  下载并解压到指定目录：${gl_lv}wget -qO- https://example.com/archive.tar.gz | tar -x -C /target/dir${gl_bai}"
+    echo -e "${gl_bai}下载文件并保持原文件名：${gl_lv}wget https://example.com/file.zip"
+    echo -e "${gl_bai}下载文件并自定义保存名：${gl_lv}wget -O myfile.zip https://example.com/file.zip"
+    echo -e "${gl_bai}  继续上次未完成的下载：${gl_lv}wget -c https://example.com/largefile.zip"
+    echo -e "${gl_bai}  下载并解压到指定目录：${gl_lv}wget -qO- https://example.com/archive.tar.gz | tar -x -C /target/dir"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -19642,7 +19691,7 @@ tools_install_sudo() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install sudo
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     sudo --help
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19656,7 +19705,7 @@ tools_install_socat() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install socat
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     socat -h
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19688,12 +19737,12 @@ tools_install_unzip() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install unzip
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}解压到当前目录：${gl_lv}unzip file.zip${gl_bai}"
-    echo -e "${gl_bai}解压到特定目录：${gl_lv}unzip file.zip -d /target/directory${gl_bai}"
-    echo -e "${gl_bai}总覆盖已有文件：${gl_lv}unzip -o file.zip${gl_bai}"
-    echo -e "${gl_bai}不覆盖已有文件：${gl_lv}unzip -n file.zip${gl_bai}"
+    echo -e "${gl_bai}解压到当前目录：${gl_lv}unzip file.zip"
+    echo -e "${gl_bai}解压到特定目录：${gl_lv}unzip file.zip -d /target/directory"
+    echo -e "${gl_bai}总覆盖已有文件：${gl_lv}unzip -o file.zip"
+    echo -e "${gl_bai}不覆盖已有文件：${gl_lv}unzip -n file.zip"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -19705,12 +19754,12 @@ tools_install_tar() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install tar
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}创建tar归档（打包）：${gl_lv}tar -cvf archive.tar file1.txt file2.txt directory/${gl_bai}"
-    echo -e "${gl_bai}解包tar文件（解包）：${gl_lv}tar -xvf archive.tar${gl_bai}"
-    echo -e "${gl_bai}创建.tar.gz 或 .tgz压缩文件：${gl_lv}tar -czvf archive.tar.gz directory/${gl_bai}"
-    echo -e "${gl_bai}解压gzip压缩的tar文件：${gl_lv}tar -xzvf archive.tar.gz${gl_bai}"
+    echo -e "${gl_bai}创建tar归档（打包）：${gl_lv}tar -cvf archive.tar file1.txt file2.txt directory/"
+    echo -e "${gl_bai}解包tar文件（解包）：${gl_lv}tar -xvf archive.tar"
+    echo -e "${gl_bai}创建.tar.gz 或 .tgz压缩文件：${gl_lv}tar -czvf archive.tar.gz directory/"
+    echo -e "${gl_bai}解压gzip压缩的tar文件：${gl_lv}tar -xzvf archive.tar.gz"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -19722,7 +19771,7 @@ tools_install_tmux() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install tmux
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     tmux --help
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -19735,7 +19784,7 @@ tools_install_ffmpeg() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install ffmpeg
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     ffmpeg --help
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -19794,7 +19843,7 @@ tools_install_vim() {
     install vim
     cd /
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     vim -h
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19809,7 +19858,7 @@ tools_install_nano() {
     install nano
     fix_nano_config
     echo ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_lv}Ctrl + G：${gl_bai}显示帮助文档"
     echo -e "${gl_lv}Ctrl + X：${gl_bai}退出nano（会提示保存）"
@@ -19850,7 +19899,7 @@ tools_install_rsync() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install rsync
     echo -e ""
-    echo -e "${gl_huang}>>> 工具已安装，使用方法如下：${gl_bai}"
+    echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     rsync --help
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19944,7 +19993,7 @@ tools_remove_yellow() {
 # 41. 安装指定工具
 tools_install_custom() {
     echo ""
-    echo -e "${gl_zi}>>> 安装指定工具${gl_bai}"
+    echo -e "${gl_zi}>>> 安装指定工具"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入${gl_bufan}序号${gl_bai}或${gl_bufan}工具名${gl_bai}: ")" installname
 
@@ -20081,7 +20130,7 @@ tools_install_custom() {
 # 42. 卸载指定工具
 tools_remove_custom() {
     echo ""
-    echo -e "${gl_zi}>>> 卸载指定工具${gl_bai}"
+    echo -e "${gl_zi}>>> 卸载指定工具"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入${gl_bufan}序号${gl_bai}或${gl_bufan}工具名${gl_bai}: ")" input
 
@@ -20208,20 +20257,20 @@ linux_tools() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         check_linux_distro
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_huang}1.  ${gl_bai}$(check_color curl)curl下载工具     ${gl_huang}2.  ${gl_bai}$(check_color wget)wget下载工具${gl_bai}"
-        echo -e "${gl_huang}3.  ${gl_bai}$(check_color sudo)sudo超级管理权限 ${gl_bufan}4.  ${gl_bai}$(check_color socat)socat通信连接工具${gl_bai}"
-        echo -e "${gl_bufan}5.  ${gl_bai}$(check_color htop)htop系统监控工具 ${gl_bufan}6.  ${gl_bai}$(check_color iftop)iftop网络流量监控工具${gl_bai}"
-        echo -e "${gl_huang}7.  ${gl_bai}$(check_color unzip)unzipZIP压缩解压 ${gl_huang}8.  ${gl_bai}$(check_color tar)tarGZ压缩解压工具${gl_bai}"
-        echo -e "${gl_bufan}9.  ${gl_bai}$(check_color tmux)tmux多路后台运行 ${gl_bufan}10. ${gl_bai}$(check_color ffmpeg)ffmpeg视频编码直播推流${gl_bai}"
+        echo -e "${gl_huang}1.  ${gl_bai}$(check_color curl)curl下载工具     ${gl_huang}2.  ${gl_bai}$(check_color wget)wget下载工具"
+        echo -e "${gl_huang}3.  ${gl_bai}$(check_color sudo)sudo超级管理权限 ${gl_bufan}4.  ${gl_bai}$(check_color socat)socat通信连接工具"
+        echo -e "${gl_bufan}5.  ${gl_bai}$(check_color htop)htop系统监控工具 ${gl_bufan}6.  ${gl_bai}$(check_color iftop)iftop网络流量监控工具"
+        echo -e "${gl_huang}7.  ${gl_bai}$(check_color unzip)unzipZIP压缩解压 ${gl_huang}8.  ${gl_bai}$(check_color tar)tarGZ压缩解压工具"
+        echo -e "${gl_bufan}9.  ${gl_bai}$(check_color tmux)tmux多路后台运行 ${gl_bufan}10. ${gl_bai}$(check_color ffmpeg)ffmpeg视频编码直播推流"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_huang}11. ${gl_bai}$(check_color btop)btop现代化监控   ${gl_bufan}12. ${gl_bai}$(check_color ranger)ranger文件管理工具${gl_bai}"
-        echo -e "${gl_bufan}13. ${gl_bai}$(check_color ncdu)ncdu磁盘占用查看 ${gl_bufan}14. ${gl_bai}$(check_color fzf)fzf全局搜索工具${gl_bai}"
-        echo -e "${gl_huang}15. ${gl_bai}$(check_color vim)vim文本编辑器    ${gl_huang}16. ${gl_bai}$(check_color nano)nano文本编辑器${gl_bai}"
-        echo -e "${gl_bufan}17. ${gl_bai}$(check_color git)git版本控制系统  ${gl_huang}18. ${gl_bai}$(check_color rsync)rsync文件同步工具${gl_bai}"
+        echo -e "${gl_huang}11. ${gl_bai}$(check_color btop)btop现代化监控   ${gl_bufan}12. ${gl_bai}$(check_color ranger)ranger文件管理工具"
+        echo -e "${gl_bufan}13. ${gl_bai}$(check_color ncdu)ncdu磁盘占用查看 ${gl_bufan}14. ${gl_bai}$(check_color fzf)fzf全局搜索工具"
+        echo -e "${gl_huang}15. ${gl_bai}$(check_color vim)vim文本编辑器    ${gl_huang}16. ${gl_bai}$(check_color nano)nano文本编辑器"
+        echo -e "${gl_bufan}17. ${gl_bai}$(check_color git)git版本控制系统  ${gl_huang}18. ${gl_bai}$(check_color rsync)rsync文件同步工具"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}21. ${gl_bai}$(check_color cmatrix)黑客帝国屏保     ${gl_bufan}22. ${gl_bai}$(check_color sl)跑火车屏保${gl_bai}"
-        echo -e "${gl_bufan}23. ${gl_bai}$(check_color bastet)俄罗斯方块游戏   ${gl_bufan}24. ${gl_bai}$(check_color nsnake)贪吃蛇小游戏${gl_bai}"
-        echo -e "${gl_bufan}25. ${gl_bai}$(check_color ninvaders)太空入侵者游戏${gl_bai}"
+        echo -e "${gl_bufan}21. ${gl_bai}$(check_color cmatrix)黑客帝国屏保     ${gl_bufan}22. ${gl_bai}$(check_color sl)跑火车屏保"
+        echo -e "${gl_bufan}23. ${gl_bai}$(check_color bastet)俄罗斯方块游戏   ${gl_bufan}24. ${gl_bai}$(check_color nsnake)贪吃蛇小游戏"
+        echo -e "${gl_bufan}25. ${gl_bai}$(check_color ninvaders)太空入侵者游戏"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}31. ${gl_lv}全部安装         ${gl_bufan}32. ${gl_lv}全部安装 (${gl_huang}黄色序号${gl_lv}软件) ${gl_lv}★${gl_bai}"
         echo -e "${gl_bufan}33. ${gl_hong}全部卸载         ${gl_bufan}34. ${gl_hong}全部卸载 (${gl_huang}黄色序号${gl_hong}软件) ${gl_hong}★${gl_bai}"
@@ -24958,80 +25007,80 @@ linux_panel() {
                 fi
             done
 
-            echo -e "${gl_bufan}1.   ${color1}宝塔面板官方版           ${gl_bufan}2.   ${color2}aaPanel宝塔国际版${gl_bai}"
-            echo -e "${gl_bufan}3.   ${color3}1Panel新一代管理面板     ${gl_bufan}4.   ${color4}NginxProxyManager可视化面板${gl_bai}"
-            echo -e "${gl_bufan}5.   ${color5}OpenList多存储文件程序   ${gl_bufan}6.   ${color6}Ubuntu远程桌面网页版${gl_bai}"
-            echo -e "${gl_bufan}7.   ${color7}哪吒探针VPS监控面板      ${gl_bufan}8.   ${color8}QB离线BT磁力下载面板${gl_bai}"
-            echo -e "${gl_bufan}9.   ${color9}Poste.io邮件服务器程序   ${gl_bufan}10.  ${color10}RocketChat多人在线聊天系统${gl_bai}"
+            echo -e "${gl_bufan}1.   ${color1}宝塔面板官方版           ${gl_bufan}2.   ${color2}aaPanel宝塔国际版"
+            echo -e "${gl_bufan}3.   ${color3}1Panel新一代管理面板     ${gl_bufan}4.   ${color4}NginxProxyManager可视化面板"
+            echo -e "${gl_bufan}5.   ${color5}OpenList多存储文件程序   ${gl_bufan}6.   ${color6}Ubuntu远程桌面网页版"
+            echo -e "${gl_bufan}7.   ${color7}哪吒探针VPS监控面板      ${gl_bufan}8.   ${color8}QB离线BT磁力下载面板"
+            echo -e "${gl_bufan}9.   ${color9}Poste.io邮件服务器程序   ${gl_bufan}10.  ${color10}RocketChat多人在线聊天系统"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}11.  ${color11}禅道项目管理软件         ${gl_bufan}12.  ${color12}青龙面板定时任务管理平台${gl_bai}"
-            echo -e "${gl_bufan}13.  ${color13}Cloudreve网盘 ${gl_huang}★${gl_bai}          ${gl_bufan}14.  ${color14}简单图床图片管理程序${gl_bai}"
-            echo -e "${gl_bufan}15.  ${color15}emby多媒体管理系统       ${gl_bufan}16.  ${color16}Speedtest测速面板${gl_bai}"
-            echo -e "${gl_bufan}17.  ${color17}AdGuardHome去广告软件    ${gl_bufan}18.  ${color18}onlyoffice在线办公OFFICE${gl_bai}"
-            echo -e "${gl_bufan}19.  ${color19}雷池WAF防火墙面板        ${gl_bufan}20.  ${color20}portainer容器管理面板${gl_bai}"
+            echo -e "${gl_bufan}11.  ${color11}禅道项目管理软件         ${gl_bufan}12.  ${color12}青龙面板定时任务管理平台"
+            echo -e "${gl_bufan}13.  ${color13}Cloudreve网盘 ${gl_huang}★${gl_bai}          ${gl_bufan}14.  ${color14}简单图床图片管理程序"
+            echo -e "${gl_bufan}15.  ${color15}emby多媒体管理系统       ${gl_bufan}16.  ${color16}Speedtest测速面板"
+            echo -e "${gl_bufan}17.  ${color17}AdGuardHome去广告软件    ${gl_bufan}18.  ${color18}onlyoffice在线办公OFFICE"
+            echo -e "${gl_bufan}19.  ${color19}雷池WAF防火墙面板        ${gl_bufan}20.  ${color20}portainer容器管理面板"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}21.  ${color21}VScode网页版             ${gl_bufan}22.  ${color22}UptimeKuma监控工具${gl_bai}"
+            echo -e "${gl_bufan}21.  ${color21}VScode网页版             ${gl_bufan}22.  ${color22}UptimeKuma监控工具"
             echo -e "${gl_bufan}23.  ${color23}Memos网页备忘录          ${gl_bufan}24.  ${color24}Webtop远程桌面网页版 ${gl_huang}★${gl_bai}"
-            echo -e "${gl_bufan}25.  ${color25}Nextcloud网盘            ${gl_bufan}26.  ${color26}QD-Today定时任务管理框架${gl_bai}"
-            echo -e "${gl_bufan}27.  ${color27}Dockge容器堆栈管理面板   ${gl_bufan}28.  ${color28}LibreSpeed测速工具${gl_bai}"
-            echo -e "${gl_bufan}29.  ${color29}searxng聚合搜索站 ${gl_huang}★${gl_bai}      ${gl_bufan}30.  ${color30}PhotoPrism私有相册系统${gl_bai}"
+            echo -e "${gl_bufan}25.  ${color25}Nextcloud网盘            ${gl_bufan}26.  ${color26}QD-Today定时任务管理框架"
+            echo -e "${gl_bufan}27.  ${color27}Dockge容器堆栈管理面板   ${gl_bufan}28.  ${color28}LibreSpeed测速工具"
+            echo -e "${gl_bufan}29.  ${color29}searxng聚合搜索站 ${gl_huang}★${gl_bai}      ${gl_bufan}30.  ${color30}PhotoPrism私有相册系统"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}31.  ${color31}StirlingPDF工具大全      ${gl_bufan}32.  ${color32}drawio免费的在线图表软件 ${gl_huang}★${gl_bai}"
-            echo -e "${gl_bufan}33.  ${color33}Sun-Panel导航面板        ${gl_bufan}34.  ${color34}Pingvin-Share文件分享平台${gl_bai}"
-            echo -e "${gl_bufan}35.  ${color35}极简朋友圈               ${gl_bufan}36.  ${color36}LobeChatAI聊天聚合网站${gl_bai}"
-            echo -e "${gl_bufan}37.  ${color37}MyIP工具箱 ${gl_huang}★${gl_bai}             ${gl_bufan}38.  ${color38}小雅alist全家桶${gl_bai}"
-            echo -e "${gl_bufan}39.  ${color39}Bililive直播录制工具     ${gl_bufan}40.  ${color40}webssh网页版SSH连接工具${gl_bai}"
+            echo -e "${gl_bufan}33.  ${color33}Sun-Panel导航面板        ${gl_bufan}34.  ${color34}Pingvin-Share文件分享平台"
+            echo -e "${gl_bufan}35.  ${color35}极简朋友圈               ${gl_bufan}36.  ${color36}LobeChatAI聊天聚合网站"
+            echo -e "${gl_bufan}37.  ${color37}MyIP工具箱 ${gl_huang}★${gl_bai}             ${gl_bufan}38.  ${color38}小雅alist全家桶"
+            echo -e "${gl_bufan}39.  ${color39}Bililive直播录制工具     ${gl_bufan}40.  ${color40}webssh网页版SSH连接工具"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}41.  ${color41}耗子管理面板             ${gl_bufan}42.  ${color42}Nexterm远程连接工具${gl_bai}"
+            echo -e "${gl_bufan}41.  ${color41}耗子管理面板             ${gl_bufan}42.  ${color42}Nexterm远程连接工具"
             echo -e "${gl_bufan}43.  ${color43}RustDesk远程桌面(服务端) ${gl_bufan}44.  ${color44}RustDesk远程桌面(中继端) ${gl_huang}★${gl_bai}"
             echo -e "${gl_bufan}45.  ${color45}Docker加速站             ${gl_bufan}46.  ${color46}GitHub加速站 ${gl_huang}★${gl_bai}"
-            echo -e "${gl_bufan}47.  ${color47}普罗米修斯监控           ${gl_bufan}48.  ${color48}普罗米修斯(主机监控)${gl_bai}"
-            echo -e "${gl_bufan}49.  ${color49}普罗米修斯(容器监控)     ${gl_bufan}50.  ${color50}补货监控工具${gl_bai}"
+            echo -e "${gl_bufan}47.  ${color47}普罗米修斯监控           ${gl_bufan}48.  ${color48}普罗米修斯(主机监控)"
+            echo -e "${gl_bufan}49.  ${color49}普罗米修斯(容器监控)     ${gl_bufan}50.  ${color50}补货监控工具"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}51.  ${color51}PVE开小鸡面板            ${gl_bufan}52.  ${color52}DPanel容器管理面板${gl_bai}"
-            echo -e "${gl_bufan}53.  ${color53}llama3聊天AI大模型       ${gl_bufan}54.  ${color54}AMH主机建站管理面板${gl_bai}"
+            echo -e "${gl_bufan}51.  ${color51}PVE开小鸡面板            ${gl_bufan}52.  ${color52}DPanel容器管理面板"
+            echo -e "${gl_bufan}53.  ${color53}llama3聊天AI大模型       ${gl_bufan}54.  ${color54}AMH主机建站管理面板"
             echo -e "${gl_bufan}55.  ${color55}FRP内网穿透(服务端) ${gl_huang}★${gl_bai}    ${gl_bufan}56.  ${color56}FRP内网穿透(客户端) ${gl_huang}★${gl_bai}"
             echo -e "${gl_bufan}57.  ${color57}Deepseek聊天AI大模型     ${gl_bufan}58.  ${color58}Dify大模型知识库 ${gl_huang}★${gl_bai}"
-            echo -e "${gl_bufan}59.  ${color59}NewAPI大模型资产管理     ${gl_bufan}60.  ${color60}JumpServer开源堡垒机${gl_bai}"
+            echo -e "${gl_bufan}59.  ${color59}NewAPI大模型资产管理     ${gl_bufan}60.  ${color60}JumpServer开源堡垒机"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}61.  ${color61}在线翻译服务器           ${gl_bufan}62.  ${color62}RAGFlow大模型知识库${gl_bai}"
-            echo -e "${gl_bufan}63.  ${color63}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}  ${gl_bufan}64.  ${color64}it-tools工具箱${gl_bai}"
-            echo -e "${gl_bufan}65.  ${color65}n8n自动化工作流平台 ${gl_huang}★${gl_bai}    ${gl_bufan}66.  ${color66}yt-dlp视频下载工具${gl_bai}"
-            echo -e "${gl_bufan}67.  ${color67}ddns-go动态DNS管理工具   ${gl_bufan}68.  ${color68}AllinSSL证书管理平台${gl_bai}"
-            echo -e "${gl_bufan}69.  ${color69}SFTPGo文件传输工具       ${gl_bufan}70.  ${color70}AstrBot聊天机器人框架${gl_bai}"
+            echo -e "${gl_bufan}61.  ${color61}在线翻译服务器           ${gl_bufan}62.  ${color62}RAGFlow大模型知识库"
+            echo -e "${gl_bufan}63.  ${color63}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}  ${gl_bufan}64.  ${color64}it-tools工具箱"
+            echo -e "${gl_bufan}65.  ${color65}n8n自动化工作流平台 ${gl_huang}★${gl_bai}    ${gl_bufan}66.  ${color66}yt-dlp视频下载工具"
+            echo -e "${gl_bufan}67.  ${color67}ddns-go动态DNS管理工具   ${gl_bufan}68.  ${color68}AllinSSL证书管理平台"
+            echo -e "${gl_bufan}69.  ${color69}SFTPGo文件传输工具       ${gl_bufan}70.  ${color70}AstrBot聊天机器人框架"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}71.  ${color71}Navidrome私有音乐服务器  ${gl_bufan}72.  ${color72}bitwarden密码管理器 ${gl_huang}★${gl_bai}"
-            echo -e "${gl_bufan}73.  ${color73}LibreTV私有影视          ${gl_bufan}74.  ${color74}MoonTV私有影视${gl_bai}"
-            echo -e "${gl_bufan}75.  ${color75}Melody音乐精灵           ${gl_bufan}76.  ${color76}在线DOS老游戏${gl_bai}"
-            echo -e "${gl_bufan}77.  ${color77}迅雷离线下载工具         ${gl_bufan}78.  ${color78}PandaWiki智能文档管理系统${gl_bai}"
-            echo -e "${gl_bufan}79.  ${color79}Beszel服务器监控         ${gl_bufan}80.  ${color80}linkwarden书签管理${gl_bai}"
+            echo -e "${gl_bufan}73.  ${color73}LibreTV私有影视          ${gl_bufan}74.  ${color74}MoonTV私有影视"
+            echo -e "${gl_bufan}75.  ${color75}Melody音乐精灵           ${gl_bufan}76.  ${color76}在线DOS老游戏"
+            echo -e "${gl_bufan}77.  ${color77}迅雷离线下载工具         ${gl_bufan}78.  ${color78}PandaWiki智能文档管理系统"
+            echo -e "${gl_bufan}79.  ${color79}Beszel服务器监控         ${gl_bufan}80.  ${color80}linkwarden书签管理"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}81.  ${color81}JitsiMeet视频会议        ${gl_bufan}82.  ${color82}gpt-load高性能AI透明代理${gl_bai}"
-            echo -e "${gl_bufan}83.  ${color83}komari服务器监控工具     ${gl_bufan}84.  ${color84}Wallos个人财务管理工具${gl_bai}"
-            echo -e "${gl_bufan}85.  ${color85}immich图片视频管理器     ${gl_bufan}86.  ${color86}jellyfin媒体管理系统${gl_bai}"
-            echo -e "${gl_bufan}87.  ${color87}SyncTV一起看片神器       ${gl_bufan}88.  ${color88}Owncast自托管直播平台${gl_bai}"
-            echo -e "${gl_bufan}89.  ${color89}FileCodeBox文件快递      ${gl_bufan}90.  ${color90}matrix去中心化聊天协议${gl_bai}"
+            echo -e "${gl_bufan}81.  ${color81}JitsiMeet视频会议        ${gl_bufan}82.  ${color82}gpt-load高性能AI透明代理"
+            echo -e "${gl_bufan}83.  ${color83}komari服务器监控工具     ${gl_bufan}84.  ${color84}Wallos个人财务管理工具"
+            echo -e "${gl_bufan}85.  ${color85}immich图片视频管理器     ${gl_bufan}86.  ${color86}jellyfin媒体管理系统"
+            echo -e "${gl_bufan}87.  ${color87}SyncTV一起看片神器       ${gl_bufan}88.  ${color88}Owncast自托管直播平台"
+            echo -e "${gl_bufan}89.  ${color89}FileCodeBox文件快递      ${gl_bufan}90.  ${color90}matrix去中心化聊天协议"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}91.  ${color91}gitea私有代码仓库        ${gl_bufan}92.  ${color92}FileBrowser文件管理器${gl_bai}"
-            echo -e "${gl_bufan}93.  ${color93}Dufs极简静态文件服务器   ${gl_bufan}94.  ${color94}Gopeed高速下载工具${gl_bai}"
-            echo -e "${gl_bufan}95.  ${color95}paperless文档管理平台    ${gl_bufan}96.  ${color96}2FAuth自托管二步验证器${gl_bai}"
-            echo -e "${gl_bufan}97.  ${color97}WireGuard组网(服务端)    ${gl_bufan}98.  ${color98}WireGuard组网(客户端)${gl_bai}"
-            echo -e "${gl_bufan}99.  ${color99}DSM群晖虚拟机            ${gl_bufan}100. ${color100}Syncthing点对点文件同步工具${gl_bai}"
+            echo -e "${gl_bufan}91.  ${color91}gitea私有代码仓库        ${gl_bufan}92.  ${color92}FileBrowser文件管理器"
+            echo -e "${gl_bufan}93.  ${color93}Dufs极简静态文件服务器   ${gl_bufan}94.  ${color94}Gopeed高速下载工具"
+            echo -e "${gl_bufan}95.  ${color95}paperless文档管理平台    ${gl_bufan}96.  ${color96}2FAuth自托管二步验证器"
+            echo -e "${gl_bufan}97.  ${color97}WireGuard组网(服务端)    ${gl_bufan}98.  ${color98}WireGuard组网(客户端)"
+            echo -e "${gl_bufan}99.  ${color99}DSM群晖虚拟机            ${gl_bufan}100. ${color100}Syncthing点对点文件同步工具"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}101. ${color101}AI视频生成工具           ${gl_bufan}102. ${color102}VoceChat多人在线聊天系统${gl_bai}"
-            echo -e "${gl_bufan}103. ${color103}Umami网站统计工具        ${gl_bufan}104. ${color104}Stream四层代理转发工具${gl_bai}"
-            echo -e "${gl_bufan}105. ${color105}思源笔记                 ${gl_bufan}106. ${color106}Drawnix开源白板工具${gl_bai}"
-            echo -e "${gl_bufan}107. ${color107}PanSou网盘搜索           ${gl_bufan}108. ${color108}LangBot聊天机器人${gl_bai}"
-            echo -e "${gl_bufan}109. ${color109}md云文档                 ${gl_bufan}110. ${color110}小爱音箱操控面板${gl_bai}"
+            echo -e "${gl_bufan}101. ${color101}AI视频生成工具           ${gl_bufan}102. ${color102}VoceChat多人在线聊天系统"
+            echo -e "${gl_bufan}103. ${color103}Umami网站统计工具        ${gl_bufan}104. ${color104}Stream四层代理转发工具"
+            echo -e "${gl_bufan}105. ${color105}思源笔记                 ${gl_bufan}106. ${color106}Drawnix开源白板工具"
+            echo -e "${gl_bufan}107. ${color107}PanSou网盘搜索           ${gl_bufan}108. ${color108}LangBot聊天机器人"
+            echo -e "${gl_bufan}109. ${color109}md云文档                 ${gl_bufan}110. ${color110}小爱音箱操控面板"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}111. ${color111}taosync网盘同步工具      ${gl_bufan}112. ${color112}musicn音乐下载工具${gl_bai}"
-            echo -e "${gl_bufan}113. ${color113}aipan网盘搜索工具        ${gl_bufan}114. ${color114}vert文件格式转换器${gl_bai}"
-            echo -e "${gl_bufan}115. ${color115}easynode网页SSH工具      ${gl_bufan}116. ${color116}mind-map思维导图${gl_bai}"
-            echo -e "${gl_bufan}117. ${color117}random随机壁纸           ${gl_bufan}118. ${color118}hd-Icons高清图标库${gl_bai}"
-            echo -e "${gl_bufan}119. ${color119}MeTube视频下载工具       ${gl_bufan}120. ${color120}fndesk飞牛桌面图标管理${gl_bai}"
+            echo -e "${gl_bufan}111. ${color111}taosync网盘同步工具      ${gl_bufan}112. ${color112}musicn音乐下载工具"
+            echo -e "${gl_bufan}113. ${color113}aipan网盘搜索工具        ${gl_bufan}114. ${color114}vert文件格式转换器"
+            echo -e "${gl_bufan}115. ${color115}easynode网页SSH工具      ${gl_bufan}116. ${color116}mind-map思维导图"
+            echo -e "${gl_bufan}117. ${color117}random随机壁纸           ${gl_bufan}118. ${color118}hd-Icons高清图标库"
+            echo -e "${gl_bufan}119. ${color119}MeTube视频下载工具       ${gl_bufan}120. ${color120}fndesk飞牛桌面图标管理"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            echo -e "${gl_bufan}121. ${color121}FastNet测速工具          ${gl_bufan}122. ${color122}Firefox浏览器${gl_bai}"
-            echo -e "${gl_bufan}123. ${color123}Lucky大内网穿透          ${gl_bufan}124. ${color124}convertx多格式文件转换${gl_bai}"
+            echo -e "${gl_bufan}121. ${color121}FastNet测速工具          ${gl_bufan}122. ${color122}Firefox浏览器"
+            echo -e "${gl_bufan}123. ${color123}Lucky大内网穿透          ${gl_bufan}124. ${color124}convertx多格式文件转换"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bufan}b.   ${gl_bai}备份全部应用数据         ${gl_bufan}r.   ${gl_bai}还原全部应用数据"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -26800,7 +26849,7 @@ add_cifs_mount() {
     echo -e "${gl_zi}>>> CIFS挂载共享${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e ""
-    echo -e "${gl_huang}>>> 配置共享${gl_bai}"
+    echo -e "${gl_huang}>>> 配置共享"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}远程共享路径 (如://${gl_huang}10.10.10.251/fnos-file${gl_bai})(${gl_huang}0 ${gl_bai}返回): ")" SHARE
     [[ "$SHARE" == "0" ]] && return
@@ -26836,7 +26885,7 @@ add_cifs_mount() {
     fi
 
     echo -e ""
-    echo -e "${gl_huang}>>> 生成配置文件${gl_bai}"
+    echo -e "${gl_huang}>>> 生成配置文件"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     SCRIPT="/root/${SVC}-startup-script.sh"
     log_info "生成挂载脚本：${gl_lv}$SCRIPT${gl_bai}"
@@ -26924,11 +26973,11 @@ EOU
 
     sleep_fractional 2
     echo -e ""
-    echo -e "${gl_huang}>>> 服务状态${gl_bai}"
+    echo -e "${gl_huang}>>> 服务状态"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     systemctl status "${SVC}" --no-pager || echo "无法获取状态"
     echo -e ""
-    echo -e "${gl_huang}>>> 最近日志${gl_bai}"
+    echo -e "${gl_huang}>>> 最近日志"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     journalctl -u "${SVC}" -e --no-pager -n 20 2>/dev/null || echo "无法获取日志"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -27806,9 +27855,9 @@ mount_cifs_share() {
     if mountpoint -q "$mount_dir"; then
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         log_ok "Samba 共享挂载成功！"
-        echo -e "  ${gl_bai}服务器: ${gl_huang}//$server_ip/$share_name${gl_bai}"
-        echo -e "  ${gl_bai}挂载点: ${gl_huang}$mount_dir${gl_bai}"
-        echo -e "  ${gl_bai}用户名: ${gl_huang}${samba_user:-匿名}${gl_bai}"
+        echo -e "  ${gl_bai}服务器: ${gl_huang}//$server_ip/$share_name"
+        echo -e "  ${gl_bai}挂载点: ${gl_huang}$mount_dir"
+        echo -e "  ${gl_bai}用户名: ${gl_huang}${samba_user:-匿名}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         if command -v df &>/dev/null; then
@@ -28598,7 +28647,7 @@ local_umount_win11d_menu() {
 samba_install_menu() {
     clear
     echo -e ""
-    echo -e "${gl_zi}>>> 安装Samba服务${gl_bai}"
+    echo -e "${gl_zi}>>> 安装Samba服务"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     install_samba
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -28609,7 +28658,7 @@ samba_install_menu() {
 samba_uninstall_menu() {
     clear
     echo -e ""
-    echo -e "${gl_zi}>>> 卸载Samba服务端${gl_bai}"
+    echo -e "${gl_zi}>>> 卸载Samba服务端"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     uninstall_samba
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -28711,7 +28760,7 @@ samba_view_logs() {
             exit 1
         fi
 
-        echo -e "${gl_lan}最后 20 行日志:${gl_bai}"
+        echo -e "${gl_qing}最后 20 行日志:${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         tail -n 20 "/var/log/samba/log.smbd"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -29279,7 +29328,7 @@ configure_static_ip() {
 
     while true; do
         echo ""
-        echo -e "${gl_zi}>>> 选择要配置的网络接口${gl_bai}"
+        echo -e "${gl_zi}>>> 选择要配置的网络接口"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}可用的网络接口${gl_bai}"
         local interfaces
@@ -31115,7 +31164,7 @@ linux_env_menu() {
         clear
         echo -e "${gl_zi}>>> 系统环境变量管理${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bai}当前用户：${gl_lv}$USER${gl_bai}"
+        echo -e "${gl_bai}当前用户：${gl_lv}$USER"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}查看当前常用环境变量"
         echo -e "${gl_bufan}2.  ${gl_bai}查看 ~/.bashrc"
@@ -31347,7 +31396,7 @@ local_add_task() {
     target_path="${target_path%/}/"
 
     echo ""
-    echo -e "${gl_huang}>>> 请选择同步模式${gl_bai}"
+    echo -e "${gl_huang}>>> 请选择同步模式"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bufan}1. ${gl_bai}标准模式 (-avhz --progress) - 增量同步，保留文件属性"
     echo -e "${gl_bufan}2. ${gl_bai}安全模式 (-avhz --progress --delete-delay) - 删除目标中多余文件"
@@ -31370,7 +31419,7 @@ local_add_task() {
     esac
 
     echo ""
-    echo -e "${gl_huang}>>> 高级选项${gl_bai}"
+    echo -e "${gl_huang}>>> 高级选项"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bufan}1. ${gl_bai}限速同步 (避免影响系统性能)"
     echo -e "${gl_bufan}2. ${gl_bai}排除特定文件类型"
@@ -34278,10 +34327,10 @@ dd_backup_restore_tool() {
 
                 printf "\r${gl_bai}[${gl_lv}%3d%%${gl_bai}] [" "$percent"
                 if [[ $filled -gt 0 ]]; then
-                    printf "${gl_bufan}%${filled}s${gl_bai}" "" | tr ' ' '█'
+                    printf "${gl_bufan}%${filled}s" "" | tr ' ' '█'
                 fi
                 if [[ $empty -gt 0 ]]; then
-                    printf "${gl_hui}%${empty}s${gl_bai}" "" | tr ' ' '─'
+                    printf "${gl_hui}%${empty}s" "" | tr ' ' '─'
                 fi
                 printf "${gl_bai}] "
                 printf "${gl_huang}%s/${gl_lv}%s${gl_bai} | " "$current_size_hr" "$total_size_hr"
@@ -34319,7 +34368,7 @@ dd_backup_restore_tool() {
         total_time_str=$(printf "%02d:%02d" $((total_time / 60)) $((total_time % 60)))
 
         printf "\r${gl_bai}[${gl_lv}100%%${gl_bai}] ["
-        printf "${gl_bufan}%${bar_width}s${gl_bai}" "" | tr ' ' '█'
+        printf "${gl_bufan}%${bar_width}s" "" | tr ' ' '█'
         printf "${gl_bai}] "
         printf "${gl_huang}%s${gl_bai} | " "$final_size_hr"
         printf "✅ ${gl_lv}完成!${gl_bai} | "
@@ -35567,7 +35616,7 @@ image_converter_batch_rename() {
 
     echo ""
     echo -e "${gl_bai}是否保持原扩展名?${gl_bai}"
-    echo -e "${gl_huang}保持: 文件扩展名不变${gl_bai}"
+    echo -e "${gl_huang}保持: 文件扩展名不变"
     echo -e "统一: 所有图片使用相同的扩展名${gl_bai}"
     echo ""
     echo -e "${gl_bufan}1.  ${gl_bai}保持原扩展名"
@@ -35760,7 +35809,7 @@ image_converter_batch_delete() {
     fi
 
     echo ""
-    read -r -e -p "$(echo -e "${gl_hong}最后确认! 输入${gl_lv}confirm${gl_hong}以继续删除: ${gl_bai}")" final_confirm
+    read -r -e -p "$(echo -e "${gl_hong}最后确认! 输入${gl_lv}confirm${gl_hong}以继续删除: ")" final_confirm
     if [[ "$final_confirm" != "confirm" ]]; then
         log_info "操作取消"
         return
@@ -35866,19 +35915,19 @@ linux_timezone_settings() {
         echo ""
         echo -e "${gl_zi}>>> 时区切换${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}亚洲${gl_bai}"
+        echo -e "${gl_bufan}亚洲"
         echo -e "${gl_bufan}1.  ${gl_bai}中国上海时间             ${gl_bufan}2.  ${gl_bai}中国香港时间"
         echo -e "${gl_bufan}3.  ${gl_bai}日本东京时间             ${gl_bufan}4.  ${gl_bai}韩国首尔时间"
         echo -e "${gl_bufan}5.  ${gl_bai}新加坡时间               ${gl_bufan}6.  ${gl_bai}印度加尔各答时间"
         echo -e "${gl_bufan}7.  ${gl_bai}阿联酋迪拜时间           ${gl_bufan}8.  ${gl_bai}澳大利亚悉尼时间"
         echo -e "${gl_bufan}9.  ${gl_bai}泰国曼谷时间"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}欧洲${gl_bai}"
+        echo -e "${gl_bufan}欧洲"
         echo -e "${gl_bufan}11. ${gl_bai}英国伦敦时间             ${gl_bufan}12. ${gl_bai}法国巴黎时间"
         echo -e "${gl_bufan}13. ${gl_bai}德国柏林时间             ${gl_bufan}14. ${gl_bai}俄罗斯莫斯科时间"
         echo -e "${gl_bufan}15. ${gl_bai}荷兰尤特赖赫特时间       ${gl_bufan}16. ${gl_bai}西班牙马德里时间"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}美洲${gl_bai}"
+        echo -e "${gl_bufan}美洲"
         echo -e "${gl_bufan}21. ${gl_bai}美国西部时间             ${gl_bufan}22. ${gl_bai}美国东部时间"
         echo -e "${gl_bufan}23. ${gl_bai}加拿大时间               ${gl_bufan}24. ${gl_bai}墨西哥时间"
         echo -e "${gl_bufan}25. ${gl_bai}巴西时间                 ${gl_bufan}26. ${gl_bai}阿根廷时间"
@@ -36046,7 +36095,7 @@ linux_change_hostname() {
         echo -e ""
         local current_hostname
         current_hostname=$(uname -n)
-        echo -e "${gl_zi}>>> 修改主机名${gl_bai}"
+        echo -e "${gl_zi}>>> 修改主机名"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "当前主机名: ${gl_huang}$current_hostname${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -36310,14 +36359,14 @@ linux_setup_ssh() {
     log_ok "SSH 服务已重启并生效"
 
     echo ""
-    echo -e "${gl_huang}>>> 本次脚本涉及的关键配置：${gl_bai}"
+    echo -e "${gl_huang}>>> 本次脚本涉及的关键配置："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     grep -E '^(Port|PermitRootLogin|GSSAPIAuthentication|UseDNS|Compression|ClientAliveInterval|ClientAliveCountMax|TCPKeepAlive|PrintMotd|PrintLastLog|X11Forwarding)[[:space:]]' /etc/ssh/sshd_config
 
     local ip
     ip=$(hostname -I | awk '{print $1}')
     echo ""
-    echo -e "${gl_huang}>>> 连接信息：${gl_bai}"
+    echo -e "${gl_huang}>>> 连接信息："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "  配置文件: ${gl_lv}/etc/ssh/sshd_config${gl_bai}"
     echo -e "  服务器IP: ${gl_lv}$ip${gl_bai}"
@@ -36643,15 +36692,15 @@ linux_limiting_shutdown() {
 linux_python_version_management() {
     root_use
     echo -e "${gl_zi}>>> python版本管理${gl_bai}"
-    echo -e "${gl_bai}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1Pm42157cK?t=0.1${gl_bai}"
+    echo -e "${gl_bai}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1Pm42157cK?t=0.1"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo "该功能可无缝安装python官方支持的任何版本！"
     local VERSION
     VERSION=$(python3 -V 2>&1 | awk '{print $2}')
     echo -e "当前python版本号: ${gl_lv}$VERSION${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}推荐版本:  ${gl_lv}3.12    3.11    3.10    3.9    3.8    2.7${gl_bai}"
-    echo -e "${gl_bai}查询更多版本: ${gl_lv}https://www.python.org/downloads/${gl_bai}"
+    echo -e "${gl_bai}推荐版本:  ${gl_lv}3.12    3.11    3.10    3.9    3.8    2.7"
+    echo -e "${gl_bai}查询更多版本: ${gl_lv}https://www.python.org/downloads/"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}输入你要安装的${gl_lv}python${gl_bai}版本号 (${gl_huang}0${gl_bai}返回): ")" py_new_v
 
@@ -36873,7 +36922,7 @@ linux_tg_bot_monitor() {
         source ~/.profile
 
         clear
-        echo -e "${gl_lv}TG-bot预警系统已启动${gl_bai}"
+        echo -e "${gl_lv}TG-bot预警系统已启动"
         echo -e "${gl_hui}你还可以将root目录中的TG-check-notify.sh预警文件放到其他机器上直接使用！${gl_bai}"
         ;;
     [Nn])
@@ -37071,7 +37120,7 @@ linux_system_optimization() {
     root_use
     echo -e "${gl_zi}>>> 一条龙系统调优${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bufan}将对以下内容进行操作与优化${gl_bai}"
+    echo -e "${gl_bufan}将对以下内容进行操作与优化"
     echo -e "${gl_bufan}1.  ${gl_bai}智能切换更新源"
     echo -e "${gl_bufan}2.  ${gl_bai}更新系统到最新"
     echo -e "${gl_bufan}3.  ${gl_bai}清理系统垃圾文件"
@@ -38583,13 +38632,13 @@ list_files() {
         elif [[ "$item" =~ \.(sh|bash|zsh)$ ]]; then
             color="${gl_lan}"   # 脚本文件蓝色
         elif [[ "$item" =~ \.(txt|md|conf|ini|cfg)$ ]]; then
-            color="${gl_lan}"  # 配置文件青色
+            color="${gl_qing}"  # 配置文件青色
         fi
 
         local display_name
         display_name=$(format_fixed_width "$item" $name_width)
 
-        printf "${gl_bufan}%3d.${gl_bai} ${color}%s${gl_bai}" "$count" "$display_name"
+        printf "${gl_bufan}%3d.${gl_bai} ${color}%s" "$count" "$display_name"
 
         if ((count % items_per_line != 0 && count < LIST_FILES_COUNT)); then
             case $items_per_line in
@@ -38606,7 +38655,7 @@ list_files() {
     done
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}目录:${gl_zi}■${gl_bai} 文件:${gl_lv}■${gl_bai} 隐藏:${gl_hui}■${gl_bai} 压缩:${gl_hong}■${gl_bai} ${gl_bai}脚本:${gl_lan}■${gl_bai} 配置:${gl_lan}■${gl_bai} 执行:${gl_huang}■${gl_bai}"
+    echo -e "${gl_bai}目录:${gl_zi}■${gl_bai} 文件:${gl_lv}■${gl_bai} 隐藏:${gl_hui}■${gl_bai} 压缩:${gl_hong}■${gl_bai} ${gl_bai}脚本:${gl_lan}■${gl_bai} 配置:${gl_qing}■${gl_bai} 执行:${gl_huang}■${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     return 0
@@ -39259,7 +39308,7 @@ batch_extract_all() {
                 ((skipped++))
                 continue
             elif [[ "$overwrite_all" == false ]]; then
-                read -r -e -p "$(echo -e "${gl_huang}目录 '$dest_dir' 已存在，如何处理? (${gl_lv}o${gl_huang}覆盖/${gl_lv}s${gl_huang}跳过/${gl_lv}O${gl_huang}全部覆盖/${gl_lv}S${gl_huang}全部跳过): ${gl_bai}")" action
+                read -r -e -p "$(echo -e "${gl_huang}目录 '$dest_dir' 已存在，如何处理? (${gl_lv}o${gl_huang}覆盖/${gl_lv}s${gl_huang}跳过/${gl_lv}O${gl_huang}全部覆盖/${gl_lv}S${gl_huang}全部跳过): ")" action
                 case "$action" in
                     [Oo]) ;;  # 覆盖，继续执行
                     [Ss])
@@ -40068,7 +40117,7 @@ modify_directory_permissions() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_bai}[${gl_huang}修改前${gl_bai}]"
         echo -e "  ${gl_bai}目录: ${gl_bufan}$target_dir${gl_bai}"
-        echo -e "  ${gl_bai}权限: ${gl_huang}$old_perm ($(stat -c '%A' ${gl_bai}"$target_dir" 2>/dev/null || stat -f '%Sp' "$target_dir" 2>/dev/null))"
+        echo -e "  ${gl_bai}权限: ${gl_huang}$old_perm ($(stat -c '%A' "$target_dir" 2>/dev/null || stat -f '%Sp' "$target_dir" 2>/dev/null))"
         echo -e "  ${gl_bai}所有者: ${gl_lv}$old_owner${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
@@ -40095,7 +40144,7 @@ modify_directory_permissions() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bai}[${gl_huang}修改后${gl_bai}]"
             echo -e "  ${gl_bai}目录: ${gl_bufan}$target_dir${gl_bai}"
-            echo -e "  ${gl_bai}权限: ${gl_huang}$new_perm ($(stat -c '%A' ${gl_bai}"$target_dir" 2>/dev/null || stat -f '%Sp' "$target_dir" 2>/dev/null))"
+            echo -e "  ${gl_bai}权限: ${gl_huang}$new_perm ($(stat -c '%A' "$target_dir" 2>/dev/null || stat -f '%Sp' "$target_dir" 2>/dev/null))"
             echo -e "  ${gl_bai}所有者: ${gl_lv}$new_owner${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
@@ -40766,7 +40815,7 @@ pve_restart_selector() {
                     status_color="${gl_hong}"
                     status_symbol="○"
                 fi
-                printf "${gl_bufan}%2d. ${gl_bai}" "$((index + 1))"
+                printf "${gl_bufan}%2d. " "$((index + 1))"
                 printf "${status_color}${status_symbol}${gl_bai}%s:${gl_huang}%s${gl_bai}" "$type_str" "${INSTANCE_IDS[$index]}"
                 local current_text="${type_str}:${INSTANCE_IDS[$index]}"
                 local padding=$((max_width - ${#current_text}))
@@ -41313,7 +41362,7 @@ pve_install_istoreos() {
             return 1
         fi
 
-        echo -e "${gl_bai}下载进度:${gl_huang}${gl_bai}"
+        echo -e "${gl_bai}下载进度:${gl_huang}"
         if wget --show-progress -q -O "${img_gz_path}" "${download_url}"; then
             if [[ -f "${img_gz_path}" ]]; then
                 local gz_size
@@ -42832,7 +42881,7 @@ install_and_pin_kernel() {
         }
 
     echo -e ""
-    echo -e "${gl_huang}>>> 正在固化内核 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}${gl_bai}"
+    echo -e "${gl_huang}>>> 正在固化内核 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     proxmox-boot-tool kernel pin "$kernel_ver" ||
         {
@@ -42844,7 +42893,7 @@ install_and_pin_kernel() {
 
     log_info "内核 ${gl_lv}$kernel_ver${gl_bai} 已安装并固化！"
     echo -e ""
-    echo -e "${gl_huang}>>> 当前固化列表：${gl_hui}${gl_bai}"
+    echo -e "${gl_huang}>>> 当前固化列表：${gl_hui}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     proxmox-boot-tool kernel list
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -42977,7 +43026,7 @@ install_i915_sriov_driver() {
     apt update
     apt install -y jq curl wget
     echo -e ""
-    echo -e "${gl_bai}当前内核的头文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}当前内核的头文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     apt install -y "pve-headers-$(uname -r)" || {
         log_error "内核头文件安装失败"
@@ -42988,7 +43037,7 @@ install_i915_sriov_driver() {
     echo -e ""
     echo -e "${gl_zi}>>> 安装i915 SR-IOV驱动${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}请输入 deb 来源（${gl_lv}粘贴下载链接${gl_bai} 或 ${gl_huang}本地路径${gl_bai}），输入 ${gl_hong}q${gl_bai} 或直接回车取消：${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}请输入 deb 来源（${gl_lv}粘贴下载链接${gl_bai} 或 ${gl_huang}本地路径${gl_bai}），输入 ${gl_hong}q${gl_bai} 或直接回车取消：${gl_hui}"
     echo -e "${gl_bai}发布页：${gl_lv}https://github.com/strongtz/i915-sriov-dkms/releases${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     DEB=""
@@ -43054,7 +43103,7 @@ install_i915_sriov_driver() {
 update_initramfs_and_reboot() {
     is_pve_system || return 1  # 非PVE系统退出
 
-    echo -e "${gl_bai}正在更新 initramfs ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}正在更新 initramfs ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     update-initramfs -u -k all || {
         log_error "update-initramfs 失败！"
         exit_animation
@@ -43083,7 +43132,7 @@ check_sriov_status() {
     is_pve_system || return 1  # 非PVE系统退出
 
     echo -e ""
-    echo -e "${gl_huang}>>> 正在扫描 Intel i915 PF / VF 设备 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}${gl_bai}"
+    echo -e "${gl_huang}>>> 正在扫描 Intel i915 PF / VF 设备 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     pf_list=$(lspci -nn | grep -i 'HD Graphics')
@@ -43126,7 +43175,7 @@ is_pve_system() {
 is_fnos_system() {
     if [ ! -d "/vol1/1000" ]; then
         echo -e ""
-        echo -en "\r${gl_hong}你这不是 ${gl_huang}FnOS${gl_hong} 系统！\c${gl_bai}"
+        echo -en "\r${gl_hong}你这不是 ${gl_huang}FnOS${gl_hong} 系统！\c"
         sleep_fractional 0.8
         exit_animation
         return 1   # 检测失败，返回非0
@@ -43138,7 +43187,7 @@ is_fnos_system() {
 exit_if_fnos_system() {
     if [ -d "/vol1/1000" ]; then
         echo -e ""
-        echo -en "\r${gl_hong}检测到 ${gl_huang}FnOS${gl_hong} 系统，不支持此系统! \c${gl_bai}"
+        echo -en "\r${gl_hong}检测到 ${gl_huang}FnOS${gl_hong} 系统，不支持此系统! \c"
         sleep_fractional 0.8
         exit_animation
         return 1
@@ -43269,7 +43318,7 @@ pve_change_vmid_interactive() {
         log_info "虚拟机 ${OLD_ID} 正在运行，正在关闭 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo ""
 
-        echo -e "${gl_bai}虚拟机信息:${gl_hui}${gl_bai}"
+        echo -e "${gl_bai}虚拟机信息:${gl_hui}"
         qm config "$OLD_ID" 2>/dev/null | grep -E "^(name|memory|cores|net|sata|scsi|ide)" | head -10
         echo -e "${gl_bai}"
 
@@ -43558,14 +43607,14 @@ pve_change_vmid() {
 
     if [[ -f "/etc/pve/qemu-server/${NEW_ID}.conf" ]]; then
         echo ""
-        echo -e "${gl_huang}>>> 新配置文件内容预览:${gl_hui}${gl_bai}"
+        echo -e "${gl_huang}>>> 新配置文件内容预览:${gl_hui}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         head -20 "/etc/pve/qemu-server/${NEW_ID}.conf"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     fi
 
     echo -e "${gl_huang}重要提示:${gl_bai}"
-    echo -e "${gl_bai}1. 请检查以下项目是否需要手动更新:${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}1. 请检查以下项目是否需要手动更新:${gl_hui}"
     echo -e "   - 备份任务 (pve 调度任务)"
     echo -e "   - 监控和告警配置"
     echo -e "   - 权限设置"
@@ -43612,7 +43661,7 @@ pve_change_vmid() {
                                     ;;
                                 [Nn]|"")
                                     log_info "已保留备份文件: ${gl_huang}${BACKUP_DIR}${gl_bai}"
-                                    echo -e "${gl_bai}确认虚拟机正常工作后，可手动删除备份:${gl_hui}${gl_bai}"
+                                    echo -e "${gl_bai}确认虚拟机正常工作后，可手动删除备份:${gl_hui}"
                                     echo -e "   rm -rf ${BACKUP_DIR}${gl_bai}"
                                     ;;
                                 *) handle_y_n ;;
@@ -43620,7 +43669,7 @@ pve_change_vmid() {
                             ;;
                         [Nn]|"")
                             log_warn "虚拟机运行可能不正常，已保留备份文件: ${gl_huang}${BACKUP_DIR}${gl_bai}"
-                            echo -e "${gl_bai}请检查虚拟机问题，修复后可手动删除备份:${gl_hui}${gl_bai}"
+                            echo -e "${gl_bai}请检查虚拟机问题，修复后可手动删除备份:${gl_hui}"
                             echo -e "   rm -rf ${BACKUP_DIR}${gl_bai}"
                             ;;
                         *) handle_y_n ;;
@@ -43632,7 +43681,7 @@ pve_change_vmid() {
                     echo ""
                     log_warn "虚拟机启动超时，请手动检查"
                     log_info "已保留备份文件: ${gl_huang}${BACKUP_DIR}${gl_bai}"
-                    echo -e "${gl_bai}请检查虚拟机状态，确认正常后可手动删除备份:${gl_hui}${gl_bai}"
+                    echo -e "${gl_bai}请检查虚拟机状态，确认正常后可手动删除备份:${gl_hui}"
                     echo -e "   rm -rf ${BACKUP_DIR}${gl_bai}"
                 fi
             done
@@ -43641,7 +43690,7 @@ pve_change_vmid() {
             log_info "已跳过启动虚拟机"
             echo ""
             echo -e "${gl_lan}备份文件位于:${gl_bai} ${gl_huang}${BACKUP_DIR}/${gl_bai}"
-            echo -e "${gl_bai}验证虚拟机正常工作后，可手动删除备份:${gl_hui}${gl_bai}"
+            echo -e "${gl_bai}验证虚拟机正常工作后，可手动删除备份:${gl_hui}"
             echo -e "   rm -rf ${BACKUP_DIR}${gl_bai}"
             ;;
         *)
@@ -43697,7 +43746,7 @@ lxc_change_ctid_interactive() {
         log_info "容器 ${OLD_ID} 正在运行，正在关闭 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo ""
 
-        echo -e "${gl_bai}容器信息:${gl_hui}${gl_bai}"
+        echo -e "${gl_bai}容器信息:${gl_hui}"
         pct config "$OLD_ID" 2>/dev/null | grep -E "^(hostname|memory|cores|net|rootfs|mp)" | head -10
         echo -e "${gl_bai}"
 
@@ -43976,14 +44025,14 @@ lxc_change_ctid() {
 
     if [[ -f "/etc/pve/lxc/${NEW_ID}.conf" ]]; then
         echo ""
-        echo -e "${gl_huang}>>> 新配置文件内容预览:${gl_hui}${gl_bai}"
+        echo -e "${gl_huang}>>> 新配置文件内容预览:${gl_hui}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         head -20 "/etc/pve/lxc/${NEW_ID}.conf"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     fi
 
     echo -e "${gl_huang}重要提示:${gl_bai}"
-    echo -e "${gl_bai}1. 请检查以下项目是否需要手动更新:${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}1. 请检查以下项目是否需要手动更新:${gl_hui}"
     echo -e "   - 备份任务 (pve 调度任务)"
     echo -e "   - 监控和告警配置"
     echo -e "   - 权限设置"
@@ -44030,7 +44079,7 @@ lxc_change_ctid() {
                                     ;;
                                 [Nn]|"")
                                     log_info "已保留备份文件: ${gl_huang}${BACKUP_DIR}${gl_bai}"
-                                    echo -e "${gl_bai}确认容器正常工作后，可手动删除备份:${gl_hui}${gl_bai}"
+                                    echo -e "${gl_bai}确认容器正常工作后，可手动删除备份:${gl_hui}"
                                     echo -e "   rm -rf ${BACKUP_DIR}${gl_bai}"
                                     ;;
                                 *) handle_y_n ;;
@@ -44038,7 +44087,7 @@ lxc_change_ctid() {
                             ;;
                         [Nn]|"")
                             log_warn "容器运行可能不正常，已保留备份文件: ${gl_huang}${BACKUP_DIR}${gl_bai}"
-                            echo -e "${gl_bai}请检查容器问题，修复后可手动删除备份:${gl_hui}${gl_bai}"
+                            echo -e "${gl_bai}请检查容器问题，修复后可手动删除备份:${gl_hui}"
                             echo -e "   rm -rf ${BACKUP_DIR}${gl_bai}"
                             ;;
                         *) handle_y_n ;;
@@ -44050,7 +44099,7 @@ lxc_change_ctid() {
                     echo ""
                     log_warn "容器启动超时，请手动检查"
                     log_info "已保留备份文件: ${gl_huang}${BACKUP_DIR}${gl_bai}"
-                    echo -e "${gl_bai}请检查容器状态，确认正常后可手动删除备份:${gl_hui}${gl_bai}"
+                    echo -e "${gl_bai}请检查容器状态，确认正常后可手动删除备份:${gl_hui}"
                     echo -e "   rm -rf ${BACKUP_DIR}${gl_bai}"
                 fi
             done
@@ -44059,7 +44108,7 @@ lxc_change_ctid() {
             log_info "已跳过启动容器"
             echo ""
             echo -e "${gl_lan}备份文件位于:${gl_bai} ${gl_huang}${BACKUP_DIR}/${gl_bai}"
-            echo -e "${gl_bai}验证容器正常工作后，可手动删除备份:${gl_hui}${gl_bai}"
+            echo -e "${gl_bai}验证容器正常工作后，可手动删除备份:${gl_hui}"
             echo -e "   rm -rf ${BACKUP_DIR}${gl_bai}"
             ;;
         *) handle_y_n ;;
@@ -44271,7 +44320,7 @@ pve_onekey_sriov() {
     apt update
     apt install -y jq curl wget
     echo -e ""
-    echo -e "${gl_bai}正在安装当前内核头文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}正在安装当前内核头文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     apt install -y "pve-headers-$(uname -r)" || {
         log_error "内核头文件安装失败"
@@ -44282,7 +44331,7 @@ pve_onekey_sriov() {
     echo -e ""
     echo -e "${gl_zi}>>> PVE 一键编译 SR-IOV${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}请输入 deb 来源（${gl_lv}粘贴下载链接${gl_bai} 或 ${gl_huang}本地路径${gl_bai}），输入 ${gl_hong}q${gl_bai} 或直接回车取消：${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}请输入 deb 来源（${gl_lv}粘贴下载链接${gl_bai} 或 ${gl_huang}本地路径${gl_bai}），输入 ${gl_hong}q${gl_bai} 或直接回车取消：${gl_hui}"
     echo -e "${gl_bai}发布页：${gl_lv}https://github.com/strongtz/i915-sriov-dkms/releases${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     local DEB=""
@@ -44343,7 +44392,7 @@ pve_onekey_sriov() {
     echo -e ""
     echo -e "${gl_huang}步骤三、更新 initramfs${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}正在更新 initramfs ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}正在更新 initramfs ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}${gl_hui}"
     update-initramfs -u -k all || {
         log_error "update-initramfs 失败！"
         exit_animation
@@ -44521,7 +44570,7 @@ show_compose_project_menu() {
 
             if [ -d "$new_path" ]; then
                 if cd "$new_path" 2>/dev/null; then
-                    echo -e "${gl_lv}进入已有目录: $dir_name${gl_bai}"
+                    echo -e "${gl_lv}进入已有目录: $dir_name"
                     show_compose_commands_menu
                     cd "$base_path" || return
                     continue
@@ -44529,7 +44578,7 @@ show_compose_project_menu() {
             fi
 
             if mkdir -p "$new_path" 2>/dev/null; then
-                echo -e "${gl_lv}已创建新目录: $dir_name${gl_bai}"
+                echo -e "${gl_lv}已创建新目录: $dir_name"
                 if cd "$new_path" 2>/dev/null; then
                     echo -e "${gl_lan}项目路径: $new_path${gl_bai}"
                     show_compose_commands_menu
@@ -44557,7 +44606,7 @@ show_compose_project_menu() {
         fi
 
         if cd "$full_path" 2>/dev/null; then
-            echo -e "${gl_lv}已选择项目: $selected_project${gl_bai}"
+            echo -e "${gl_lv}已选择项目: $selected_project"
             echo -e "${gl_lan}项目路径: $full_path${gl_bai}"
             show_compose_commands_menu
             cd "$base_path" || return
@@ -44629,12 +44678,12 @@ show_compose_commands_menu() {
         check_container_status() {
             if docker inspect "$1" &>/dev/null; then
                 if docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -q "true"; then
-                    echo "${gl_lv}${gl_bai}" # 容器存在且正在运行
+                    echo "${gl_lv}" # 容器存在且正在运行
                 else
-                    echo "${gl_hong}${gl_bai}" # 容器存在但已停止
+                    echo "${gl_hong}" # 容器存在但已停止
                 fi
             else
-                echo "${gl_hui}${gl_bai}" # 容器不存在
+                echo "${gl_hui}" # 容器不存在
             fi
         }
 
@@ -45201,7 +45250,7 @@ git_clone_docker_projects() {
     while true; do
         clear
         echo -e ""
-        echo -e "${gl_huang}>>> 当前 ${gl_lv}$(pwd) ${gl_huang}目录内容:${gl_bai}"
+        echo -e "${gl_huang}>>> 当前 ${gl_lv}$(pwd) ${gl_huang}目录内容:"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         if [ -z "$(ls -A)" ]; then
             echo -e "${gl_huang}当前目录为空${gl_bai}"
@@ -46375,10 +46424,10 @@ set -e
 # 默认工作目录
 WORKDIR="/compose"
 
-gl_bai='\033[0m'      # 正文/重置
-gl_bufan='\033[90m'   # 分割线/次级标注：主题灰
-gl_lv='\033[32m'      # 成功：绿
-gl_huang='\033[1;33m' # 警告/强调：粗体黄
+gl_bai='\033[0m'    # 定义重置终端颜色的ANSI转义序列（恢复默认样式）
+gl_bufan='\033[96m' # 定义亮青色（或浅蓝）字体的ANSI转义序列
+gl_lv='\033[32m'    # 定义绿色字体的ANSI转义序列
+gl_huang='\033[33m' # 定义黄色字体的ANSI转义序列
 
 # 检查是否传入参数
 if [ $# -ge 1 ]; then
@@ -46945,13 +46994,13 @@ docker_image_backup_tools() {
 #!/bin/bash
 set -e
 
-# 颜色定义（与主脚本统一配色规范 v2.0 对齐）
+# 颜色定义
 gl_bai='\033[0m'
-gl_bufan='\033[90m'
+gl_bufan='\033[96m'
 gl_lv='\033[32m'
-gl_huang='\033[1;33m'
+gl_huang='\033[33m'
 gl_hong='\033[31m'
-gl_zi='\033[1;36m'
+gl_zi='\033[35m'
 
 # 备份目录
 BACKUP_DIR="$(cd "$(dirname "$0")"; pwd)"
@@ -49374,7 +49423,7 @@ file_rename_sorter() {
     local files=(*.$file_type)
 
     if [[ ${#files[@]} -eq 0 ]]; then
-        echo -e "${gl_huang}当前目录中没有找到 ${gl_bai}.${gl_lv}$file_type ${gl_huang}文件${gl_bai}"
+        echo -e "${gl_huang}当前目录中没有找到 ${gl_bai}.${gl_lv}$file_type ${gl_huang}文件"
         exit_animation
         return 1
     fi
@@ -51935,7 +51984,7 @@ download_docker_projects() {
     while true; do
         clear
         echo -e ""
-        echo -e "${gl_huang}>>> 当前 ${gl_lv}$(pwd) ${gl_huang}目录内容:${gl_bai}"
+        echo -e "${gl_huang}>>> 当前 ${gl_lv}$(pwd) ${gl_huang}目录内容:"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         if [ -z "$(ls -A)" ]; then
             echo -e "${gl_huang}当前目录为空${gl_bai}"
@@ -52580,7 +52629,7 @@ fnos_enable_bbr() {
 
     echo -e "${gl_huang}>>> 确认开启 BBR${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_bai}即将执行以下操作:${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}即将执行以下操作:${gl_hui}"
     echo -e "  • 备份当前 /etc/sysctl.conf 配置"
     echo -e "  • 设置 TCP 拥塞控制算法为 BBR"
     echo -e "  • 设置默认队列规则为 fq"
@@ -52777,14 +52826,14 @@ fnos_disable_bbr() {
         echo -e "${gl_bai}如需重新启用 BBR，请运行: ${gl_lv}fnos_enable_bbr${gl_bai}"
     else
         log_warn "BBR 仍在运行，可能需要重启系统才能完全关闭"
-        echo -e "${gl_bai}手动恢复命令:${gl_hui}${gl_bai}"
+        echo -e "${gl_bai}手动恢复命令:${gl_hui}"
         echo -e "   echo 'net.ipv4.tcp_congestion_control=cubic' >> /etc/sysctl.conf"
         echo -e "   sysctl -p${gl_bai}"
     fi
 
     echo ""
     echo -e "${gl_lan}备份文件位于:${gl_bai} ${gl_huang}${BACKUP_FILE}${gl_bai}"
-    echo -e "${gl_bai}如需恢复之前的配置，可手动执行:${gl_hui}${gl_bai}"
+    echo -e "${gl_bai}如需恢复之前的配置，可手动执行:${gl_hui}"
     echo -e "   cp ${BACKUP_FILE} /etc/sysctl.conf && sysctl -p${gl_bai}"
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -53660,7 +53709,7 @@ git_safe_push() {
         fi
 
         if [[ "$ahead_count" -gt 0 ]]; then
-            log_info "有 ${gl_huang}${ahead_count}${gl_lan} 个已提交但未推送的更改${gl_bai}"
+            log_info "有 ${gl_huang}${ahead_count}${gl_lan} 个已提交但未推送的更改"
         else
             log_ok "无变更，无需提交"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -56463,7 +56512,7 @@ interactive_delete() {
         }
 
         echo
-        echo -e "${gl_huang}>>> 即将删除以下 ${gl_bufan}${#to_del[@]}${gl_bai} ${gl_huang}项：${gl_bai}"
+        echo -e "${gl_huang}>>> 即将删除以下 ${gl_bufan}${#to_del[@]}${gl_bai} ${gl_huang}项："
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         for item in "${to_del[@]}"; do
             echo -e "  ${gl_lv}$item${gl_bai}"
@@ -58560,7 +58609,7 @@ wukongdaily_restore_system() {
                 mapfile -t restore_list < <(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
                 if [ ${#restore_list[@]} -eq 0 ]; then
-                    log_error "在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong} 中未找到备份文件${gl_bai}"
+                    log_error "在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong} 中未找到备份文件"
                     exit_animation
                     return 1
                 fi
@@ -58570,12 +58619,12 @@ wukongdaily_restore_system() {
                     file_path="${restore_list[$index]}"
                     log_info "使用序号选择的备份文件: ${gl_huang}${file_path}${gl_bai}"
                 else
-                    log_error "无效的序号 ${gl_huang}${param}${gl_hong}，可用范围: 1-${#restore_list[@]}${gl_bai}"
+                    log_error "无效的序号 ${gl_huang}${param}${gl_hong}，可用范围: 1-${#restore_list[@]}"
                     exit_animation
                     return 1
                 fi
             else
-                log_error "备份目录不存在: ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong}${gl_bai}"
+                log_error "备份目录不存在: ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong}"
                 exit_animation
                 return 1
             fi
@@ -58656,7 +58705,7 @@ wukongdaily_restore_system() {
                         file_path="$user_input"
 
                         if [ ! -f "$file_path" ]; then
-                            log_error "文件不存在: ${gl_huang}${file_path}${gl_hong}${gl_bai}"
+                            log_error "文件不存在: ${gl_huang}${file_path}${gl_hong}"
                             exit_animation
                             continue
                         fi
@@ -58685,7 +58734,7 @@ wukongdaily_restore_system() {
     fi
 
     if [ ! -f "$file_path" ]; then
-        log_error "备份文件不存在: ${gl_huang}${file_path}${gl_hong}${gl_bai}"
+        log_error "备份文件不存在: ${gl_huang}${file_path}${gl_hong}"
         log_error "请确保文件路径正确并重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         exit_animation
         return 1
@@ -58706,7 +58755,7 @@ wukongdaily_restore_system() {
     echo -e "${gl_bai}修改时间: ${gl_huang}$(stat -c "%y" "$file_path" 2>/dev/null | cut -d'.' -f1)${gl_bai}"
 
     if command -v md5sum >/dev/null 2>&1; then
-        echo -n -e "${gl_bai}MD5校验: ${gl_huang}${gl_bai}"
+        echo -n -e "${gl_bai}MD5校验: ${gl_huang}"
         md5sum "$file_path" | awk '{print $1}' | head -c 16
         echo " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     fi
@@ -58794,7 +58843,7 @@ wukongdaily_manage_backup_files() {
     fi
 
     if [ ! -d "$backup_dir" ]; then
-        log_error "备份目录不存在: ${gl_huang}${backup_dir}${gl_hong}${gl_bai}"
+        log_error "备份目录不存在: ${gl_huang}${backup_dir}${gl_hong}"
         exit_animation
         return 1
     fi
@@ -58862,7 +58911,7 @@ wukongdaily_manage_backup_files() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入要删除的备份编号(${gl_huang}a${gl_bai}删除所有): ")" file_idx
 
                 if [ "$file_idx" = "a" ] || [ "$file_idx" = "A" ]; then
-                    read -r -e -p "$(echo -e "${gl_hong}确定要删除所有备份文件吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ${gl_bai}")" confirm
+                    read -r -e -p "$(echo -e "${gl_hong}确定要删除所有备份文件吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ")" confirm
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
                         for file in "${backup_list[@]}"; do
                             rm -rf "$(dirname "$file")"
@@ -58877,7 +58926,7 @@ wukongdaily_manage_backup_files() {
                     backup_dir_path="$(dirname "$selected_file")"
 
                     echo -e "${gl_bai}将要删除备份: ${gl_huang}${backup_dir_path}${gl_bai}"
-                    read -r -e -p "$(echo -e "${gl_hong}确定要删除吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ${gl_bai}")" confirm
+                    read -r -e -p "$(echo -e "${gl_hong}确定要删除吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ")" confirm
 
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
                         if rm -rf "$backup_dir_path"; then
@@ -58900,7 +58949,7 @@ wukongdaily_manage_backup_files() {
                     local idx=$((file_idx-1))
                     local selected_file="${backup_list[$idx]}"
 
-                    read -r -e -p "$(echo -e "${gl_hong}确定要使用此备份恢复系统吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ${gl_bai}")" confirm
+                    read -r -e -p "$(echo -e "${gl_hong}确定要使用此备份恢复系统吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ")" confirm
 
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
                         wukongdaily_restore_system "$selected_file"
@@ -58984,13 +59033,13 @@ wukongdaily_restore_from_url() {
         download_path="$backup_url"
         log_info "使用本地文件: ${gl_huang}${download_path}${gl_bai}"
     else
-        log_error "不是有效的URL或文件不存在: ${gl_huang}${backup_url}${gl_hong}${gl_bai}"
+        log_error "不是有效的URL或文件不存在: ${gl_huang}${backup_url}${gl_hong}"
         exit_animation
         return 1
     fi
 
     if [ ! -f "$download_path" ]; then
-        log_error "备份文件不存在: ${gl_huang}${download_path}${gl_hong}${gl_bai}"
+        log_error "备份文件不存在: ${gl_huang}${download_path}${gl_hong}"
         exit_animation
         return 1
     fi
@@ -59301,7 +59350,7 @@ istoreos_restore_system() {
                 mapfile -t restore_list < <(find "$DEFAULT_BACKUP_DIR" -name "backup.tar.gz" -type f 2>/dev/null | sort -r)
 
                 if [ ${#restore_list[@]} -eq 0 ]; then
-                    log_error "在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong} 中未找到备份文件${gl_bai}"
+                    log_error "在目录 ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong} 中未找到备份文件"
                     exit_animation
                     return 1
                 fi
@@ -59311,12 +59360,12 @@ istoreos_restore_system() {
                     file_path="${restore_list[$index]}"
                     log_info "使用序号选择的备份文件: ${gl_huang}${file_path}${gl_bai}"
                 else
-                    log_error "无效的序号 ${gl_huang}${param}${gl_hong}，可用范围: 1-${#restore_list[@]}${gl_bai}"
+                    log_error "无效的序号 ${gl_huang}${param}${gl_hong}，可用范围: 1-${#restore_list[@]}"
                     exit_animation
                     return 1
                 fi
             else
-                log_error "备份目录不存在: ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong}${gl_bai}"
+                log_error "备份目录不存在: ${gl_huang}${DEFAULT_BACKUP_DIR}${gl_hong}"
                 exit_animation
                 return 1
             fi
@@ -59397,7 +59446,7 @@ istoreos_restore_system() {
                         file_path="$user_input"
 
                         if [ ! -f "$file_path" ]; then
-                            log_error "文件不存在: ${gl_huang}${file_path}${gl_hong}${gl_bai}"
+                            log_error "文件不存在: ${gl_huang}${file_path}${gl_hong}"
                             exit_animation
                             continue
                         fi
@@ -59427,7 +59476,7 @@ istoreos_restore_system() {
     fi
 
     if [ ! -f "$file_path" ]; then
-        log_error "备份文件不存在: ${gl_huang}${file_path}${gl_hong}${gl_bai}"
+        log_error "备份文件不存在: ${gl_huang}${file_path}${gl_hong}"
         log_error "请确保文件路径正确并重试 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         exit_animation
         return 1
@@ -59459,7 +59508,7 @@ istoreos_restore_system() {
     echo -e "${gl_bai}修改时间: ${gl_huang}$(stat -c "%y" "$file_path" 2>/dev/null | cut -d'.' -f1)${gl_bai}"
 
     if command -v md5sum >/dev/null 2>&1; then
-        echo -n -e "${gl_bai}MD5校验: ${gl_huang}${gl_bai}"
+        echo -n -e "${gl_bai}MD5校验: ${gl_huang}"
         md5sum "$file_path" | awk '{print $1}' | head -c 16
         echo " ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     fi
@@ -59578,7 +59627,7 @@ istoreos_manage_backup_files() {
     fi
 
     if [ ! -d "$backup_dir" ]; then
-        log_error "备份目录不存在: ${gl_huang}${backup_dir}${gl_hong}${gl_bai}"
+        log_error "备份目录不存在: ${gl_huang}${backup_dir}${gl_hong}"
         exit_animation
         return 1
     fi
@@ -59652,7 +59701,7 @@ istoreos_manage_backup_files() {
                 read -r -e -p "$(echo -e "${gl_bai}请输入要删除的备份编号(${gl_huang}a${gl_bai}删除所有): ")" file_idx
 
                 if [ "$file_idx" = "a" ] || [ "$file_idx" = "A" ]; then
-                    read -r -e -p "$(echo -e "${gl_hong}确定要删除所有备份文件吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ${gl_bai}")" confirm
+                    read -r -e -p "$(echo -e "${gl_hong}确定要删除所有备份文件吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ")" confirm
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
                         for file in "${backup_list[@]}"; do
                             rm -rf "$(dirname "$file")"
@@ -59667,7 +59716,7 @@ istoreos_manage_backup_files() {
                     backup_dir_path="$(dirname "$selected_file")"
 
                     echo -e "${gl_bai}将要删除备份: ${gl_huang}${backup_dir_path}${gl_bai}"
-                    read -r -e -p "$(echo -e "${gl_hong}确定要删除吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ${gl_bai}")" confirm
+                    read -r -e -p "$(echo -e "${gl_hong}确定要删除吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ")" confirm
 
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
                         if rm -rf "$backup_dir_path"; then
@@ -59690,7 +59739,7 @@ istoreos_manage_backup_files() {
                     local idx=$((file_idx-1))
                     local selected_file="${backup_list[$idx]}"
 
-                    read -r -e -p "$(echo -e "${gl_hong}确定要使用此备份恢复系统吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ${gl_bai}")" confirm
+                    read -r -e -p "$(echo -e "${gl_hong}确定要使用此备份恢复系统吗? (${gl_lv}y${gl_hong}/${gl_hong}N${gl_hong}): ")" confirm
 
                     if [[ "$confirm" =~ ^[Yy]$ ]]; then
                         istoreos_restore_system "$selected_file"
@@ -59722,10 +59771,10 @@ istoreos_manage_backup_files() {
                     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
                     if tar -tzf "$selected_file" >/dev/null 2>&1; then
-                        echo -e "${gl_lv}✅ tar 包完整性检查通过${gl_bai}"
+                        echo -e "${gl_ok}✅ tar 包完整性检查通过${gl_bai}"
 
                         if tar -tzf "$selected_file" 2>/dev/null | grep -q "sysupgrade.tgz\|etc/backup/"; then
-                            echo -e "${gl_lv}✅ 是有效的 sysupgrade 备份${gl_bai}"
+                            echo -e "${gl_ok}✅ 是有效的 sysupgrade 备份${gl_bai}"
                         else
                             echo -e "${gl_hong}⚠️ 不是标准的 sysupgrade 备份${gl_bai}"
                         fi
@@ -59810,13 +59859,13 @@ istoreos_restore_from_url() {
         download_path="$backup_url"
         log_info "使用本地文件: ${gl_huang}${download_path}${gl_bai}"
     else
-        log_error "不是有效的URL或文件不存在: ${gl_huang}${backup_url}${gl_hong}${gl_bai}"
+        log_error "不是有效的URL或文件不存在: ${gl_huang}${backup_url}${gl_hong}"
         exit_animation
         return 1
     fi
 
     if [ ! -f "$download_path" ]; then
-        log_error "备份文件不存在: ${gl_huang}${download_path}${gl_hong}${gl_bai}"
+        log_error "备份文件不存在: ${gl_huang}${download_path}${gl_hong}"
         exit_animation
         return 1
     fi
@@ -59838,7 +59887,7 @@ istoreos_restore_from_url() {
         echo -e "${gl_hong}警告: 备份文件可能不是 sysupgrade 格式${gl_bai}"
         echo -e "${gl_hui}此备份可能无法通过 sysupgrade 正确恢复${gl_bai}"
     else
-        echo -e "${gl_lv}✅ 是有效的 sysupgrade 备份${gl_bai}"
+        echo -e "${gl_ok}✅ 是有效的 sysupgrade 备份${gl_bai}"
     fi
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -60511,8 +60560,8 @@ mobufan_sh() {
 
 linux_m_info() {
     clear
-    echo -e "${gl_zi}>>> 以下是 ${gl_huang}m${gl_zi} 命令参考示例：${gl_bai}"
-    echo -e "${gl_bufan}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1ib421E7it?t=0.1${gl_bai}"
+    echo -e "${gl_zi}>>> 以下是 ${gl_huang}m${gl_zi} 命令参考示例："
+    echo -e "${gl_bufan}视频介绍: ${gl_lv}https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bufan}功能项目${gl_bai}            ${gl_huang}命令行输入${gl_bai}        ${gl_lv}传参${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -60542,8 +60591,8 @@ linux_m_info() {
     echo -e "${gl_bufan}Git管理工具${gl_bai}         ${gl_huang}m tool ${gl_hong}|${gl_huang} m 工具箱${gl_bai}"
     echo -e "${gl_bufan}Gitee配置SSH${gl_bai}        ${gl_huang}m gitee-ssh${gl_bai}"
     echo -e "${gl_bufan}Gitgub配置SSH${gl_bai}       ${gl_huang}m gitee-ssh${gl_bai}"
-    echo -e "${gl_bufan}Gitee仓库初始化${gl_bai}     ${gl_huang}m gitee-new${gl_bai}"
-    echo -e "${gl_bufan}Github仓库初始化${gl_bai}    ${gl_huang}m github-new${gl_bai}"
+    echo -e "${gl_bufan}Gitee仓库初始化${gl_bai}     ${gl_huang}m gitee-new"
+    echo -e "${gl_bufan}Github仓库初始化${gl_bai}    ${gl_huang}m github-new"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_bufan}修改文件权限${gl_bai}        ${gl_huang}m qx ${gl_hong}| ${gl_huang}m 文件权限${gl_bai}"
     echo -e "${gl_bufan}清理系统垃圾${gl_bai}        ${gl_huang}m clean ${gl_hong}| ${gl_huang}m 清理${gl_bai}"
@@ -60571,7 +60620,7 @@ linux_m_info() {
     echo -e "${gl_bufan}Docker环境安装${gl_bai}      ${gl_huang}m docker ${gl_lv}install ${gl_hong}| ${gl_huang}m docker ${gl_lv}安装${gl_bai}"
     echo -e "${gl_bufan}Docker容器管理${gl_bai}      ${gl_huang}m docker ps ${gl_hong}| ${gl_huang}m docker 容器${gl_bai}"
     echo -e "${gl_bufan}Docker镜像管理${gl_bai}      ${gl_huang}m docker img ${gl_hong}| ${gl_huang}m docker 镜像${gl_bai}"
-    echo -e "${gl_bufan}Docker加载URL镜像${gl_bai}   ${gl_huang}m urlload -i ${gl_hong}| ${gl_huang}m urlload -y https://test.com.test.tar${gl_bai}| ${gl_huang}m urlload -h ${gl_hong}${gl_bai}"
+    echo -e "${gl_bufan}Docker加载URL镜像${gl_bai}   ${gl_huang}m urlload -i ${gl_hong}| ${gl_huang}m urlload -y https://test.com.test.tar${gl_bai}| ${gl_huang}m urlload -h ${gl_hong}"
     echo -e "${gl_bufan}LDNMP站点管理${gl_bai}       ${gl_huang}m web${gl_bai}"
     echo -e "${gl_bufan}LDNMP缓存清理${gl_bai}       ${gl_huang}m web ${gl_lv}cache${gl_bai}"
     echo -e "${gl_bufan}安装WordPress${gl_bai}       ${gl_huang}m wp ${gl_hong}| ${gl_huang}m wordpress ${gl_hong}| ${gl_huang}m wp ${gl_lv}<域名>${gl_bai}"
