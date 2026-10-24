@@ -40391,10 +40391,10 @@ mobufan_update() {
             local cols=$(tput cols 2>/dev/null || echo 80)
             local sh_countdown=2
             local count=${sh_countdown}
-            local old_tty=$(stty -g)
-            stty -icanon -echo min 0 time 0
+            local key=""
 
             echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
+
             while (( count >= 0 )); do
                 case $count in
                     0) c=${gl_lv} ;;
@@ -40402,23 +40402,24 @@ mobufan_update() {
                     *) c=${gl_hong} ;;
                 esac
                 echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${c}${count}${gl_bai} 秒 ${gl_huang}(按任意键跳过)${gl_bai}"
-                sleep_fractional 1
-                local key
-                read -r -N 1 key
+                # read -t 代替 sleep，超时=1秒，有按键立刻返回
+                read -r -s -N 1 -t 1 key
                 if [[ -n "$key" ]]; then
-                    echo -ne "\r%${cols}s\r" ""
-                    echo -e "${gl_huang}已跳过倒计时${gl_bai}"
                     break
                 fi
                 ((count--))
             done
-            stty "${old_tty}"
+
+            # 清空倒计时行
             printf "\r%${cols}s\r" ""
+            if [[ -n "$key" ]]; then
+                echo -e "${gl_huang}已跳过倒计时${gl_bai}"
+            fi
             echo -e "${gl_bai}正在启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+
             bash ~/mobufan.sh
             exit
             ;;
-
         3)
             clear
             local updater="$HOME/.mobufan_auto_update.sh"
