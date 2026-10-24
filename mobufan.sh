@@ -53700,7 +53700,7 @@ git_safe_push() {
             log_ok "无变更，无需提交"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
-            return 0
+            return 1
         fi
     else
         local has_staged_changes=false
@@ -55058,8 +55058,8 @@ linux_git_menu() {
         case $choice in
         1) enter_directory "Git管理" ;;                                     # 进入指定目录
         2) go_parent_directory ;;                                           # 返回上一级目录
-        3 | push | 推送) git_safe_push || continue ;;                      # 推送当前项目更新
-        4 | pull | 拉取) git_safe_pull "$@" || continue ;;                 # 拉取当前项目更新
+        3 | push | 推送) git_safe_push || return 1 ;;                      # 推送当前项目更新
+        4 | pull | 拉取) git_safe_pull "$@" || return 1 ;;                 # 拉取当前项目更新
         5) push_all_repos "." "日常更新" "HD-Icons hd-Icons" ;;          # 推送当前所有仓库
         6) pull_all_repos "." ".排除文件" ;;                             # 拉取当前所有仓库
         7) push_all_repos "/vol1/1000/compose" "日常更新" "HD-Icons" ;;    # 推送所有compose仓库更改
