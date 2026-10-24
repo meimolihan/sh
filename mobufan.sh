@@ -35,8 +35,6 @@ sleep_fractional() {
     sleep "$int_seconds"
 }
 
-# 读取 SMB 服务器凭据（按服务器 IP 保存到 ~/.mobufan_smb_<ip>，权限 600）
-# 首次使用提示输入并保存，避免在脚本中硬编码明文密码
 smb_load_cred() {
     local server="$1"
     local cred_file="$HOME/.mobufan_smb_${server//./_}"
@@ -56,8 +54,6 @@ smb_load_cred() {
     fi
 }
 
-# 生成 CIFS 挂载参数：凭据通过临时 credentials 文件传递，不出现在命令行和 mount 表中
-# 用法：smb_cifs_cred_file <服务器IP>  （设置 SMB_CRED_FILE 变量）
 smb_cifs_cred_file() {
     smb_load_cred "$1"
     SMB_CRED_FILE=$(mktemp /tmp/cifs_cred.XXXXXX)
@@ -53578,7 +53574,7 @@ linux_nginx_menu() {
     while true; do
         clear
         echo -e ""
-        echo -e "${gl_zi}>>> ${gl_bufan}Web${gl_zi}管理${gl_bai}"
+        echo -e "${gl_zi}>>> Web 管理${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         check_linux_distro
         view_nginx_status
@@ -55007,6 +55003,78 @@ git_clean_cache() {
     return 0
 }
 
+func_git_proxy() {
+    echo -e ""
+    echo -e "${gl_zi}>>> Git 代理配置开关${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    now_http_proxy=$(git config --get http.proxy)
+    now_https_proxy=$(git config --get https.proxy)
+
+    echo -e "${gl_lv}当前 http.proxy:  ${gl_bai}${now_http_proxy:-${gl_hong}未设置${gl_bai}}"
+    echo -e "${gl_lv}当前 https.proxy: ${gl_bai}${now_https_proxy:-${gl_hong}未设置${gl_bai}}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_bufan}1.${gl_bai} 设置全局Git代理"
+    echo -e "${gl_bufan}2.${gl_bai} 清除全局Git代理"
+    echo -e "${gl_huang}0.${gl_bai} 返回上级"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    read -e -r -p "请输入你的选择: " sub_choice
+    case $sub_choice in
+        1)
+            read -r -p "输入代理地址(例 socks5://127.0.0.1:7890): " proxy_addr
+            if [[ -n "$proxy_addr" ]];then
+                git config --global http.proxy "$proxy_addr"
+                git config --global https.proxy "$proxy_addr"
+                echo -e "${gl_lv}✅ 代理已设置完成${gl_bai}"
+            else
+                echo -e "${gl_hong}❌ 地址为空，取消操作${gl_bai}"
+            fi
+            ;;
+        2)
+            git config --global --unset http.proxy
+            git config --global --unset https.proxy
+            echo -e "${gl_lv}✅ 全局代理已清除${gl_bai}"
+            ;;
+        0)
+            ;;
+        *)
+            echo -e "${gl_hong}❌ 无效选项${gl_bai}"
+            ;;
+    esac
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    break_end
+}
+
+# 函数：查看当前Git仓库状态
+func_git_status() {
+    echo -e ""
+    echo -e "${gl_zi}>>> 查看当前Git仓库状态${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    if [ -d ".git" ];then
+        git status
+        echo -e "\n${gl_lv}当前分支: $(git rev-parse --abbrev-ref HEAD)${gl_bai}"
+        echo -e "${gl_lv}远程地址: $(git remote -v | head -n1 | awk '{print $2}')${gl_bai}"
+    else
+        echo -e "${gl_hong}❌ 当前目录不是Git仓库！${gl_bai}"
+    fi
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    break_end
+}
+
+# 函数：查看当前仓库远程地址
+func_git_remote() {
+    echo -e ""
+    echo -e "${gl_zi}>>> 查看当前仓库远程地址${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    if [ -d ".git" ];then
+        git remote -v
+        echo -e "\n${gl_lv}默认远程名称: $(git remote | head -n1)${gl_bai}"
+    else
+        echo -e "${gl_hong}❌ 当前目录不是Git仓库！${gl_bai}"
+    fi
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    break_end
+}
+
 # 函数：显示 Git脚本
 linux_git_menu() {
     local fast_jump="$1" # 接收第一个参数
@@ -55016,7 +55084,7 @@ linux_git_menu() {
             list_dir_colorful 0 2
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e ""
-            echo -e "${gl_zi}>>> ${gl_bufan}Git  ${gl_zi}管理${gl_bai}"
+            echo -e "${gl_zi}>>> Git 管理${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
             echo -e "$(check_git_version)  |  $(git_status)"
@@ -55043,10 +55111,11 @@ linux_git_menu() {
 
             echo -e "${gl_bufan}15. ${gl_bai}更改当前仓库标签     ${gl_bufan}16. ${gl_bai}个人Docker项目管理"
             echo -e "${gl_bufan}17. ${gl_bai}Git克隆仓库          ${gl_bufan}18. ${gl_bai}克隆compose仓库"
-            echo -e "${gl_bufan}19. ${gl_bai}修复Git安全目录权限  ${gl_bufan}20. ${gl_bai}安装${gl_bufan}Git${gl_bai}"
+            echo -e "${gl_bufan}19. ${gl_bai}飞牛修复Git安全目录  ${gl_bufan}20. ${gl_bai}Git 代理配置开关"
             echo -e "${gl_bufan}21. ${gl_bai}Git历史彻底清理工具  ${gl_bufan}22. ${gl_bai}Git缓存清理工具"
+            echo -e "${gl_bufan}23. ${gl_bai}查看当前Git仓库状态  ${gl_bufan}24. ${gl_bai}查看当前仓库远程地址"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-
+            echo -e "${gl_lv}66. ${gl_bai}安装 Git             ${gl_hong}99. ${gl_bai}卸载 Git"
             echo -e "${gl_huang}0.  ${gl_bai}返回主菜单           ${gl_hong}00. ${gl_bai}退出脚本"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入你的选择: " choice
@@ -55075,9 +55144,13 @@ linux_git_menu() {
         17) clone_repository || continue ;;                               # Git克隆仓库
         18) clone_compose_repositories || continue ;;                     # 克隆compose仓库
         19) fix_git_safe_directories ;;                                   # 修复Git安全目录权限
-        20) install git ;;                                                # 安装Git
+        20) func_git_proxy ;;                                             # Git代理配置开关
         21) git_nuke_history ;;                                           # Git历史彻底清理工具
         22) git_clean_cache ;;                                            # Git缓存清理工具
+        23) func_git_status ;;
+        24) func_git_remote ;;
+        66) install git ;;                                                # 安装 Git
+        99) remove git ;;                                                 # 卸载 Git
         0) cancel_return "主菜单"; mobufan ;;
         00 | 000 | 0000) exit_script ;;
         *) handle_invalid_input ;;
