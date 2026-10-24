@@ -60536,10 +60536,9 @@ mobufan_sh() {
         15) temp_dir_menu "" "主菜单" ;;     # 常用工具
         16) linux_work ;;                   # 后台工作
         18) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/ppm_tool.sh) ;;                   # 个人项目
-        00 | 666) mobufan_update ;;         # 更新脚本（666 为更新提示兼容入口）
-        29 | 1129) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/cmdbox_admin_menu.sh) ;;
-        0) exit_script ;;
-        *) handle_invalid_input ;;
+        00) mobufan_update ;;               # 更新脚本
+        0)  exit_script ;;
+        *)  handle_invalid_input ;;
         esac
     done
 }
@@ -60679,25 +60678,10 @@ else
         linux_git_menu "${@:2}"
         ;;
     push | 推送)
-        linux_git_menu 1
-        ;;
-    pull | 拉取)
-        linux_git_menu 2
-        ;;
-    tool | 工具箱)
         linux_git_menu 3
         ;;
-    gitee-ssh)
+    pull | 拉取)
         linux_git_menu 4
-        ;;
-    gitgub-ssh)
-        linux_git_menu 5
-        ;;
-    gitee-new)
-        linux_git_menu 6
-        ;;
-    gitgub-new)
-        linux_git_menu 7
         ;;
     fy | f2b | 安全防御)
         clear
