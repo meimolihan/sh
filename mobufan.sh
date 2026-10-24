@@ -40386,7 +40386,9 @@ mobufan_update() {
                 continue
             fi
 
+            echo -e ""
             mobufan_banner
+            echo -e ""
 
             local cols=$(tput cols 2>/dev/null || echo 80)
             local sh_countdown=2
