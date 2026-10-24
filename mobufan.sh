@@ -40274,7 +40274,7 @@ verify_script_checksum() {
     local remote_sum local_sum
     remote_sum=$(curl -fsSL --connect-timeout 5 -A "Mozilla/5.0" "${url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
     if [[ -z "$remote_sum" ]]; then
-        log_warn "未获取到官方校验和文件（${url}.sha256），跳过完整性校验"
+        # log_warn "未获取到官方校验和文件（${url}.sha256），跳过完整性校验"
         return 0
     fi
     if ! command -v sha256sum >/dev/null 2>&1; then
@@ -40387,15 +40387,34 @@ mobufan_update() {
             fi
 
             mobufan_banner
-            
+
+            local cols=$(tput cols 2>/dev/null || echo 80)
+            local sh_countdown=2
+            local count=${sh_countdown}
+            local old_tty=$(stty -g)
+            stty -icanon -echo min 0 time 0
+
             echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
-            echo -ne "${gl_bai}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_bai} 秒"
-            sleep_fractional 1
-            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_huang}1${gl_bai} 秒"
-            sleep_fractional 1
-            echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${gl_lv}0${gl_bai} 秒"
-            sleep_fractional 1
-            echo -e "\r${gl_bai}正在启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            while (( count >= 0 )); do
+                case $count in
+                    0) c=${gl_lv} ;;
+                    1) c=${gl_huang} ;;
+                    *) c=${gl_hong} ;;
+                esac
+                echo -ne "\r${gl_bai}即将启动新版本脚本，倒计时: ${c}${count}${gl_bai} 秒 ${gl_huang}(按任意键跳过)${gl_bai}"
+                sleep_fractional 1
+                local key
+                read -r -N 1 key
+                if [[ -n "$key" ]]; then
+                    echo -ne "\r%${cols}s\r" ""
+                    echo -e "${gl_huang}已跳过倒计时${gl_bai}"
+                    break
+                fi
+                ((count--))
+            done
+            stty "${old_tty}"
+            printf "\r%${cols}s\r" ""
+            echo -e "${gl_bai}正在启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             bash ~/mobufan.sh
             exit
             ;;
