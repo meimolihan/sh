@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.7.8.1"
+sh_v="1.7.9"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
