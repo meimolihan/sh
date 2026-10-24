@@ -53779,7 +53779,7 @@ git_safe_push() {
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
-    return 0
+    return 1
 }
 
 # 函数_Git拉取更新
