@@ -40316,6 +40316,22 @@ install_downloaded_script() {
     return 0
 }
 
+mobufan_banner() {
+
+BLUE=$'\033[1;34m'         # 亮蓝
+NORMAL_BLUE=$'\033[0;34m'  # 常规蓝
+GRAY=$'\033[0;37m'         # 浅灰
+NORMAL_GRAY=$'\033[1;30m'  # 深灰
+RESET=$'\033[0m'
+
+    printf '%s\n' \
+"${NORMAL_BLUE}██▄  ▄██${RESET} ${NORMAL_BLUE} ▄█▀▀█▄ ${RESET} ${NORMAL_GRAY}██      ${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}████████${RESET} ${GRAY} ▄█▀▀█▄ ${RESET} ${GRAY}██▄   ██${RESET}    ${BLUE}▄█▀▀▀▀█▄${RESET} ${BLUE}██    ██${RESET}" \
+"${NORMAL_BLUE}██ ██ ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██      ${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}██      ${RESET} ${GRAY}██    ██${RESET} ${GRAY}██▀█▄ ██${RESET}    ${BLUE}██      ${RESET} ${NORMAL_BLUE}██    ██${RESET}" \
+"${NORMAL_BLUE}██    ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██▀▀▀▀█▄${RESET} ${GRAY}██    ██${RESET} ${GRAY}██████  ${RESET} ${GRAY}████████${RESET} ${BLUE}██ ▀█▄██${RESET}    ${NORMAL_BLUE} ▀▀▀██▄▄${RESET} ${NORMAL_BLUE}████████${RESET}" \
+"${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}██    ██${RESET} ${GRAY}██    ██${RESET} ${GRAY}██      ${RESET} ${BLUE}██    ██${RESET} ${BLUE}██   ▀██${RESET}    ${NORMAL_BLUE}      ██${RESET} ${NORMAL_BLUE}██    ██${RESET}" \
+"${NORMAL_GRAY}██    ██${RESET} ${GRAY} ▀█▄▄█▀ ${RESET} ${GRAY}██▄▄▄▄█▀${RESET} ${GRAY} ▀█▄▄█▀ ${RESET} ${BLUE}██      ${RESET} ${BLUE}██    ██${RESET} ${NORMAL_BLUE}██    ██${RESET} ${NORMAL_BLUE}██${RESET} ${NORMAL_BLUE}▀█▄▄▄▄█▀${RESET} ${NORMAL_BLUE}██    ██${RESET}"
+}
+
 mobufan_update() {
     cd ~ || return
     local download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
@@ -40370,6 +40386,8 @@ mobufan_update() {
                 continue
             fi
 
+            mobufan_banner
+            
             echo -e "${gl_bai}脚本已更新到最新版本！${gl_huang}v${sh_v_new:-未知版本}${gl_bai}"
             echo -ne "${gl_bai}即将启动新版本脚本，倒计时: ${gl_hong}2${gl_bai} 秒"
             sleep_fractional 1
