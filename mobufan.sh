@@ -60562,9 +60562,9 @@ mobufan_sh() {
     mobufan_sh_update
     while true; do
         clear
-        echo -e "${gl_bufan}╔╦╗╔═╗╦  ╦ ╦╔═╗╔═╗╦ ╦ ╔═╗╦ ╦"
-        echo -e "${gl_bufan}║║║║ ║╠═╗║ ║╠═╗╠═╣║╲║ ╚═╗╠═╣"
-        echo -e "${gl_bufan}╩ ╩╚═╝╚═╝╚═╝╩  ╩ ╩╩ ╩.╚═╝╩ ╩${gl_bai}"
+        echo -e "${gl_bufan}╔╦╗╔═╗╦  ╦ ╦╔═╔═╗╦ ╦ ╔═╗╦ ╦"
+        echo -e "${gl_bufan}║║║║ ║╠═╗║ ║╠═╠═╣║╲║ ╚═╗╠═╣"
+        echo -e "${gl_bufan}╩ ╩╚═╝╚═╝╚═╝╩ ╩ ╩╩ ╩.╚═╝╩ ╩${gl_bai}"
         echo -e "${gl_bufan}墨不凡脚本工具箱 ${gl_huang}v$sh_v${gl_bai}"
         echo -e "${gl_bufan}命令行输入${gl_huang} m ${gl_bufan}快速启动${gl_bai}"
         # echo -e "${gl_bufan}命令行输入${gl_huang} m h ${gl_bufan}快捷说明${gl_bai}"
