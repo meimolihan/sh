@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.8.0"
+sh_v="1.8.1"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -3774,7 +3774,7 @@ clone_custom_repo() {
 
         read -r -e -p "$(echo -e "${prompt_text}")" repoUrl
 
-        [ "$repoUrl" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$repoUrl" = "0" ] && return 1
 
         if [ -z "$repoUrl" ]; then
             empty_count=$((empty_count + 1))
@@ -3971,7 +3971,7 @@ rz_download_files_to_local() {
 
         read -r -e -p "$(echo -e "${gl_bai}请输入目录路径(${gl_huang}0${gl_bai}返回): ")" user_input
 
-        [ "$user_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$user_input" = "0" ] && return 1
 
         if [[ -n "$user_input" ]]; then
             target_dir="$user_input"
@@ -4006,7 +4006,7 @@ rz_download_files_to_local() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入文件选择(${gl_huang}0${gl_bai}返回): ")" user_input
 
-    [ "$user_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$user_input" = "0" ] && return 1
 
     if [[ -z "$user_input" ]]; then
         log_error "请输入有效的选择"
@@ -7093,7 +7093,7 @@ tv_rename_ultimate() {
                 echo -e "${gl_bai}指定: ${gl_bai}手动输入自定义前缀${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请输入序号或自定义前缀 (${gl_huang}0${gl_bai}返回): ")" input_prefix
-                [[ "$input_prefix" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$input_prefix" == "0" ]] && continue
                 if [[ "$input_prefix" =~ ^[0-9]+$ ]] && [ "$input_prefix" -ge 1 ] && [ "$input_prefix" -le ${#candidates[@]} ]; then
                     PREFIX="${candidates[$((input_prefix - 1))]}"
                     log_ok "剧集前缀已设置为: $PREFIX (通过序号选择)"
@@ -7147,7 +7147,7 @@ tv_rename_ultimate() {
                 echo -e "${gl_bai}示例: ${gl_bufan}01${gl_bai} 表示第 ${gl_bufan}1${gl_bai} 季 (将显示为 S01)${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请输入季号 (当前: ${gl_lv}S${SEASON}${gl_bai}，回车保持，${gl_huang}0${gl_bai}返回): ")" input_season
-                [[ "$input_season" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$input_season" == "0" ]] && continue
                 if [ -z "$input_season" ]; then
                     echo -e "${gl_bai}保持当前季号: S${SEASON}${gl_bai}"
                     continue
@@ -7184,7 +7184,7 @@ tv_rename_ultimate() {
                 echo -e "${gl_bai}示例: ${gl_bufan}26${gl_bai} 表示从第 ${gl_bufan}26${gl_bai} 集开始编号${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请输入起始集数 (当前: ${gl_lv}E$(safe_printf "%02d" "$START_EP")${gl_bai}，回车保持，${gl_huang}0${gl_bai}返回): ")" input_start
-                [[ "$input_start" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$input_start" == "0" ]] && continue
                 if [ -z "$input_start" ]; then
                     echo -e "${gl_bai}保持当前起始集数: E$(safe_printf "%02d" "$START_EP")${gl_bai}"
                     continue
@@ -7473,7 +7473,7 @@ tv_rename_ultimate() {
 
         read -r -e -p "$(echo -e "${gl_bai}要创建多少个测试文件? (默认: ${gl_lv}16${gl_bai}, ${gl_huang}0${gl_bai}返回): ")" file_count
 
-        [[ "$file_count" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+        [[ "$file_count" == "0" ]] && return 1
 
         if [ -z "$file_count" ]; then
             file_count=16
@@ -7588,7 +7588,7 @@ tv_rename_ultimate() {
         while true; do
             read -r -e -p "$(echo -e "${gl_bai}请输入目标目录 (${gl_huang}0${gl_bai}返回): ")" target_dir
 
-            [[ "$target_dir" == "0" ]] && { cancel_return; return 1; }
+            [[ "$target_dir" == "0" ]] && return 1
 
             if [ -z "$target_dir" ]; then
                 log_error "目标目录不能为空, 请重新输入"
@@ -8204,7 +8204,7 @@ rz_download_folder() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入要下载的文件夹序号 (${gl_huang}0${gl_bai})返回: ")" dir_choice
 
-    [ "$dir_choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$dir_choice" = "0" ] && return 1
 
     if ! [[ "$dir_choice" =~ ^[0-9]+$ ]] || \
        [[ "$dir_choice" -lt 1 ]] || \
@@ -8403,7 +8403,7 @@ rz_download_files_interactive() {
     echo -e "${gl_bai}输入: ${gl_huang}单个序号${gl_bai} 或 ${gl_huang}多个序号用逗号分隔${gl_bai} 或 ${gl_huang}范围如1-5${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请选择要下载的文件 (${gl_huang}0${gl_bai})返回: ")" file_choices
 
-    [ "$file_choices" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$file_choices" = "0" ] && return 1
 
     if [[ -z "$file_choices" ]]; then
         log_error "请输入有效的文件序号"
@@ -9169,8 +9169,8 @@ search_file_here() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入搜索关键词 (${gl_huang}0${gl_bai}返回): ")" keyword
 
-            [[ "$keyword" == "0" ]] && { cancel_return "上一级选单"; break; }
-            [[ -z "$keyword" ]] && { cancel_empty "上一级选单"; continue; }
+            [[ "$keyword" == "0" ]] &&  break
+            [[ -z "$keyword" ]] && continue
         fi
 
         local here
@@ -9317,7 +9317,7 @@ search_here() {
             ls --color=auto -x
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入要搜索的关键词 (${gl_huang}0${gl_bai}返回): ")" keyword
-            [[ "$keyword" == "0" ]] && { cancel_return "上一级选单"; break; }
+            [[ "$keyword" == "0" ]] && break
             [[ -z "$keyword" ]] && { cancel_empty "重新输入"; continue; }
         fi
 
@@ -9489,8 +9489,8 @@ install_add_docker() {
     echo -e "${gl_zi}>>> 安装${gl_huang}docker${gl_zi}环境 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定要安装${gl_huang}docker${gl_bai}环境吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$confirm" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$confirm" = "0" ] && return 1
+        [ -z "$confirm" ] && return 1
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
         exit_animation
@@ -10075,7 +10075,7 @@ docker_download_load() {
         read -r -e -p "$(echo -e "${gl_bai}请输入镜像压缩包的下载链接(${gl_huang}0${gl_bai}返回): ")" download_url
 
         [ "$download_url" == "0" ] && { cancel_return; return 1; }
-        [ -z "$download_url" ] && { cancel_empty "上一级选单"; return 1; }
+        [ -z "$download_url" ] && return 1
     fi
 
     if [[ -z "$download_url" ]]; then
@@ -10383,7 +10383,7 @@ docker_image() {
             echo -e "${gl_huang}>>> 获取指定镜像${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
-            [ "$imagenames" = "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$imagenames" = "0" ] && continue
             for name in $imagenames; do
                 echo -e "${gl_huang}正在获取镜像: $name${gl_bai}"
                 docker pull "$name"
@@ -10396,7 +10396,7 @@ docker_image() {
             echo -e "${gl_huang}>>> 更新指定镜像${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
-            [ "$imagenames" = "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$imagenames" = "0" ] && continue
             for name in $imagenames; do
                 echo -e "${gl_huang}正在更新镜像: $name${gl_bai}"
                 docker pull "$name"
@@ -10416,8 +10416,8 @@ docker_image() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}返回): ")" img_list
 
-            [[ -z "$img_list" ]] && { cancel_empty "上一级选单"; continue; }
-            [[ "$img_list" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ -z "$img_list" ]] && continue
+            [[ "$img_list" == "0" ]] && continue
 
             for img in $img_list; do
                 containers=$(docker ps -aq --filter ancestor="$img")
@@ -10444,8 +10444,8 @@ docker_image() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_hong}警告: ${gl_bai}这将删除所有镜像，包括被容器使用的镜像。确定吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
             if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                [ -z "$confirm" ] && { cancel_empty "上一级选单"; return 1; }
-                [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+                [ -z "$confirm" ] && return 1
+                [ "$confirm" = "0" ] && return 1
                 echo -e "${gl_bai}正在停止并删除所有容器 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
                 docker stop $(docker ps -aq) 2>/dev/null || true
                 docker rm -f $(docker ps -aq) 2>/dev/null || true
@@ -10511,8 +10511,8 @@ docker_image() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入你的选择(${gl_huang}0${gl_bai}返回): ")" file_num
 
-            [[ -z "$file_num" ]] && { cancel_empty "上一级选单"; continue; }
-            [[ "$file_num" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ -z "$file_num" ]] && continue
+            [[ "$file_num" == "0" ]] && continue
 
             if [[ ! "$file_num" =~ ^[0-9]+$ ]] || [[ $file_num -lt 1 ]] || [[ $file_num -gt ${#backup_files[@]} ]]; then
                 echo -e "${gl_hong}✗ 无效的编号${gl_bai}"
@@ -10608,7 +10608,7 @@ docker_image() {
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请输入源镜像名称 (格式: ${gl_lv}nginx:tag${gl_bai} 或 ${gl_lv}image_id${gl_bai})(${gl_huang}0${gl_bai}返回): ")" source_image
 
-                [[ "$source_image" == "0" ]] && { cancel_return "上一级选单"; break; }
+                [[ "$source_image" == "0" ]] && break
                 [[ -z "$source_image" ]] && { cancel_empty "重新输入"; continue; }
 
                 if ! docker image inspect "$source_image" &>/dev/null; then
@@ -10992,8 +10992,8 @@ docker_ipv6_on() {
     echo -e "${gl_zi}>>> 开启Docker-ipv6访问${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定要开启Docker-ipv6访问吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$confirm" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$confirm" = "0" ] && return 1
+        [ -z "$confirm" ] && return 1
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
         exit_animation
@@ -11036,8 +11036,8 @@ docker_ipv6_off() {
     echo -e "${gl_zi}>>> 关闭Docker-ipv6访问${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定要关闭Docker-ipv6访问吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$confirm" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$confirm" = "0" ] && return 1
+        [ -z "$confirm" ] && return 1
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消卸载操作${gl_bai}"
         exit_animation
@@ -11329,14 +11329,14 @@ linux_iptables_panel() {
         case $sub_choice in
         1)
             read -r -e -p "请输入开放的端口号: " o_port
-            [ "$o_port" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$o_port" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$o_port" = "0" ] && continue
+            [ -z "$o_port" ] && continue
             open_port "$o_port"
             ;;
         2)
             read -r -e -p "请输入关闭的端口号: " c_port
-            [ "$c_port" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$c_port" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$c_port" = "0" ] && continue
+            [ -z "$c_port" ] && continue
             close_port "$c_port"
             ;;
         3)
@@ -11369,20 +11369,20 @@ linux_iptables_panel() {
             ;;
         5)
             read -r -e -p "请输入放行的IP或IP段: " o_ip
-            [ "$o_ip" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$o_ip" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$o_ip" = "0" ] && continue
+            [ -z "$o_ip" ] && continue
             allow_ip "$o_ip"
             ;;
         6)
             read -r -e -p "请输入封锁的IP或IP段: " c_ip
-            [ "$c_ip" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$c_ip" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$c_ip" = "0" ] && continue
+            [ -z "$c_ip" ] && continue
             block_ip "$c_ip"
             ;;
         7)
             read -r -e -p "请输入清除的IP: " d_ip
-            [ "$d_ip" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$d_ip" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$d_ip" = "0" ] && continue
+            [ -z "$d_ip" ] && continue
             iptables -D INPUT -s "$d_ip" -j ACCEPT 2>/dev/null
             iptables -D INPUT -s "$d_ip" -j DROP 2>/dev/null
             iptables-save >/etc/iptables/rules.v4
@@ -11405,20 +11405,20 @@ linux_iptables_panel() {
             ;;
         15)
             read -r -e -p "请输入阻止的国家代码（多个国家代码可用空格隔开如 CN US JP）: " country_code
-            [ "$country_code" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$country_code" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$country_code" = "0" ] && continue
+            [ -z "$country_code" ] && continue
             manage_country_rules block "$country_code"
             ;;
         16)
             read -r -e -p "请输入允许的国家代码（多个国家代码可用空格隔开如 CN US JP）: " country_code
-            [ "$country_code" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$country_code" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$country_code" = "0" ] && continue
+            [ -z "$country_code" ] && continue
             manage_country_rules allow "$country_code"
             ;;
         17)
             read -r -e -p "请输入清除的国家代码（多个国家代码可用空格隔开如 CN US JP）: " country_code
-            [ "$country_code" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$country_code" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$country_code" = "0" ] && continue
+            [ -z "$country_code" ] && continue
             manage_country_rules unblock "$country_code"
             ;;
         0) cancel_return "$menu_name"; break ;;
@@ -12078,7 +12078,7 @@ iptables_init() {
     echo -e "${gl_huang}  5. ${gl_bai}自动保存新配置"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定要初始化 ${gl_huang}iptables ${gl_bai}吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")"
-    [ "$REPLY" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$REPLY" = "0" ] && return 1
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${gl_huang}已取消操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
         exit_animation
@@ -12464,8 +12464,8 @@ iptables_manager() {
 
             read -r -e -p "$(echo -e "${gl_bai}请输入要放行的端口号 (${gl_huang}0${gl_bai}返回): ")" port
 
-            [[ -z "$port" ]] && { cancel_empty "上一级选单"; continue; }
-            [[ "$port" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ -z "$port" ]] && continue
+            [[ "$port" == "0" ]] && continue
 
             if ! [[ $port =~ ^[0-9]+$ && $port -ge 1 && $port -le 65535 ]]; then
                 echo -e ""
@@ -12518,8 +12518,8 @@ iptables_manager() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入要删除的端口号 (${gl_huang}0${gl_bai}返回): ")" port
 
-            [[ -z "$port" ]] && { cancel_empty "上一级选单"; continue; }
-            [[ "$port" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ -z "$port" ]] && continue
+            [[ "$port" == "0" ]] && continue
 
             if [[ $port =~ ^[0-9]+$ && $port -ge 1 && $port -le 65535 ]]; then
                 if iptables -D INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null ||
@@ -12555,8 +12555,8 @@ iptables_manager() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入要封禁的端口号 (${gl_huang}0${gl_bai}返回): ")" port
 
-            [[ -z "$port" ]] && { cancel_empty "上一级选单"; continue; }
-            [[ "$port" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ -z "$port" ]] && continue
+            [[ "$port" == "0" ]] && continue
 
             if [[ $port =~ ^[0-9]+$ && $port -ge 1 && $port -le 65535 ]]; then
                 if iptables -C INPUT -p tcp --dport "$port" -j DROP 2>/dev/null; then
@@ -12632,8 +12632,8 @@ iptables_manager() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入要解除封禁的端口号 (${gl_huang}0${gl_bai}返回): ")" port
 
-            [[ -z "$port" ]] && { cancel_empty "上一级选单"; continue; }
-            [[ "$port" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ -z "$port" ]] && continue
+            [[ "$port" == "0" ]] && continue
 
             if [[ $port =~ ^[0-9]+$ && $port -ge 1 && $port -le 65535 ]]; then
                 local deleted_rules=0
@@ -12852,7 +12852,7 @@ fail2ban_edit_blacklist() {
     echo -e "${gl_huang}未修改配置文件不必重启防御程序${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}是否要重启防御程序？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-    [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$confirm" = "0" ] && return 1
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
         echo -e ""
         echo -e "${gl_bai}正在重启防御程序 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -12896,7 +12896,7 @@ fail2ban_ban_ip_manual() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "请输入要批量封禁的 IP（空格分隔，输入 q 或回车返回）: " ips
 
-    [ "$ips" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$ips" = "0" ] && return 1
     [[ -z "$ips" || "$ips" == "q" ]] && echo -e "${gl_hui}已取消操作，返回主菜单。${gl_bai}" && return
 
     fail2ban-client set recidive banip "$ips"
@@ -12912,7 +12912,7 @@ fail2ban_unban_ip_manual() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "请输入要永久解封的 IP（输入 q 或回车返回）: " ip
 
-    [ "$ip" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$ip" = "0" ] && return 1
     [[ -z "$ip" || "$ip" == "q" ]] && echo -e "${gl_hui}已取消操作，返回主菜单。${gl_bai}" && return
 
     fail2ban-client set recidive unbanip "$ip"
@@ -13024,16 +13024,16 @@ fail2ban_auto_under_attack() {
     echo "https://dash.cloudflare.com/login"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "输入CF的账号: " cfuser
-    [ "$cfuser" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$cfuser" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$cfuser" = "0" ] && return 1
+    [ -z "$cfuser" ] && return 1
 
     read -r -e -p "输入CF的Global API Key: " cftoken
-    [ "$cftoken" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$cftoken" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$cftoken" = "0" ] && return 1
+    [ -z "$cftoken" ] && return 1
 
     read -r -e -p "输入CF中域名的区域ID: " cfzonID
-    [ "$cfzonID" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$cfzonID" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$cfzonID" = "0" ] && return 1
+    [ -z "$cfzonID" ] && return 1
 
     cd ~ || return
     install jq bc
@@ -13101,9 +13101,9 @@ fail2ban_backup_config() {
                     echo -e "${gl_hong}错误: 请输入远端服务器IP${gl_bai}"
                     read -r -e -p "$(echo -e "${gl_hong}是否重新输入？ (${gl_lv}y${gl_bai}/${gl_hong}n${gl_bai}返回上级): ")" retry_choice
                     if [[ "$retry_choice" =~ [Nn] ]]; then
-                        break # 跳出内层循环，重新显示主菜单
+                        break
                     fi
-                    continue # 重新输入IP
+                    continue
                 fi
 
                 echo -e ""
@@ -13146,8 +13146,8 @@ fail2ban_restore_config() {
 
     read -r -e -p "$(echo -e "输入文件名还原指定备份，${gl_bufan}回车${gl_bai}还原最新备份，${gl_huang}0${gl_bai}返回: ")" filename
 
-    [[ -z "$filename" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$filename" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$filename" ]] && return 1
+    [[ "$filename" == "0" ]] && return 1
 
     [[ -z "$filename" ]] && filename=$(ls -t /fail2ban_*.tar.gz 2>/dev/null | head -1)
     if [[ -f "$filename" ]]; then
@@ -13787,8 +13787,8 @@ docker_app() {
             setup_docker_dir
             check_disk_space "$app_size" /home/docker
             read -r -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
-            [ "$app_port" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$app_port" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$app_port" = "0" ] && continue
+            [ -z "$app_port" ] && continue
 
             local app_port=${app_port:-${docker_port}}
             local docker_port=$app_port
@@ -13912,8 +13912,8 @@ docker_app_plus() {
             setup_docker_dir
             check_disk_space "$app_size" /home/docker
             read -r -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
-            [ "$app_port" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$app_port" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$app_port" = "0" ] && continue
+            [ -z "$app_port" ] && continue
             local app_port=${app_port:-${docker_port}}
             local docker_port=$app_port
             install jq
@@ -14201,7 +14201,7 @@ update_fail2ban() {
 
 server_reboot() {
     read -r -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}现在重启服务器吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" rboot
-    [ "$rboot" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$rboot" = "0" ] && return 1
     case "$rboot" in
     [Yy])
         echo -e "${gl_lv}已重启服务器${gl_bai}"
@@ -14364,14 +14364,14 @@ ldnmp_Proxy() {
     fi
     if [ -z "$reverseproxy" ]; then
         read -r -e -p "请输入你的反代IP: " reverseproxy
-        [ "$reverseproxy" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$reverseproxy" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$reverseproxy" = "0" ] && return 1
+        [ -z "$reverseproxy" ] && return 1
     fi
 
     if [ -z "$port" ]; then
         read -r -e -p "请输入你的反代端口: " port
-        [ "$port" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$port" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$port" = "0" ] && return 1
+        [ -z "$port" ] && return 1
     fi
     nginx_install_status
     install_ssltls
@@ -14397,8 +14397,8 @@ ldnmp_Proxy_backend() {
 
     if [ -z "$reverseproxy_port" ]; then
         read -r -e -p "请输入你的多个反代IP+端口用空格隔开（例如 127.0.0.1:3000 127.0.0.1:3002）： " reverseproxy_port
-        [ "$reverseproxy_port" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$reverseproxy_port" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$reverseproxy_port" = "0" ] && return 1
+        [ -z "$reverseproxy_port" ] && return 1
     fi
 
     nginx_install_status
@@ -14490,7 +14490,7 @@ stream_panel() {
             ;;
         3)
             read -r -e -p "$(echo -e "${gl_bai}确定要删除 nginx 容器吗？这可能会影响网站功能！ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-            [ "$confirm" = "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$confirm" = "0" ] && continue
             if [[ "$confirm" =~ ^[Yy]$ ]]; then
                 docker rm -f nginx
                 sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
@@ -14507,16 +14507,16 @@ stream_panel() {
             ;;
         5)
             read -r -e -p "请输入你要编辑的服务名: " stream_name
-            [ "$stream_name" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$stream_name" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$stream_name" = "0" ] && continue
+            [ -z "$stream_name" ] && continue
             install nano
             nano /etc/nginx/stream.d/"$stream_name".conf
             docker restart nginx
             ;;
         6)
             read -r -e -p "请输入你要删除的服务名: " stream_name
-            [ "$stream_name" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$stream_name" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$stream_name" = "0" ] && continue
+            [ -z "$stream_name" ] && continue
             rm /etc/nginx/stream.d/"$stream_name".conf >/dev/null 2>&1
             docker restart nginx
             ;;
@@ -14568,8 +14568,8 @@ ldnmp_Proxy_backend_stream() {
     esac
 
     read -r -e -p "请输入你的一个或者多个后端IP+端口用空格隔开（例如 10.13.0.2:3306 10.13.0.3:3306）： " reverseproxy_port
-    [ "$reverseproxy_port" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$reverseproxy_port" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$reverseproxy_port" = "0" ] && return 1
+    [ -z "$reverseproxy_port" ] && return 1
 
     nginx_install_status
     cd /home && mkdir -p web/stream.d
@@ -14682,8 +14682,8 @@ ldnmp_web_status() {
         case $sub_choice in
         1)
             read -rp "请输入你的域名: " yuming
-            [ "$yuming" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$yuming" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$yuming" = "0" ] && continue
+            [ -z "$yuming" ] && continue
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
             install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
             install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
@@ -14693,11 +14693,11 @@ ldnmp_web_status() {
             ;;
         2)
             read -rp "请输入旧域名: " oddyuming
-            [ "$oddyuming" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$oddyuming" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$oddyuming" = "0" ] && continue
+            [ -z "$oddyuming" ] && continue
             read -rp "请输入新域名: " yuming
-            [ "$yuming" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$yuming" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$yuming" = "0" ] && continue
+            [ -z "$yuming" ] && continue
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
             install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
             install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
@@ -14737,11 +14737,11 @@ ldnmp_web_status() {
         4)
             echo -e "为现有的站点再关联一个新域名用于访问"
             read -rp "请输入现有的域名: " oddyuming
-            [ "$oddyuming" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$oddyuming" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$oddyuming" = "0" ] && continue
+            [ -z "$oddyuming" ] && continue
             read -rp "请输入新域名: " yuming
-            [ "$yuming" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$yuming" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$yuming" = "0" ] && continue
+            [ -z "$yuming" ] && continue
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
             install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
             install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
@@ -14765,8 +14765,8 @@ ldnmp_web_status() {
             ;;
         7)
             read -r -e -p "编辑站点配置，请输入你要编辑的域名: " yuming
-            [ "$yuming" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$yuming" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$yuming" = "0" ] && continue
+            [ -z "$yuming" ] && continue
 
             install nano
             nano /etc/nginx/conf.d/"$yuming".conf
@@ -14776,8 +14776,8 @@ ldnmp_web_status() {
             ;;
         8)
             read -r -e -p "编辑站点配置，请输入你要编辑的域名: " yuming
-            [ "$yuming" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$yuming" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$yuming" = "0" ] && continue
+            [ -z "$yuming" ] && continue
             $EDITOR /etc/nginx/conf.d/"$yuming".conf
             systemctl reload nginx
             ;;
@@ -14792,8 +14792,8 @@ ldnmp_web_status() {
         20)
             web_del
             read -rp "请输入要删除证书的域名: " yuming
-            [ "$yuming" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$yuming" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$yuming" = "0" ] && continue
+            [ -z "$yuming" ] && continue
             certbot delete --cert-name "$yuming" 2>/dev/null
             ;;
         0) cancel_return; break ;;
@@ -14919,12 +14919,12 @@ EOF
 
 configure_frpc() {
     read -r -e -p "请输入外网对接IP: " server_addr
-    [ "$server_addr" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$server_addr" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$server_addr" = "0" ] && return 1
+    [ -z "$server_addr" ] && return 1
 
     read -r -e -p "请输入外网对接token: " token
-    [ "$token" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$token" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$token" = "0" ] && return 1
+    [ -z "$token" ] && return 1
     echo
 
     mkdir -p /home/frp
@@ -14945,26 +14945,26 @@ EOF
 
 add_forwarding_service() {
     read -r -e -p "请输入服务名称: " service_name
-    [ "$service_name" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$service_name" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$service_name" = "0" ] && return 1
+    [ -z "$service_name" ] && return 1
 
     read -r -e -p "请输入转发类型 (tcp/udp) [回车默认tcp]: " service_type
-    [ "$service_type" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$service_type" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$service_type" = "0" ] && return 1
+    [ -z "$service_type" ] && return 1
 
     local service_type=${service_type:-tcp}
     read -r -e -p "请输入内网IP [回车默认127.0.0.1]: " local_ip
-    [ "$local_ip" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$local_ip" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$local_ip" = "0" ] && return 1
+    [ -z "$local_ip" ] && return 1
 
     local local_ip=${local_ip:-127.0.0.1}
     read -r -e -p "请输入内网端口: " local_port
-    [ "$local_port" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$local_port" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$local_port" = "0" ] && return 1
+    [ -z "$local_port" ] && return 1
 
     read -r -e -p "请输入外网端口: " remote_port
-    [ "$remote_port" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$remote_port" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$remote_port" = "0" ] && return 1
+    [ -z "$remote_port" ] && return 1
     cat <<EOF >>/home/frp/frpc.toml
 [$service_name]
 type = ${service_type}
@@ -14984,8 +14984,8 @@ EOF
 
 delete_forwarding_service() {
     read -r -e -p "请输入需要删除的服务名称: " service_name
-    [ "$service_name" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$service_name" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$service_name" = "0" ] && return 1
+    [ -z "$service_name" ] && return 1
     sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
     echo "服务 $service_name 已成功从 frpc.toml 删除"
 
@@ -15180,8 +15180,8 @@ frps_panel() {
             echo "将内网穿透服务反代成域名访问"
             add_yuming
             read -r -e -p "请输入你的内网穿透服务端口: " frps_port
-            [ "$frps_port" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$frps_port" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$frps_port" = "0" ] && continue
+            [ -z "$frps_port" ] && continue
             ldnmp_Proxy "${yuming}" 127.0.0.1 "${frps_port}"
             block_host_port "$frps_port" "$ipv4_address"
             ;;
@@ -15191,15 +15191,15 @@ frps_panel() {
             ;;
         7)
             read -r -e -p "请输入需要放行的端口: " frps_port
-            [ "$frps_port" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$frps_port" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$frps_port" = "0" ] && continue
+            [ -z "$frps_port" ] && continue
             clear_host_port_rules "$frps_port" "$ipv4_address"
             ;;
         8)
             echo "如果你已经反代域名访问了，可用此功能阻止IP+端口访问，这样更安全。"
             read -r -e -p "请输入需要阻止的端口: " frps_port
-            [ "$frps_port" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$frps_port" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$frps_port" = "0" ] && continue
+            [ -z "$frps_port" ] && continue
             block_host_port "$frps_port" "$ipv4_address"
             ;;
         00)
@@ -15348,8 +15348,8 @@ yt_menu_pro() {
             ;;
         5)
             read -r -e -p "请输入视频链接: " url
-            [ "$url" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$url" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$url" = "0" ] && continue
+            [ -z "$url" ] && continue
             yt-dlp -P "$VIDEO_DIR" -f "bv*+ba/b" --merge-output-format mp4 \
                 --write-subs --sub-langs all \
                 --write-thumbnail --embed-thumbnail \
@@ -15376,8 +15376,8 @@ yt_menu_pro() {
             ;;
         7)
             read -r -e -p "请输入完整 yt-dlp 参数（不含 yt-dlp）: " custom
-            [ "$custom" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$custom" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$custom" = "0" ] && continue
+            [ -z "$custom" ] && continue
             yt-dlp -P "$VIDEO_DIR" "$custom" \
                 --write-subs --sub-langs all \
                 --write-thumbnail --embed-thumbnail \
@@ -15388,8 +15388,8 @@ yt_menu_pro() {
             ;;
         8)
             read -r -e -p "请输入视频链接: " url
-            [ "$url" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$url" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$url" = "0" ] && continue
+            [ -z "$url" ] && continue
             yt-dlp -P "$VIDEO_DIR" -x --audio-format mp3 \
                 --write-subs --sub-langs all \
                 --write-thumbnail --embed-thumbnail \
@@ -15401,8 +15401,8 @@ yt_menu_pro() {
 
         9)
             read -r -e -p "请输入删除视频名称: " rmdir
-            [ "$rmdir" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$rmdir" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$rmdir" = "0" ] && continue
+            [ -z "$rmdir" ] && continue
             rm -rf "${VIDEO_DIR:?}/$rmdir"
             ;;
         0) cancel_return; break ;;
@@ -15751,8 +15751,8 @@ fetch_github_ssh_keys() {
 
     if [[ -z "${username}" ]]; then
         read -r -e -p "请输入您的 GitHub 用户名（username，不含 @）： " username
-        [ "$username" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$username" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$username" = "0" ] && return 1
+        [ -z "$username" ] && return 1
     fi
 
     if [[ -z "${username}" ]]; then
@@ -15775,8 +15775,8 @@ fetch_remote_ssh_keys() {
     if [[ -z "${keys_url}" ]]; then
         echo -e "${gl_lv}https://example.com/ssh/your_ssh_key.txt${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入您的远端公钥URL(${gl_huang}0${gl_bai}返回)"：)" keys_url
-        [[ -z "$keys_url" ]] && { cancel_empty "上一级选单"; return 1; }
-        [[ "$keys_url" == "0" ]] && { cancel_return; return 1; }
+        [[ -z "$keys_url" ]] && return 1
+        [[ "$keys_url" == "0" ]] && return 1
     fi
 
     echo -e "${gl_bai}将从远程 URL 拉取 SSH 公钥，并添加到 ${gl_lv}${authorized_keys}${gl_bai}"
@@ -15857,8 +15857,8 @@ import_sshkey() {
     local public_key="$1"
     if [[ -z "$public_key" ]]; then
         read -r -e -p "$(echo -e "${gl_bai}请输入您的SSH公钥内容（通常以 ${gl_huang}ssh-rsa ${gl_bai}或 ${gl_huang}ssh-ed25519 ${gl_bai}开头): ")" public_key
-        [ "$public_key" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$public_key" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$public_key" = "0" ] && return 1
+        [ -z "$public_key" ] && return 1
     fi
 
     if [[ -z "$public_key" ]]; then
@@ -16816,7 +16816,7 @@ linux_trash() {
             ;;
         4)
             read -r -e -p "$(echo -e "${gl_bai}确认清空回收站？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-            [ "$confirm" = "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$confirm" = "0" ] && continue
             if [[ "$confirm" == "y" ]]; then
                 trash-empty
                 echo "回收站已清空。"
@@ -16849,7 +16849,7 @@ create_backup() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入要备份的目录 (多个目录用空格分隔，直接回车则使用默认目录) (${gl_huang}0${gl_bai}返回): ")" input
 
-    [[ "$input" == "0" ]] && { cancel_return "上一级选单"; return; }
+    [[ "$input" == "0" ]] && return 1
 
     if [[ -z "$input" ]]; then
         BACKUP_PATHS=(
@@ -16902,7 +16902,7 @@ restore_backup() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入要恢复的备份文件名 (${gl_huang}0${gl_bai}返回): ")" BACKUP_NAME
 
-    [[ "$BACKUP_NAME" == "0" ]] && { cancel_return "上一级选单"; return; }
+    [[ "$BACKUP_NAME" == "0" ]] && return 1
 
     if [[ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]]; then
         log_error "备份文件不存在！"
@@ -16958,7 +16958,7 @@ delete_backup() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入要删除的备份文件名 (${gl_huang}0${gl_bai}返回): ")" BACKUP_NAME
 
-    [[ "$BACKUP_NAME" == "0" ]] && { cancel_return "上一级选单"; return; }
+    [[ "$BACKUP_NAME" == "0" ]] && return 1
 
     if [[ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]]; then
         log_error "备份文件不存在！"
@@ -17337,7 +17337,7 @@ mount_partition() {
     DEFAULT_MOUNT="/mnt/$PARTITION"
     echo -e "${gl_bai}默认挂载点为: ${gl_huang}${DEFAULT_MOUNT}${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入挂载点路径（直接回车使用默认）: ")" MOUNT_POINT
-    [ "$MOUNT_POINT" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$MOUNT_POINT" = "0" ] && return 1
 
     if [ -z "$MOUNT_POINT" ]; then
         MOUNT_POINT="$DEFAULT_MOUNT"
@@ -18003,7 +18003,7 @@ format_disk() {
     fi
 
     read -r -e -p "$(echo -e "${gl_bai}确认格式化硬盘 ${gl_huang}/dev/$DISK ${gl_bai}吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" CONFIRM1
-    [ "$CONFIRM1" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$CONFIRM1" = "0" ] && return 1
     if [ "$CONFIRM1" != "y" ] && [ "$CONFIRM1" != "Y" ]; then
         log_info "操作已取消。"
         exit_animation
@@ -18011,7 +18011,7 @@ format_disk() {
     fi
 
     read -r -e -p "$(echo -e "${gl_huang}再次确认，输入 ${gl_lv}YES${gl_huang} 继续: ${gl_bai}")" CONFIRM2
-     [ "$CONFIRM2" = "0" ] && { cancel_return "上一级选单"; return 1; }
+     [ "$CONFIRM2" = "0" ] && return 1
     if [ "$CONFIRM2" != "YES" ]; then
         log_info "操作已取消。"
         exit_animation
@@ -18113,7 +18113,7 @@ format_disk() {
             echo -e "${gl_bai}查找新创建的分区 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             lsblk -o NAME,TYPE "/dev/$DISK" | grep "part"
             read -r -e -p "请输入新分区的名称（如 ${DISK}1）: " NEW_PARTITION
-            [ "$NEW_PARTITION" = "0" ] && { cancel_return "上一级选单"; return 1; }
+            [ "$NEW_PARTITION" = "0" ] && return 1
 
             if [ ! -b "/dev/$NEW_PARTITION" ]; then
                 log_error "无法找到新分区，请手动检查！"
@@ -18555,23 +18555,23 @@ remote_add_task() {
     echo -e "  ${gl_bai}- 端口号  : ${gl_huang}(默认 22)${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "请输入任务名称 (${gl_huang}0${gl_bai}返回): ")" name
-    [[ -z "$name" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$name" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$name" ]] && return 1
+    [[ "$name" == "0" ]] && return 1
 
     read -r -e -p "$(echo -e "请输入本地目录 (${gl_huang}0${gl_bai}返回): ")" local_path
-    [[ -z "$local_path" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$local_path" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$local_path" ]] && return 1
+    [[ "$local_path" == "0" ]] && return 1
 
     read -r -e -p "$(echo -e "请输入远程用户@IP (${gl_huang}0${gl_bai}返回): ")" remote
-    [[ -z "$remote" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$remote" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$remote" ]] && return 1
+    [[ "$remote" == "0" ]] && return 1
 
     read -r -e -p "$(echo -e "请输入远程目录 (${gl_huang}0${gl_bai}返回): ")" remote_path
-    [[ -z "$remote_path" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$remote_path" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$remote_path" ]] && return 1
+    [[ "$remote_path" == "0" ]] && return 1
 
     read -r -e -p "$(echo -e "请输入 SSH 端口 (默认 22, ${gl_huang}0${gl_bai}返回): ")" port
-    [[ "$port" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ "$port" == "0" ]] && return 1
     port=${port:-22}
 
     local_path="${local_path%/}/"
@@ -18586,7 +18586,7 @@ remote_add_task() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "请输入你的选择: " auth_choice
     [[ -z "$auth_choice" ]] && { cancel_empty "上一级选单"; return; }
-    [[ "$auth_choice" == "0" ]] && { cancel_return "上一级选单"; return; }
+    [[ "$auth_choice" == "0" ]] && return 1
 
     case $auth_choice in
     1)
@@ -18663,7 +18663,7 @@ remote_delete_task() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要删除的任务编号(${gl_huang}0${gl_bai}返回): ")" num
 
     [ "$num" = "0" ] && { cancel_return "Rsync远程同步工具"; return 1; }
-    [ -z "$num" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$num" ] && return 1
 
     local task
     task=$(sed -n "${num}p" "$CONFIG_FILE")
@@ -18706,7 +18706,7 @@ remote_run_task() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要执行的任务编号(${gl_huang}0${gl_bai}返回): ")" num
 
     [ "$num" = "0" ] && { cancel_return "Rsync远程同步工具"; return 1; }
-    [ -z "$num" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$num" ] && return 1
 
     local task
     task=$(sed -n "${num}p" "$CONFIG_FILE")
@@ -18783,7 +18783,7 @@ remote_schedule_task() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要定时同步的任务编号(${gl_huang}0${gl_bai}返回): ")" num
 
     [ "$num" = "0" ] && { cancel_return "Rsync远程同步工具"; return 1; }
-    [ -z "$num" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$num" ] && return 1
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo "错误: 请输入有效的任务编号！"
@@ -18952,7 +18952,7 @@ remote_delete_task_schedule() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要删除的任务编号(${gl_huang}0${gl_bai}返回): ")" num
 
     [ "$num" = "0" ] && { cancel_return "Rsync远程同步工具"; return 1; }
-    [ -z "$num" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$num" ] && return 1
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo "错误: 请输入有效的任务编号！"
@@ -19007,7 +19007,7 @@ remote_delete_task_schedule() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     read -r -e -p "$(echo -e "${gl_bai}确认删除吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-    [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$confirm" = "0" ] && return 1
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
         echo -e "${gl_huang}取消删除操作${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -20370,8 +20370,8 @@ docker_ssh_migration() {
         docker ps --format '{{.Names}}' | while read -r name; do printf "\033[32m%s\033[0m\n" "$name"; done
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入要备份的容器名（多个空格分隔，回车备份全部运行中容器）(${gl_huang}0${gl_bai}返回)"：)" containers
-        [ "$containers" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$containers" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$containers" = "0" ] && return 1
+        [ -z "$containers" ] && return 1
 
         install tar jq gzip
         install_docker
@@ -20791,7 +20791,7 @@ add_user_to_docker() {
 
     read -r -e -p "$(echo -e "${gl_bai}是否将当前用户 ${gl_lv}${USER}${gl_bai} 添加到 docker 组? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm_add
 
-    [ "$confirm_add" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$confirm_add" = "0" ] && return 1
 
     case "$confirm_add" in
     [Yy])
@@ -20856,7 +20856,7 @@ remove_user_from_docker() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     read -r -e -p "$(echo -e "${gl_bai}是否从 docker 组中移除用户 ${gl_lv}${USER}${gl_bai}? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm_remove
-    [ "$confirm_remove" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$confirm_remove" = "0" ] && return 1
     case "$confirm_remove" in
     [Yy])
         echo -e "${gl_bai}正在执行移除操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -20931,8 +20931,8 @@ edit_docker_daemon_json() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}是否要重启Docker服务？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
 
-    [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$confirm" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$confirm" = "0" ] && return 1
+    [ -z "$confirm" ] && return 1
 
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
         echo -e "${gl_bai}正在重启Docker服务 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -20949,7 +20949,7 @@ clean_docker_resources() {
     echo -e "${gl_zi}>>> 清理镜像容器网络${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
     case "$choice" in
         [Yy])
             docker system prune -af --volumes
@@ -21196,8 +21196,8 @@ docker_restore_image() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}输入文件序号、文件名或绝对路径 (${gl_huang}0${gl_bai}返回): ")" file_input
 
-    [[ -z "$file_input" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$file_input" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$file_input" ]] && return 1
+    [[ "$file_input" == "0" ]] && return 1
 
     if [[ "$file_input" =~ ^[0-9]+$ ]]; then
         local idx=$((file_input - 1))
@@ -28312,7 +28312,7 @@ EOF
 
     while true; do
         read -r -p "$(echo -e "${gl_bai}请输入共享目录路径 (默认为${gl_lv}/mnt${gl_bai})(${gl_huang}0${gl_bai}返回) : ")" share_dir
-        [[ "$share_dir" == "0" ]] && { cancel_return; return 1; }
+        [[ "$share_dir" == "0" ]] && return 1
         share_dir=${share_dir:-/mnt}
         share_dir=$(realpath -m "$share_dir" 2>/dev/null || echo "$share_dir") # 规范化路径
 
@@ -28344,7 +28344,7 @@ EOF
     while true; do
         read -r -p "$(echo -e "${gl_bai}请输入Samba用户名 (默认为${gl_lv}$(whoami)${gl_bai})(${gl_huang}0${gl_bai}返回) : ")" samba_user
 
-        [[ "$samba_user" == "0" ]] && { cancel_return; return 1; }
+        [[ "$samba_user" == "0" ]] && return 1
 
         samba_user=${samba_user:-$(whoami)}
 
@@ -29346,7 +29346,7 @@ configure_static_ip() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请选择接口编号(${gl_huang}1${gl_bai}-${gl_hong}${#iface_list[@]}${gl_bai})或输入接口名(${gl_huang}0${gl_bai}返回): ")" choice
 
-        [[ "$choice" == "0" ]] && { cancel_return; return 1; }
+        [[ "$choice" == "0" ]] && return 1
 
         local interface=""
         if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#iface_list[@]} ]; then
@@ -29859,7 +29859,7 @@ set_gateway() {
     if [[ -z "$gateway" ]]; then
         if [[ -t 0 ]]; then
             read -r -e -p "$(echo -e "${gl_bai}请输入网关IP地址 (${gl_huang}0${gl_bai}返回): ")" gateway
-            [[ "$gateway" == "0" ]] && { cancel_return; return 1; }
+            [[ "$gateway" == "0" ]] && return 1
             echo ""
         else
             log_error "必须指定网关IP地址"
@@ -29905,7 +29905,7 @@ set_gateway() {
         if [[ -z "$interface" ]] && [[ -t 0 ]]; then
             echo ""
             read -r -e -p "$(echo -e "${gl_bai}请输入网卡名称 (${gl_huang}0${gl_bai}返回): ")" interface
-            [[ "$interface" == "0" ]] && { cancel_return; return 1; }
+            [[ "$interface" == "0" ]] && return 1
         fi
 
         if [[ -z "$interface" ]]; then
@@ -30694,8 +30694,8 @@ linux_sshkey_panel() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo -e "${gl_bai}公钥格式：${gl_lv}https://example.com/ssh/your_ssh_key.txt${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入您的远端公钥URL(${gl_huang}0${gl_bai}返回)"：)" keys_url
-            [[ "$keys_url" == "0" ]] && { cancel_return "ROOT私钥登录模式"; continue; }
-            [ -z "$confirm_clean" ] && { cancel_empty "上一级选单"; return 1; }
+            [[ "$keys_url" == "0" ]] && continue
+            [ -z "$confirm_clean" ] && return 1
             fetch_remote_ssh_keys "${keys_url}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo "公钥信息"
@@ -30906,8 +30906,8 @@ linux_net_menu() {
             echo -e "${gl_zi}>>> 启用网卡${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -rp "请输入要启用的网卡名: " nic
-            [ "$nic" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$nic" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$nic" = "0" ] && continue
+            [ -z "$nic" ] && continue
             if ip link show "$nic" &>/dev/null; then
                 ip link set "$nic" up && echo -e "${gl_lv}✔ 网卡 $nic 已启用${gl_bai}"
             else
@@ -30921,8 +30921,8 @@ linux_net_menu() {
             echo -e "${gl_zi}>>> 禁用网卡${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -rp "请输入要禁用的网卡名: " nic
-            [ "$nic" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$nic" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$nic" = "0" ] && continue
+            [ -z "$nic" ] && continue
             if ip link show "$nic" &>/dev/null; then
                 ip link set "$nic" down && echo -e "${gl_lv}✔ 网卡 $nic 已禁用${gl_bai}"
             else
@@ -30936,8 +30936,8 @@ linux_net_menu() {
             echo -e "${gl_zi}>>> 查看网卡详情${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -rp "请输入要查看的网卡名: " nic
-            [ "$nic" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$nic" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$nic" = "0" ] && continue
+            [ -z "$nic" ] && continue
             if ip link show "$nic" &>/dev/null; then
                 echo -e "${gl_bufan}========== $nic 详细信息 ==========${gl_bai}"
                 ip addr show "$nic"
@@ -31349,7 +31349,7 @@ local_add_task() {
 
     while true; do
         read -r -e -p "$(echo -e "${gl_bai}请输入任务名称(${gl_huang}0${gl_bai})返回: ")" name
-        [ "$name" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$name" = "0" ] && return 1
         if [[ -z "$name" ]]; then
             echo -e "${gl_hong}错误: 任务名称不能为空${gl_bai}"
             continue
@@ -31759,7 +31759,7 @@ local_schedule_task() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要定时同步的任务编号(${gl_huang}0${gl_bai}返回): ")" num
 
     [ "$num" = "0" ] && { cancel_return "Rsync本地同步工具"; return 1; }
-    [ -z "$num" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$num" ] && return 1
 
     if ! [[ "$num" =~ ^[0-9]+$ ]]; then
         echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
@@ -31965,7 +31965,7 @@ local_delete_schedule() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要删除的定时任务编号(${gl_huang}0${gl_bai}返回): ")" task_num
 
     [ "$task_num" = "0" ] && { cancel_return "Rsync本地同步工具"; return 1; }
-    [ -z "$task_num" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$task_num" ] && return 1
 
     if ! [[ "$task_num" =~ ^[0-9]+$ ]]; then
         echo -e "${gl_hong}错误: 请输入有效的数字编号${gl_bai}"
@@ -32204,7 +32204,7 @@ local_forward_sync_menu() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要执行的任务编号(${gl_huang}0${gl_bai}返回): ")" task_num
 
     [ "$task_num" = "0" ] && { cancel_return "Rsync本地同步工具"; return 1; }
-    [ -z "$task_num" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$task_num" ] && return 1
 
     local_run_task "$task_num"
 }
@@ -32223,7 +32223,7 @@ local_reverse_sync_menu() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要执行反向同步的任务编号(${gl_huang}0${gl_bai}返回): ")" task_num
 
     [ "$task_num" = "0" ] && { cancel_return "Rsync本地同步工具"; return 1; }
-    [ -z "$task_num" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$task_num" ] && return 1
 
     local_run_task_reverse "$task_num"
 }
@@ -32779,7 +32779,7 @@ delete_crontab() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入要删除的任务行号 (${gl_huang}0${gl_bai}返回): ")" line_num
 
-    [[ "$line_num" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ "$line_num" == "0" ]] && return 1
 
     if [[ ! "$line_num" =~ ^[0-9]+$ ]]; then
         log_error "请输入有效的数字"
@@ -34561,7 +34561,7 @@ dd_backup_restore_tool() {
 
                 read -r -e -p "$(echo -e "${gl_bai}请输入设备名 (例如: sda) (${gl_huang}0${gl_bai}返回): ")" device_input
 
-                [[ "$device_input" == "0" ]] && { cancel_return "备份系统"; continue; }
+                [[ "$device_input" == "0" ]] && continue
 
                 device_input=$(echo "$device_input" | awk '{print $1}')
                 device_path="/dev/$device_input"
@@ -34595,7 +34595,7 @@ dd_backup_restore_tool() {
 
                 read -r -e -p "$(echo -e "${gl_bai}请选择压缩格式 (${gl_huang}0${gl_bai}返回): ")" compress_choice
 
-                [[ "$compress_choice" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$compress_choice" == "0" ]] && continue
 
                 case $compress_choice in
                 1) ext=".img" ;;
@@ -34627,7 +34627,7 @@ dd_backup_restore_tool() {
                 esac
 
                 read -r -e -p "$(echo -e "${gl_bai}块大小 [默认:4M] (${gl_huang}0${gl_bai}返回): ")" block_size
-                [[ "$block_size" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$block_size" == "0" ]] && continue
                 block_size=${block_size:-4M}
 
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -34691,7 +34691,7 @@ dd_backup_restore_tool() {
                 echo -e "${gl_zi}>>> 按序号恢复${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请输入备份序号 (${gl_huang}0${gl_bai}返回): ")" file_index
-                [[ "$file_index" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$file_index" == "0" ]] && continue
 
                 local backup_file
                 backup_file=$(get_backup_by_index "$file_index")
@@ -34734,7 +34734,7 @@ dd_backup_restore_tool() {
                 log_info "测试恢复模式: 恢复到临时文件"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "$(echo -e "${gl_bai}请输入备份序号 (${gl_huang}0${gl_bai}返回): ")" file_index
-                [[ "$file_index" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$file_index" == "0" ]] && continue
 
                 local backup_file
                 backup_file=$(get_backup_by_index "$file_index")
@@ -34751,7 +34751,7 @@ dd_backup_restore_tool() {
                 log_info "测试目标: $target_disk"
 
                 read -r -e -p "$(echo -e "${gl_bai}块大小 [默认:4M] (${gl_huang}0${gl_bai}返回): ")" block_size
-                [[ "$block_size" == "0" ]] && { cancel_return "上一级选单"; continue; }
+                [[ "$block_size" == "0" ]] && continue
                 block_size=${block_size:-4M}
 
                 log_info "开始测试恢复 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -35250,8 +35250,8 @@ image_converter_convert_selected() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}返回): ")" selection
 
-    [[ -z "$selection" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return; }
+    [[ -z "$selection" ]] && return 1
+    [[ "$selection" == "0" ]] && return 1
 
     local selected_files=()
 
@@ -35340,8 +35340,8 @@ image_converter_compress_quality() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}返回): ")" selection
 
-    [[ -z "$selection" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$selection" ]] && return 1
+    [[ "$selection" == "0" ]] && return 1
 
     local selected_files=()
     selection=$(echo "$selection" | tr ',' ' ')
@@ -35502,8 +35502,8 @@ image_converter_resize_batch() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入你的选择 (${gl_huang}0${gl_bai}返回): ")" selection
 
-    [[ -z "$selection" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return; }
+    [[ -z "$selection" ]] && return 1
+    [[ "$selection" == "0" ]] && return 1
 
     local selected_files=()
 
@@ -35605,8 +35605,8 @@ image_converter_batch_rename() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入前缀 (${gl_huang}0${gl_bai}返回): ")" prefix
 
-    [[ -z "$prefix" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$prefix" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$prefix" ]] && return 1
+    [[ "$prefix" == "0" ]] && return 1
 
     echo ""
     echo -e "${gl_bai}是否保持原扩展名?${gl_bai}"
@@ -35639,8 +35639,8 @@ image_converter_batch_rename() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入选择 (${gl_huang}0${gl_bai}返回): ")" selection
 
-    [[ -z "$selection" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$selection" ]] && return 1
+    [[ "$selection" == "0" ]] && return 1
 
     local selected_files=()
 
@@ -35753,8 +35753,8 @@ image_converter_batch_delete() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入选择 (${gl_huang}0${gl_bai}返回): ")" selection
 
-    [[ -z "$selection" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$selection" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ -z "$selection" ]] && return 1
+    [[ "$selection" == "0" ]] && return 1
 
     local selected_files=()
 
@@ -35995,8 +35995,8 @@ linux_user_management() {
             echo -e "${gl_zi}>>> 创建普通账户${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入新用户名: " new_username
-            [ "$new_username" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$new_username" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$new_username" = "0" ] && continue
+            [ -z "$new_username" ] && continue
             useradd -m -s /bin/bash "$new_username"
             passwd "$new_username"
             echo "操作已完成。"
@@ -36008,8 +36008,8 @@ linux_user_management() {
             echo -e "${gl_zi}>>> 创建高级账户${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入新用户名: " new_username
-            [ "$new_username" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$new_username" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$new_username" = "0" ] && continue
+            [ -z "$new_username" ] && continue
             useradd -m -s /bin/bash "$new_username"
             passwd "$new_username"
             echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
@@ -36023,8 +36023,8 @@ linux_user_management() {
             echo -e "${gl_zi}>>> 赋予最高权限${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入用户名: " username
-            [ "$new_username" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$new_username" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$new_username" = "0" ] && continue
+            [ -z "$new_username" ] && continue
             echo "$username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
             install sudo
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -36035,8 +36035,8 @@ linux_user_management() {
             echo -e "${gl_zi}>>> 取消最高权限${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入用户名: " username
-            [ "$new_username" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$new_username" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$new_username" = "0" ] && continue
+            [ -z "$new_username" ] && continue
             sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
@@ -36046,8 +36046,8 @@ linux_user_management() {
             echo -e "${gl_zi}>>> 删除账号${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "请输入要删除的用户名: " username
-            [ "$new_username" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$new_username" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$new_username" = "0" ] && continue
+            [ -z "$new_username" ] && continue
             userdel -r "$username"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
@@ -36163,8 +36163,8 @@ linux_set_swap() {
             ;;
         4)
             read -r -e -p "请输入虚拟内存大小（单位M）: " new_swap
-            [ "$new_swap" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$new_swap" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$new_swap" = "0" ] && continue
+            [ -z "$new_swap" ] && continue
             add_swap "$new_swap"
             ;;
         0) cancel_return "系统工具"; break ;;
@@ -36190,7 +36190,7 @@ linux_setup_ssh() {
     while true; do
         read -r -e -p "$(echo -e "${gl_bai}请输入 SSH 端口 (回车默认 ${gl_huang}22${gl_bai}, ${gl_huang}0${gl_bai}返回): ")" port_input
         [ -z "$port_input" ] && { SSH_PORT=22; break; }
-        [ "$port_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$port_input" = "0" ] && return 1
 
         if [[ "$port_input" =~ ^[1-9][0-9]{0,4}$ ]] && (( port_input <= 65535 )); then
             SSH_PORT=$port_input
@@ -36444,8 +36444,8 @@ linux_ssh_key_distribution() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     read -r -e -p "$(echo -e "${gl_bai}请输入要批量推钥的主机号，用空格或逗号隔开（例：${gl_lv}251 ${gl_huang}253 ${gl_hong}254${gl_bai}，${gl_huang}0${gl_bai}返回）: ")" input
-    [ "$input" == "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$input" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$input" == "0" ] && return 1
+    [ -z "$input" ] && return 1
 
     hosts=(${input//,/ })
 
@@ -36551,8 +36551,8 @@ linux_cron_management() {
             case $dingshi in
             1)
                 read -r -e -p "$(echo -e "${gl_bai}选择每月的几号执行任务？ (${gl_hong}1-30${gl_bai}): ")" day
-                [ "$day" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$day" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$day" = "0" ] && continue
+                [ -z "$day" ] && continue
                 (
                     crontab -l
                     echo "0 0 $day * * $newquest"
@@ -36560,8 +36560,8 @@ linux_cron_management() {
                 ;;
             2)
                 read -r -e -p "选择周几执行任务？ (0-6，0代表星期日): " weekday
-                [ "$weekday" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$weekday" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$weekday" = "0" ] && continue
+                [ -z "$weekday" ] && continue
                 (
                     crontab -l
                     echo "0 0 * * $weekday $newquest"
@@ -36569,8 +36569,8 @@ linux_cron_management() {
                 ;;
             3)
                 read -r -e -p "选择每天几点执行任务？（小时，0-23）: " hour
-                [ "$hour" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$hour" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$hour" = "0" ] && continue
+                [ -z "$hour" ] && continue
                 (
                     crontab -l
                     echo "0 $hour * * * $newquest"
@@ -36578,8 +36578,8 @@ linux_cron_management() {
                 ;;
             4)
                 read -r -e -p "输入每小时的第几分钟执行任务？（分钟，0-60）: " minute
-                [ "$minute" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$minute" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$minute" = "0" ] && continue
+                [ -z "$minute" ] && continue
                 (
                     crontab -l
                     echo "$minute * * * * $newquest"
@@ -36592,7 +36592,7 @@ linux_cron_management() {
             ;;
         2)
             read -r -e -p "$(echo -e "${gl_bai}请输入需要删除任务的关键字(${gl_huang}0${gl_bai}返回)"：)" kquest
-            [[ "$kquest" == "0" ]] && { cancel_return "上一级选单"; continue; }
+            [[ "$kquest" == "0" ]] && continue
             crontab -l | grep -v "$kquest" | crontab -
             ;;
         3) crontab -e ;;
@@ -36641,13 +36641,13 @@ linux_limiting_shutdown() {
         1)
             echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出。"
             read -r -e -p "请输入进站流量阈值（单位为G，默认100G）: " rx_threshold_gb
-            [ "$rx_threshold_gb" = "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$rx_threshold_gb" = "0" ] && continue
             rx_threshold_gb=${rx_threshold_gb:-100}
             read -r -e -p "请输入出站流量阈值（单位为G，默认100G）: " tx_threshold_gb
-            [ "$tx_threshold_gb" = "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$tx_threshold_gb" = "0" ] && continue
             tx_threshold_gb=${tx_threshold_gb:-100}
             read -r -e -p "请输入流量重置日期（默认每月1日重置）: " cz_day
-            [ "$cz_day" = "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$cz_day" = "0" ] && continue
             cz_day=${cz_day:-1}
 
             cd ~ || return
@@ -36698,7 +36698,7 @@ linux_python_version_management() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}输入你要安装的${gl_lv}python${gl_bai}版本号 (${gl_huang}0${gl_bai}返回): ")" py_new_v
 
-    [[ "$input" == "0" ]] && { cancel_return; linux_Settings "$@"; }
+    [[ "$input" == "0" ]] && linux_Settings "$@"
 
     if ! grep -q 'export PYENV_ROOT="\$HOME/.pyenv"' ~/.bashrc; then
         if command -v yum &>/dev/null; then
@@ -36829,14 +36829,14 @@ linux_host_management() {
         case $host_dns in
         1)
             read -r -e -p "请输入新的解析记录 格式: 110.25.5.33 kejilion.pro : " addhost
-            [ "$addhost" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$addhost" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$addhost" = "0" ] && continue
+            [ -z "$addhost" ] && continue
             echo "$addhost" >>/etc/hosts
             ;;
         2)
             read -r -e -p "请输入需要删除的解析内容关键字: " delhost
-            [ "$delhost" = "0" ] && { cancel_return "上一级选单"; continue; }
-            [ -z "$delhost" ] && { cancel_empty "上一级选单"; continue; }
+            [ "$delhost" = "0" ] && continue
+            [ -z "$delhost" ] && continue
             sed -i "/$delhost/d" /etc/hosts
             ;;
         0) cancel_return "系统工具"; break ;;
@@ -36878,7 +36878,7 @@ linux_tg_bot_monitor() {
     echo "到达阈值后会向用户发预警消息"
     echo -e "${gl_hui}-关于流量，重启服务器将重新计算-${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定继续吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
 
     case "$choice" in
     [Yy])
@@ -36936,7 +36936,7 @@ linux_install_kejilion() {
     echo -e "${gl_lv}bash <(curl -sL kejilion.sh)${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定卸载科技Lion脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
 
     case "$choice" in
     [Yy])
@@ -36960,7 +36960,7 @@ linux_uninstall_kejilion() {
     echo "将彻底卸载kejilion脚本，不影响你其他功能"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定卸载科技Lion脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
 
     case "$choice" in
     [Yy])
@@ -36992,7 +36992,7 @@ linux_install_mobufan() {
     echo -e "${gl_lv}bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定卸载科技Lion脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
 
     case "$choice" in
     [Yy])
@@ -37016,7 +37016,7 @@ linux_uninstall_mobufan() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo "将彻底卸载mobufan脚本，不影响你其他功能"
     read -r -e -p "$(echo -e "${gl_bai}确定卸载${gl_bufan}mobufan${gl_bai}脚本吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
 
     case "$choice" in
     [Yy])
@@ -37127,7 +37127,7 @@ linux_system_optimization() {
     echo -e "${gl_bufan}10. ${gl_bai}Linux系统内核参数优化切换到：${gl_huang}均衡优化模式${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定一键保养吗？ (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
 
     case "$choice" in
     [Yy])
@@ -37283,8 +37283,8 @@ linux_disable_root_create_user() {
     echo -e "${gl_zi}>>> 禁用ROOT创建新账户${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入新用户名 (${gl_huang}0${gl_bai}返回): ")" new_username
-    [ "$new_username" = "0" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$new_username" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$new_username" = "0" ] && return 1
+    [ -z "$new_username" ] && return 1
 
     create_user_with_sshkey "$new_username" true
 
@@ -37570,15 +37570,15 @@ create_file() {
 
     if [[ -z $file_name ]]; then
         read -r -e -p "$(echo -e "${gl_bai}请输入文件名(${gl_huang}0${gl_bai}返回): ")" file_name || return
-        [[ -z "$file_name" ]] && { cancel_empty "上一级选单"; return 1; }
-        [[ "$file_name" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+        [[ -z "$file_name" ]] && return 1
+        [[ "$file_name" == "0" ]] && return 1
     fi
 
     if [[ -e $file_name ]]; then
         echo -e "${gl_hong}文件已存在：$file_name${gl_bai}"
         local overwrite
         read -r -e -p "$(echo -e "${gl_bai}是否覆盖？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}，${gl_huang}0${gl_bai}返回): ")" overwrite || return
-        [[ "$overwrite" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+        [[ "$overwrite" == "0" ]] && return 1
         [[ "$overwrite" != [yY] ]] && { echo -e "${gl_huang}已取消操作 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"; sleep_fractional 0.6; return; }
     fi
 
@@ -37649,7 +37649,7 @@ search_dir_here() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -r -e -p "$(echo -e "${gl_bai}请输入搜索关键词 (${gl_huang}0${gl_bai}返回): ")" keyword
 
-            [[ "$keyword" == "0" ]] && { cancel_return "上一级选单"; break; }
+            [[ "$keyword" == "0" ]] && break
 
             [[ -z "$keyword" ]] && {
                 log_error "关键词不能为空！"
@@ -37857,7 +37857,7 @@ rename_files_add_prefix() {
         return
     fi
 
-    [ "$prefix" == "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$prefix" == "0" ] && return 1
 
     echo -e "${gl_bai}预览重命名结果:${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -37882,7 +37882,7 @@ rename_files_add_prefix() {
 
     if [[ ${#rename_files[@]} -gt 0 ]]; then
         read -r -e -p "$(echo -e "${gl_bai}确认执行重命名? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$confirm" = "0" ] && return 1
         case "$confirm" in
         [Yy])
             for rename_pair in "${rename_files[@]}"; do
@@ -37940,7 +37940,7 @@ rename_files_add_suffix() {
         return
     fi
 
-    [[ "$suffix" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ "$suffix" == "0" ]] && return 1
 
     echo -e "${gl_bai}预览重命名结果:${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -38029,7 +38029,7 @@ rename_files_replace_string() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入要替换的字符串(${gl_huang}0${gl_bai}返回): ")" old_str
 
-    [[ "$old_str" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ "$old_str" == "0" ]] && return 1
 
     if [[ -z "$old_str" ]]; then
         log_warn "要替换的字符串不能为空"
@@ -38038,7 +38038,7 @@ rename_files_replace_string() {
     fi
 
     read -r -e -p "$(echo -e "${gl_bai}请输入替换为的字符串: ")" new_str
-    [ "$new_str" == "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$new_str" == "0" ] && return 1
 
     echo -e "${gl_bai}预览重命名结果:${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -38063,7 +38063,7 @@ rename_files_replace_string() {
 
     if [[ ${#rename_files[@]} -gt 0 ]]; then
         read -r -e -p "$(echo -e "${gl_bai}确认执行重命名? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" == "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$confirm" == "0" ] && return 1
         case "$confirm" in
         [Yy])
             for rename_pair in "${rename_files[@]}"; do
@@ -38129,7 +38129,7 @@ rename_files_sequential() {
     echo -e "${gl_zi}>>> 序号重命名${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入文件名模板(${gl_huang}0${gl_bai}返回): ")" template
-    [[ "$template" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ "$template" == "0" ]] && return 1
 
     if [[ -z "$template" ]]; then
         log_warn "模板不能为空"
@@ -38199,7 +38199,7 @@ rename_files_sequential() {
 
     if [[ ${#rename_files[@]} -gt 0 ]]; then
         read -r -e -p "$(echo -e "${gl_bai}确认执行重命名? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" == "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$confirm" == "0" ] && return 1
         case "$confirm" in
         [Yy])
             for rename_pair in "${rename_files[@]}"; do
@@ -38303,7 +38303,7 @@ rename_files_change_case() {
 
             if [[ ${#rename_files[@]} -gt 0 ]]; then
                 read -r -e -p "$(echo -e "${gl_bai}确认执行重命名? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-                [ "$confirm" = "0" ] && { cancel_return "上一级选单"; continue; }
+                [ "$confirm" = "0" ] && continue
                 case "$confirm" in
                 [Yy])
                     for rename_pair in "${rename_files[@]}"; do
@@ -38361,7 +38361,7 @@ rename_files_remove_chars() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入要移除的字符或模式(${gl_huang}0${gl_bai}返回): ")" remove_pattern
 
-    [[ "$remove_pattern" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+    [[ "$remove_pattern" == "0" ]] && return 1
 
     if [[ -z "$remove_pattern" ]]; then
         log_warn "要移除的字符不能为空"
@@ -38392,7 +38392,7 @@ rename_files_remove_chars() {
 
     if [[ ${#rename_files[@]} -gt 0 ]]; then
         read -r -e -p "$(echo -e "${gl_bai}确认执行重命名? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [[ "$confirm" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+        [[ "$confirm" == "0" ]] && return 1
         case "$confirm" in
         [Yy])
             for rename_pair in "${rename_files[@]}"; do
@@ -38471,7 +38471,7 @@ rename_files_remove_spaces() {
 
     if [[ ${#rename_files[@]} -gt 0 ]]; then
         read -r -e -p "$(echo -e "${gl_bai}确认执行重命名? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [[ "$confirm" == "0" ]] && { cancel_return "上一级选单"; return 1; }
+        [[ "$confirm" == "0" ]] && return 1
         case "$confirm" in
         [Yy])
             for rename_pair in "${rename_files[@]}"; do
@@ -38794,8 +38794,8 @@ transfer_file_to_remote() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}输入序号选择文件，或直接输入文件路径 (${gl_huang}0${gl_bai}返回): ")" user_input
 
-    [[ -z "$user_input" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$user_input" == "0" ]] && { cancel_return "文件管理器"; return 1; }
+    [[ -z "$user_input" ]] && return 1
+    [[ "$user_input" == "0" ]] && return 1
 
     if [[ "$user_input" =~ ^[0-9]+$ ]]; then
         local idx=$((user_input - 1))
@@ -38831,7 +38831,7 @@ transfer_file_to_remote() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     read -r -e -p "$(echo -e "${gl_bai}请输入远端服务器IP: ")" remote_ip
-    [ "$remote_ip" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$remote_ip" = "0" ] && return 1
     if [[ -z "$remote_ip" ]]; then
         log_error "远端服务器IP不能为空"
         exit_animation
@@ -38839,11 +38839,11 @@ transfer_file_to_remote() {
     fi
 
     read -r -e -p "$(echo -e "${gl_bai}请输入远端服务器用户名 (${gl_lv}默认root${gl_bai}): ")" remote_user
-    [ "$remote_user" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$remote_user" = "0" ] && return 1
     remote_user=${remote_user:-root}
 
     read -r -e -p "$(echo -e "${gl_bai}请输入远端服务器密码: ")" -s remote_password
-    [ "$remote_password" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$remote_password" = "0" ] && return 1
     echo ""
     if [[ -z "$remote_password" ]]; then
         log_error "密码不能为空"
@@ -38852,7 +38852,7 @@ transfer_file_to_remote() {
     fi
 
     read -r -e -p "$(echo -e "${gl_bai}请输入登录端口 (${gl_lv}默认22${gl_bai}): ")" remote_port
-    [ "$remote_port" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$remote_port" = "0" ] && return 1
     remote_port=${remote_port:-22}
 
     echo ""
@@ -38862,7 +38862,7 @@ transfer_file_to_remote() {
     echo -e "${gl_bai}目标目录: ${gl_huang}/home/${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确认执行传送吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-    [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$confirm" = "0" ] && return 1
 
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         log_warn "已取消操作"
@@ -38934,8 +38934,8 @@ copy_file_or_directory() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}输入序号选择源文件/目录，或直接输入路径 (${gl_huang}0${gl_bai}返回): ")" user_input
 
-    [[ -z "$user_input" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$user_input" == "0" ]] && { cancel_return "文件管理器"; return 1; }
+    [[ -z "$user_input" ]] && return 1
+    [[ "$user_input" == "0" ]] && return 1
 
     if [[ "$user_input" =~ ^[0-9]+$ ]]; then
         local idx=$((user_input - 1))
@@ -38979,7 +38979,7 @@ copy_file_or_directory() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入目标路径 (包括新文件名或目录名)(${gl_huang}0${gl_bai}返回)"：)" dest_path
 
-    [[ "$dest_path" == "0" ]] && { cancel_return "文件管理器"; return 1; }
+    [[ "$dest_path" == "0" ]] && return 1
 
     if [[ -z "$dest_path" ]]; then
         log_error "目标路径不能为空"
@@ -39009,7 +39009,7 @@ copy_file_or_directory() {
     echo -e "  ${gl_lv}$dest_path${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确认执行复制吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-    [[ "$confirm" == "0" ]] && { cancel_return "文件管理器"; return 1; }
+    [[ "$confirm" == "0" ]] && return 1
 
     case "$confirm" in
         [Yy])
@@ -39070,8 +39070,8 @@ move_file_or_directory() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入源文件序号(${gl_huang}1${gl_bai}-${gl_lv}${LIST_FILES_COUNT}${gl_bai})、路径或通配符(${gl_huang}0${gl_bai}返回): ")" src_input
 
-    [ -z "$src_input" ] && { cancel_empty "上一级选单"; return 1; }
-    [ "$src_input" == "0" ] && { cancel_return "文件管理器"; return 1; }
+    [ -z "$src_input" ] && return 1
+    [ "$src_input" == "0" ] && return 1
 
     local src_paths=()  # 改为数组，支持多文件
 
@@ -39116,7 +39116,7 @@ move_file_or_directory() {
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}确认移动以上文件? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" == "0" ] && { cancel_return "文件管理器"; return 1; }
+        [ "$confirm" == "0" ] && return 1
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             log_info "已取消移动操作"
             exit_animation
@@ -39169,8 +39169,8 @@ move_file_or_directory() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入目标路径 (目录序号、目录名或完整路径)(${gl_huang}0${gl_bai}返回): ")" dest_input
 
-    [ -z "$dest_input" ] && { cancel_empty "上一级选单"; return 1; }
-    [ "$dest_input" == "0" ] && { cancel_return "文件管理器"; return 1; }
+    [ -z "$dest_input" ] && return 1
+    [ "$dest_input" == "0" ] && return 1
 
     local dest_path=""
 
@@ -39194,7 +39194,7 @@ move_file_or_directory() {
             return 1
         else
             read -r -e -p "$(echo -e "${gl_bai}目标目录不存在，是否创建? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" create_confirm
-            [ "$create_confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+            [ "$create_confirm" = "0" ] && return 1
             if [[ "$create_confirm" =~ ^[Yy]$ ]]; then
                 if ! mkdir -p "$dest_path"; then
                     log_error "创建目录失败: $dest_path"
@@ -39222,7 +39222,7 @@ move_file_or_directory() {
 
         if [[ -e "$dest_full_path" ]]; then
             read -r -e -p "$(echo -e "${gl_bai}目标已存在 '${gl_huang}$src_basename${gl_bai}'，是否覆盖? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}/${gl_huang}a${gl_bai}全部): ")" confirm
-            [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+            [ "$confirm" = "0" ] && return 1
             case "$confirm" in
                 [Aa])  # 全部覆盖，不再询问
                     ;;
@@ -39348,19 +39348,19 @@ batch_extract_all() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     read -r -e -p "$(echo -e "${gl_bai}请选择解压方式(${gl_huang}默认${gl_lv}2${gl_bai}): ")" extract_mode
-    [ "$extract_mode" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$extract_mode" = "0" ] && return 1
     extract_mode="${extract_mode:-2}"
 
     local custom_dest=""
     if [[ "$extract_mode" == "3" ]]; then
         read -r -e -p "$(echo -e "${gl_bai}请输入目标目录路径: ")" custom_dest
-        [ "$custom_dest" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$custom_dest" = "0" ] && return 1
         custom_dest="${custom_dest/#\~/$HOME}"
         [[ -z "$custom_dest" ]] && custom_dest="."
 
         if [[ ! -d "$custom_dest" ]]; then
             read -r -e -p "$(echo -e "${gl_huang}目录不存在，是否创建? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_huang})${gl_bai}: ")" create_dir
-            [ "$create_dir" = "0" ] && { cancel_return "上一级选单"; return 1; }
+            [ "$create_dir" = "0" ] && return 1
             if [[ "$create_dir" =~ ^[Yy]$ ]]; then
                 mkdir -p "$custom_dest" || {
                     log_error "创建目录失败: $custom_dest"
@@ -39563,8 +39563,8 @@ extract_archive() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入要解压的文件名(${gl_lv}.tar.gz${gl_bai})(${gl_huang}0${gl_bai}返回): ")" filename
 
-    [ -z "$filename" ] && { cancel_empty "上一级选单"; return 1; }
-    [ "$filename" == "0" ] && { cancel_return "文件管理器"; return 1; }
+    [ -z "$filename" ] && return 1
+    [ "$filename" == "0" ] && return 1
 
     if [[ ! -f "$filename" ]]; then
         echo -e "${gl_hong}✗ 错误: 文件不存在: $filename${gl_bai}"
@@ -39649,7 +39649,7 @@ cat_view_file_content() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入文件序号(${gl_huang}1${gl_bai}-${gl_lv}${LIST_FILES_COUNT}${gl_bai})或文件名(${gl_huang}0${gl_bai}返回): ")" user_input
 
-    [ -z "$user_input" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$user_input" ] && return 1
     [ "$user_input" == "0" ] && { cancel_return "$return_target"; return 1; }
 
     local target_file=""
@@ -39712,8 +39712,8 @@ delete_files() {
 
     read -r -e -p "$(echo -e "${gl_bai}请输入文件序号(${gl_huang}1${gl_bai}-${gl_lv}${LIST_FILES_COUNT}${gl_bai})或文件名(${gl_huang}0${gl_bai}返回): ")" user_input
 
-    [ -z "$user_input" ] && { cancel_empty "上一级选单"; return 1; }
-    [ "$user_input" == "0" ] && { cancel_return "文件管理器"; return 1; }
+    [ -z "$user_input" ] && return 1
+    [ "$user_input" == "0" ] && return 1
 
     local inputs=($user_input)
     local files_to_delete=()
@@ -39768,7 +39768,7 @@ delete_files() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     read -r -e -p "$(echo -e "${gl_bai}确认删除以上 ${gl_hong}${#files_to_delete[@]}${gl_bai} 个文件? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-    [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$confirm" = "0" ] && return 1
 
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         log_info "已取消删除操作"
@@ -39820,8 +39820,8 @@ rename_file_or_dir() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}输入序号选择文件，或直接输入文件名 (${gl_huang}0${gl_bai}返回): ")" user_input
 
-    [ -z "$user_input" ] && { cancel_empty "上一级选单"; return 1; }
-    [ "$user_input" == "0" ] && { cancel_return "文件管理器"; return 1; }
+    [ -z "$user_input" ] && return 1
+    [ "$user_input" == "0" ] && return 1
 
     if [[ "$user_input" =~ ^[0-9]+$ ]]; then
         local idx=$((user_input - 1))
@@ -39853,7 +39853,7 @@ rename_file_or_dir() {
     echo -e "${gl_bai}当前文件名: ${gl_huang}${gl_bai}$current_name${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入新文件名: ")" new_name
-    [ "$new_name" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$new_name" = "0" ] && return 1
 
     if [[ -z "$new_name" ]]; then
         log_error "新文件名不能为空"
@@ -39878,7 +39878,7 @@ rename_file_or_dir() {
     echo -e "  ${gl_huang}$current_name${gl_bai} ${gl_bai}->${gl_bai} ${gl_lv}$new_name${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确认执行重命名吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-    [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$confirm" = "0" ] && return 1
 
     case "$confirm" in
         [Yy])
@@ -39924,8 +39924,8 @@ edit_file_with_nano() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入序号(${gl_huang}1${gl_bai}-${gl_lv}${LIST_FILES_COUNT}${gl_bai})或文件名(${gl_huang}0${gl_bai}返回): ")" user_input
 
-    [ -z "$user_input" ] && { cancel_empty "上一级选单"; return 1; }
-    [ "$user_input" == "0" ] && { cancel_return "文件管理器"; return 1; }
+    [ -z "$user_input" ] && return 1
+    [ "$user_input" == "0" ] && return 1
 
     local target_file=""
 
@@ -39955,8 +39955,8 @@ edit_file_with_nano() {
 # 创建文件
 create_new_file() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要创建的文件名(${gl_huang}0${gl_bai}返回): ")" filename
-    [ -z "$filename" ] && { cancel_empty "上一级选单"; return 1; }
-    [ "$filename" == "0" ] && { cancel_return "文件管理器"; return 1; }
+    [ -z "$filename" ] && return 1
+    [ "$filename" == "0" ] && return 1
     touch "$filename" && echo -e "${gl_lv}文件已创建${gl_bai}" || echo -e "${gl_hong}创建失败${gl_bai}"
 }
 
@@ -40006,8 +40006,8 @@ delete_directories() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入要删除的目录(${gl_huang}0${gl_bai}返回): ")" input
 
-        [ -z "$input" ] && { cancel_empty "上一级选单"; return 1; }
-        [ "$input" == "0" ] && { cancel_return "文件管理器"; return 1; }
+        [ -z "$input" ] && return 1
+        [ "$input" == "0" ] && return 1
 
         local -a targets=()
         for item in $input; do
@@ -40026,7 +40026,7 @@ delete_directories() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         read -r -e -p "$(echo -e "${gl_bai}确认删除? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$confirm" = "0" ] && return 1
         case "$confirm" in
             [Yy])
                 for dir in "${targets[@]}"; do
@@ -40059,8 +40059,8 @@ rename_directory() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入目录序号或目录名(${gl_huang}0${gl_bai}返回): ")" input
 
-        [ -z "$input" ] && { cancel_empty "上一级选单"; return 1; }
-        [ "$input" == "0" ] && { cancel_return "文件管理器"; return 1; }
+        [ -z "$input" ] && return 1
+        [ "$input" == "0" ] && return 1
 
         local current_name=""
         if [[ "$input" =~ ^[0-9]+$ ]] && [[ "$input" -ge 1 ]] && [[ "$input" -le ${#dir_list[@]} ]]; then
@@ -40072,8 +40072,8 @@ rename_directory() {
         [[ ! -d "$current_name" ]] && { log_error "目录不存在: $current_name"; return 1; }
 
         read -r -e -p "$(echo -e "${gl_bai}请输入新目录名(${gl_huang}0${gl_bai}返回): ")" new_name
-        [ -z "$new_name" ] && { cancel_empty "上一级选单"; return 1; }
-        [ "$new_name" == "0" ] && { cancel_return "文件管理器"; return 1; }
+        [ -z "$new_name" ] && return 1
+        [ "$new_name" == "0" ] && return 1
         [[ -e "$new_name" ]] && { log_error "目标已存在: $new_name"; return 1; }
 
         if mv "$current_name" "$new_name"; then
@@ -40093,7 +40093,7 @@ rename_directory() {
 create_directory() {
     local return_target="${1:-文件管理器}"  # 接收参数，默认值为"文件管理器"
     read -r -e -p "$(echo -e "${gl_bai}请输入要创建的目录名(${gl_huang}0${gl_bai}返回): ")" dirname
-    [ -z "$dirname" ] && { cancel_empty "上一级选单"; return 1; }
+    [ -z "$dirname" ] && return 1
     [ "$dirname" == "0" ] && { cancel_return "$return_target"; return 1; }
     mkdir -p "$dirname" && sleep_fractional 0.6 && echo -e "${gl_lv}目录已创建${gl_bai}" || echo "${gl_hong}创建失败${gl_bai}"
     return 0
@@ -40204,8 +40204,8 @@ modify_directory_permissions() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入目录序号或路径(${gl_huang}0${gl_bai}返回): ")" input
 
-        [ -z "$input" ] && { cancel_empty "上一级选单"; return 1; }
-        [ "$input" == "0" ] && { cancel_return "文件管理器"; return 1; }
+        [ -z "$input" ] && return 1
+        [ "$input" == "0" ] && return 1
         local target_dir=""
 
         if [[ "$input" =~ ^[0-9]+$ ]] && [[ "$input" -ge 1 ]] && [[ "$input" -le ${#dir_list[@]} ]]; then
@@ -40228,8 +40228,8 @@ modify_directory_permissions() {
 
         read -r -e -p "$(echo -e "${gl_bai}请输入新权限 (如 ${gl_huang}755${gl_bai}) (${gl_huang}0${gl_bai}返回)): ")" perm
 
-        [ -z "$perm" ] && { cancel_empty "上一级选单"; return 1; }
-        [ "$perm" == "0" ] && { cancel_return "文件管理器"; return 1; }
+        [ -z "$perm" ] && return 1
+        [ "$perm" == "0" ] && return 1
 
         if [[ ! "$perm" =~ ^[0-7]{3,4}$ ]]; then
             echo -e "${gl_hong}错误：权限格式不正确，请输入3-4位数字 (如 755, 644)${gl_bai}"
@@ -40266,8 +40266,8 @@ modify_directory_permissions() {
 compress_file_or_directory() {
     read -r -e -p "$(echo -e "${gl_bai}请输入要压缩的文件/目录名(${gl_huang}0${gl_bai}返回): ")" name
 
-    [ -z "$name" ] && { cancel_empty "上一级选单"; return 1; }
-    [ "$name" = "0" ] && { cancel_return "文件管理器"; return 1; }
+    [ -z "$name" ] && return 1
+    [ "$name" = "0" ] && return 1
 
     if [ ! -e "$name" ]; then
         echo -e "${gl_bai}文件/目录 ${gl_lv}'$name' ${gl_bai}不存在"
@@ -40378,8 +40378,6 @@ linux_file() {
 
 
 # mobufan.sh 脚本更新
-# 校验下载到的脚本与官方发布的 sha256 是否一致
-# 官方未发布校验和文件时返回 0 并告警（不阻断更新）
 verify_script_checksum() {
     local file="$1" url="$2"
     local remote_sum local_sum
@@ -40668,7 +40666,7 @@ pve_shutdown_selector() {
         echo -e ""
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}确认要关闭这个实例吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$confirm" = "0" ] && return 1
         case "$confirm" in
         [yY] | [yY][eE][sS])
             echo -e "${gl_bai}正在关闭实例 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -40810,7 +40808,7 @@ pve_start_selector() {
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}确认要启动这个实例吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$confirm" = "0" ] && return 1
         case "$confirm" in
         [yY] | [yY][eE][sS])
             echo -e "${gl_bai}正在启动实例 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -40996,7 +40994,7 @@ pve_restart_selector() {
         echo -e "  ${gl_lan}状态:${gl_bai} $([ "$instance_status" = "running" ] && echo -e "${gl_lv}运行中" || echo -e "${gl_hong}已停止")${gl_bai}"
 
         read -r -e -p "$(echo -e "${gl_bai}确认要${gl_bufan}${operation}${gl_bai}这个实例吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
-        [ "$confirm" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$confirm" = "0" ] && return 1
         case "$confirm" in
         [yY] | [yY][eE][sS])
             echo -e "${gl_lan}正在${operation}实例 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -41116,8 +41114,8 @@ pve_instance_management() {
         1)
             safe_read "$(echo -e "${gl_bufan}请输入要关闭的虚拟机ID(多个用空格隔开，${gl_huang}0${gl_bai}返回")" vm_ids
 
-            [ -z "$vm_ids" ] && { cancel_empty "上一级选单"; continue; }
-            [ "$vm_ids" == "0" ] && { cancel_return "上一级选单"; continue; }
+            [ -z "$vm_ids" ] && continue
+            [ "$vm_ids" == "0" ] && continue
 
             if [ -n "$vm_ids" ]; then
                 for vm_id in $vm_ids; do
@@ -41137,8 +41135,8 @@ pve_instance_management() {
         2)
             safe_read "$(echo -e "${gl_bufan}请输入要启动的虚拟机ID(多个用空格隔开，${gl_huang}0${gl_bai}返回")" vm_ids
 
-            [ -z "$vm_ids" ] && { cancel_empty "上一级选单"; continue; }
-            [ "$vm_ids" == "0" ] && { cancel_return "上一级选单"; continue; }
+            [ -z "$vm_ids" ] && continue
+            [ "$vm_ids" == "0" ] && continue
 
             if [ -n "$vm_ids" ]; then
                 for vm_id in $vm_ids; do
@@ -41158,8 +41156,8 @@ pve_instance_management() {
         3)
             safe_read "$(echo -e "${gl_bufan}请输入要关闭的容器ID(多个用空格隔开，${gl_huang}0${gl_bai}返回")" ct_ids
 
-            [ -z "$ct_ids" ] && { cancel_empty "上一级选单"; continue; }
-            [ "$ct_ids" == "0" ] && { cancel_return "上一级选单"; continue; }
+            [ -z "$ct_ids" ] && continue
+            [ "$ct_ids" == "0" ] && continue
 
             if [ -n "$ct_ids" ]; then
                 for ct_id in $ct_ids; do
@@ -41179,8 +41177,8 @@ pve_instance_management() {
         4)
             safe_read "$(echo -e "${gl_bufan}请输入要启动的容器ID(多个用空格隔开，${gl_huang}0${gl_bai}返回")" ct_ids
 
-            [ -z "$ct_ids" ] && { cancel_empty "上一级选单"; continue; }
-            [ "$ct_ids" == "0" ] && { cancel_return "上一级选单"; continue; }
+            [ -z "$ct_ids" ] && continue
+            [ "$ct_ids" == "0" ] && continue
 
             if [ -n "$ct_ids" ]; then
                 for ct_id in $ct_ids; do
@@ -41222,7 +41220,7 @@ menu_edit_vm_conf() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入 VMID (${gl_huang}0${gl_bai}返回) : ")" VMID
 
-        [ "$VMID" == "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$VMID" == "0" ] && return 1
 
         if [[ ! "$VMID" =~ ^[0-9]+$ ]] || ((VMID < 100)); then
             log_error "VMID 必须是 ≥100 的纯数字"
@@ -41261,7 +41259,7 @@ menu_edit_lxc_conf() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入 CTID (${gl_huang}0${gl_bai}返回) : ")" CTID
 
-        [ "$CTID" == "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$CTID" == "0" ] && return 1
 
         if [[ ! "$CTID" =~ ^[0-9]+$ ]] || ((CTID < 100)); then
             log_error "CTID 必须是 ≥100 的纯数字"
@@ -41295,7 +41293,7 @@ qm_destroy_vm() {
     echo -e "${gl_zi}>>> 销毁虚拟机（删除所有卷）${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入 VMID (${gl_huang}0${gl_bai}返回): ")" VMID
-    [ "$VMID" == "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$VMID" == "0" ] && return 1
 
     if [[ ! "$VMID" =~ ^[0-9]+$ ]] || ((VMID < 100)); then
         echo -e ""
@@ -41314,7 +41312,7 @@ qm_destroy_vm() {
     fi
 
     read -r -p "$(echo -e "${gl_bai}确认销毁 VM ${gl_hong}$VMID${gl_bai} 并删除所有卷？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
     case "$choice" in
     [yY])
         echo -e ""
@@ -41359,7 +41357,7 @@ qm_unlock_vm() {
     echo -e "${gl_zi}>>> 清除虚拟机迁移/备份锁${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入 VMID (${gl_huang}0${gl_bai}返回): ")" VMID
-    [ "$VMID" == "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$VMID" == "0" ] && return 1
 
     if [[ ! "$VMID" =~ ^[0-9]+$ ]] || ((VMID < 100)); then
         log_error "VMID 必须是 ≥100 的纯数字"
@@ -41935,14 +41933,14 @@ backup_vm() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     read -r -e -p "$(echo -e "${gl_bai}请输入要备份的 VMID (${gl_huang}0${gl_bai}返回): ")" vmid
-    [ "$vmid" == "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$vmid" == "0" ] && return 1
 
     echo -e "${gl_lan}[信息]${gl_bai} 可用存储列表："
     pvesm status
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
     read -r -e -p "$(echo -e "${gl_bai}请选择用于备份的存储名 (${gl_huang}0${gl_bai}返回): ")" storage
-    [ "$storage" == "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$storage" == "0" ] && return 1
 
     echo -e ""
     echo -e "${gl_huang}>>> 即将备份 VMID ${vmid} 到存储 ${storage}，压缩格式 gzip${gl_bai}"
@@ -41985,7 +41983,7 @@ restore_vm() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "请输入备份文件所在的存储名称 (如：${gl_huang}local ${gl_bai}) (${gl_huang}0${gl_bai}返回): ")" backup_storage
 
-        [ "$backup_storage" == "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$backup_storage" == "0" ] && return 1
 
         if [[ -z "$backup_storage" ]]; then
             log_error "存储名称不能为空！"
@@ -42048,7 +42046,7 @@ restore_vm() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "请选择备份文件序号 (${gl_bufan}1-${#backup_files[@]}${gl_bai}, ${gl_huang}0${gl_bai}返回): ")" backup_choice
 
-        [ "$backup_choice" == "0" ] && { cancel_return "上一级选单"; continue; }
+        [ "$backup_choice" == "0" ] && continue
 
         if ! [[ "$backup_choice" =~ ^[0-9]+$ ]] || [[ "$backup_choice" -lt 1 ]] || [[ "$backup_choice" -gt ${#backup_files[@]} ]]; then
             log_error "无效的选择！"
@@ -42091,7 +42089,7 @@ restore_vm() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "请选择恢复目标存储序号 (${gl_bufan}1-${#supported_storage[@]}${gl_bai}, ${gl_huang}0${gl_bai}返回): ")" storage_choice
 
-        [ "$storage_choice" == "0" ] && { cancel_return "上一级选单"; continue; }
+        [ "$storage_choice" == "0" ] && continue
 
         if ! [[ "$storage_choice" =~ ^[0-9]+$ ]] || [[ "$storage_choice" -lt 1 ]] || [[ "$storage_choice" -gt ${#supported_storage[@]} ]]; then
             log_error "无效的选择！"
@@ -42104,7 +42102,7 @@ restore_vm() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "请输入要恢复到的虚拟机ID (备份中的ID: ${vmid_from_backup:-未知}, ${gl_huang}0${gl_bai}返回): ")" vmid
 
-        [ "$vmid" == "0" ] && { cancel_return "上一级选单"; continue; }
+        [ "$vmid" == "0" ] && continue
 
         if ! [[ "$vmid" =~ ^[0-9]+$ ]]; then
             log_error "虚拟机ID必须为数字！"
@@ -42218,7 +42216,7 @@ manage_backup_files() {
 
         read -r -e -p "$(echo -e "请选择要管理的存储 (${gl_huang}0${gl_bai}返回): ")" storage_name
 
-        [ "$storage_name" == "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$storage_name" == "0" ] && return 1
 
         if [[ -z "$storage_name" ]]; then
             log_error "存储名称不能为空！"
@@ -42278,7 +42276,7 @@ manage_backup_files() {
             log_error "无法确定存储 '$storage_name' 的路径！"
             read -r -e -p "$(echo -e "请输入存储路径 (${gl_huang}0${gl_bai}返回): ")" manual_path
 
-            [ "$manual_path" == "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$manual_path" == "0" ] && continue
 
             if [[ -z "$manual_path" ]] || [[ ! -d "$manual_path" ]]; then
                 log_error "路径 '$manual_path' 不存在或不可访问！"
@@ -42311,7 +42309,7 @@ manage_backup_files() {
 
             read -r -e -p "$(echo -e "请选择路径 (${gl_bufan}1-${#unique_paths[@]}${gl_bai}, ${gl_huang}0${gl_bai}返回): ")" path_choice
 
-            [ "$path_choice" == "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$path_choice" == "0" ] && continue
 
             if ! [[ "$path_choice" =~ ^[0-9]+$ ]] || [[ "$path_choice" -lt 1 ]] || [[ "$path_choice" -gt ${#unique_paths[@]} ]]; then
                 log_error "无效的选择！"
@@ -44982,7 +44980,7 @@ show_compose_commands_menu() {
             else
                 read -r -e -p "$(echo -e "${gl_bai}请输入要放行的端口号 (${gl_huang}0${gl_bai}返回): ")" port
             fi
-            [ "$port" == "0" ] && { cancel_return "上一级选单"; continue; }
+            [ "$port" == "0" ] && continue
             if [[ $port =~ ^[0-9]+$ && $port -ge 1 && $port -le 65535 ]]; then
                 iptables -A INPUT -p tcp --dport "$port" -j ACCEPT
                 echo -e ""
@@ -45191,7 +45189,7 @@ show_compose_commands_menu() {
                 4) new_policy="unless-stopped" ;;
                 5)
                     read -r -e -p "$(echo -e "${gl_bai}请输入自定义策略${gl_huang}on-failure:3${gl_bai}(${gl_huang}0${gl_bai}返回): ")" new_policy
-                    [ "$new_policy" == "0" ] && { cancel_return "上一级选单"; continue; }
+                    [ "$new_policy" == "0" ] && continue
                     ;;
                 0) cancel_return; continue ;;
                 00|000|0000) exit_script; return 0 ;;
@@ -45670,8 +45668,8 @@ install_docker_compose() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         read -r -e -p "$(echo -e "${gl_bai}是否先清理旧版本? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm_clean
-        [ "$confirm_clean" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$confirm_clean" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$confirm_clean" = "0" ] && return 1
+        [ -z "$confirm_clean" ] && return 1
         if [[ "$confirm_clean" =~ ^[Yy]$ ]]; then
             log_info "正在清理旧版本 Docker Compose ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             local files_to_remove=(
@@ -45752,8 +45750,8 @@ install_docker_compose() {
 
             read -r -e -p "$(echo -e "${gl_bai}文件可能不是正确的二进制文件，是否继续安装? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" continue_install
 
-            [ "$continue_install" = "0" ] && { cancel_return "上一级选单"; return 1; }
-            [ -z "$continue_install" ] && { cancel_empty "上一级选单"; return 1; }
+            [ "$continue_install" = "0" ] && return 1
+            [ -z "$continue_install" ] && return 1
 
             if [[ ! "$continue_install" =~ ^[Yy]$ ]]; then
                 log_info "安装已取消"
@@ -45897,7 +45895,7 @@ uninstall_docker_compose() {
     echo ""
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确认要卸载 Docker Compose 吗? (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm_uninstall
-    [ "$confirm_uninstall" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$confirm_uninstall" = "0" ] && return 1
 
     if [[ ! "$confirm_uninstall" =~ ^[Yy]$ ]]; then
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -47308,7 +47306,7 @@ EOF
             read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: ${gl_lv}$latest_backup_name${gl_bai})(${gl_huang}0${gl_bai}返回): ")" BACKUP_DIR
 
             [[ -z "$BACKUP_DIR" ]] && { cancel_empty "上一级选单"; return; }
-            [[ "$BACKUP_DIR" == "0" ]] && { cancel_return "上一级选单"; return; }
+            [[ "$BACKUP_DIR" == "0" ]] && return 1
 
             if [[ -z "$BACKUP_DIR" ]]; then
                 BACKUP_DIR="$latest_backup"
@@ -47525,7 +47523,7 @@ EOF
             read -r -e -p "$(echo -e "${gl_bai}请输入备份目录路径 (回车使用最新备份: ${gl_lv}$latest_backup_name${gl_bai})(${gl_huang}0${gl_bai}返回): ")" BACKUP_DIR
 
             [[ -z "$BACKUP_DIR" ]] && { cancel_empty "上一级选单"; return; }
-            [[ "$BACKUP_DIR" == "0" ]] && { cancel_return "上一级选单"; return; }
+            [[ "$BACKUP_DIR" == "0" ]] && return 1
 
             if [[ -z "$BACKUP_DIR" ]]; then
                 BACKUP_DIR="$latest_backup"
@@ -51409,8 +51407,8 @@ docker_network_manager() {
                 echo -e "${gl_zi}>>> 创建网络${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "设置新网络名: " dockernetwork
-                [ "$dockernetwork" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$dockernetwork" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$dockernetwork" = "0" ] && continue
+                [ -z "$dockernetwork" ] && continue
 
                 docker network create "$dockernetwork"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -51421,12 +51419,12 @@ docker_network_manager() {
                 echo -e "${gl_zi}>>> 加入网络${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "加入网络名: " dockernetwork
-                [ "$dockernetwork" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$dockernetwork" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$dockernetwork" = "0" ] && continue
+                [ -z "$dockernetwork" ] && continue
 
                 read -r -e -p "那些容器加入该网络（多个容器名请用空格分隔）: " dockernames
-                [ "$dockernames" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$dockernames" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$dockernames" = "0" ] && continue
+                [ -z "$dockernames" ] && continue
 
                 for dockername in $dockernames; do
                     docker network connect "$dockernetwork" "$dockername"
@@ -51439,12 +51437,12 @@ docker_network_manager() {
                 echo -e "${gl_zi}>>> 退出网络${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "退出网络名: " dockernetwork
-                [ "$dockernetwork" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$dockernetwork" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$dockernetwork" = "0" ] && continue
+                [ -z "$dockernetwork" ] && continue
 
                 read -r -e -p "那些容器退出该网络（多个容器名请用空格分隔）: " dockernames
-                [ "$dockernames" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$dockernames" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$dockernames" = "0" ] && continue
+                [ -z "$dockernames" ] && continue
                 for dockername in $dockernames; do
                     docker network disconnect "$dockernetwork" "$dockername"
                 done
@@ -51456,8 +51454,8 @@ docker_network_manager() {
                 echo -e "${gl_zi}>>> 删除网络${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "请输入要删除的网络名: " dockernetwork
-                [ "$dockernetwork" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$dockernetwork" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$dockernetwork" = "0" ] && continue
+                [ -z "$dockernetwork" ] && continue
 
                 docker network rm "$dockernetwork"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -51498,8 +51496,8 @@ docker_volume_manager() {
                 echo -e "${gl_zi}>>> 创建新卷${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "设置新卷名: " dockerjuan
-                [ "$dockerjuan" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$dockerjuan" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$dockerjuan" = "0" ] && continue
+                [ -z "$dockerjuan" ] && continue
                 docker volume create "$dockerjuan"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 break_end
@@ -51509,8 +51507,8 @@ docker_volume_manager() {
                 echo -e "${gl_zi}>>> 删除指定卷${gl_bai}"
                 echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
                 read -r -e -p "输入删除卷名（多个卷名请用空格分隔）: " dockerjuans
-                [ "$dockerjuans" = "0" ] && { cancel_return "上一级选单"; continue; }
-                [ -z "$dockerjuans" ] && { cancel_empty "上一级选单"; continue; }
+                [ "$dockerjuans" = "0" ] && continue
+                [ -z "$dockerjuans" ] && continue
                 for dockerjuan in $dockerjuans; do
                     docker volume rm "$dockerjuan"
                 done
@@ -51681,7 +51679,7 @@ uninstall_docker_environment() {
     echo -e ""
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定卸载docker环境吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
-    [ "$choice" = "0" ] && { cancel_return "上一级选单"; return 1; }
+    [ "$choice" = "0" ] && return 1
     case "$choice" in
         [Yy])
             clear
@@ -53574,8 +53572,8 @@ check_ssl_certificate_expiry() {
     echo -e "${gl_zi}>>> 查看证书过期时间 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}输入证书路径 (如：/etc/nginx/keyfile/xxx.pem) (${gl_huang}0${gl_bai}返回): ")" certificate
-    [[ -z "$certificate" ]] && { cancel_empty "上一级选单"; return 1; }
-    [[ "$certificate" == "0" ]] && { cancel_return "Nginx 管理"; return 1; }
+    [[ -z "$certificate" ]] && return 1
+    [[ "$certificate" == "0" ]] && return 1
     cert_check "$certificate"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -53607,8 +53605,8 @@ search_config_files() {
     echo -e "${gl_zi}>>> 搜索配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入关键字 (${gl_huang}0${gl_bai}返回): ")" keyword
-    [ "$keyword" ] && { cancel_return "上一级选单"; return 1; }
-    [ -z "$keyword" ] && { cancel_empty "上一级选单"; return 1; }
+    [ "$keyword" ] && return 1
+    [ -z "$keyword" ] && return 1
     find /etc/nginx -type f -iname '*.conf' \
         -exec grep -iHn --color=always "${keyword}" {} +
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -56620,8 +56618,8 @@ interactive_delete() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入序号 (多选用空格分隔) (${gl_huang}0 ${gl_bai}返回, ${gl_hong}c${gl_bai} 清空目录): ")" -e raw
 
-        [ -z "$raw" ] && { cancel_empty "上一级选单"; return 1; }
-        [ "$raw" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ -z "$raw" ] && return 1
+        [ "$raw" = "0" ] && return 1
 
         if [[ $raw == "c" || $raw == "C" ]]; then
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -57559,8 +57557,8 @@ docker_image_pack() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -erp "$(echo -e "${gl_bai}请输入打包的镜像名称和版本（格式 ${gl_lv}nginx:tag${gl_bai})(${gl_huang}0${gl_bai}返回）：") " IMG
 
-        [ "$IMG" = "0" ] && { cancel_return "上一级选单"; return 1; }
-        [ -z "$IMG" ] && { cancel_empty "上一级选单"; return 1; }
+        [ "$IMG" = "0" ] && return 1
+        [ -z "$IMG" ] && return 1
 
         docker image inspect "$IMG" &>/dev/null && break || echo -e "${gl_hong}镜像 '$IMG' 不存在！${gl_bai}"
     done
@@ -58731,7 +58729,7 @@ wukongdaily_backup_system() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "$(echo -e "${gl_bai}请输入备份目录(${gl_huang}0${gl_bai}返回): ")" user_input
 
-        [ "$user_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$user_input" = "0" ] && return 1
 
         if [ -z "$user_input" ]; then
             backup_path="$DEFAULT_BACKUP_DIR"
@@ -58858,7 +58856,7 @@ wukongdaily_restore_system() {
 
                 read -r -e -p "$(echo -e "${gl_bai}请输入备份文件路径(${gl_huang}0${gl_bai}返回): ")" file_path
 
-                [ "$file_path" = "0" ] && { cancel_return "上一级选单"; return 1; }
+                [ "$file_path" = "0" ] && return 1
 
                 if [ -z "$file_path" ]; then
                     file_path="$DEFAULT_RESTORE_FILE"
@@ -58894,7 +58892,7 @@ wukongdaily_restore_system() {
                 while true; do
                     read -r -e -p "$(echo -e "${gl_bai}请输入备份文件序号(${gl_huang}1-${#restore_list[@]}${gl_bai})或路径(${gl_huang}0${gl_bai}返回): ")" user_input
 
-                    [ "$user_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+                    [ "$user_input" = "0" ] && return 1
 
                     if [ -z "$user_input" ]; then
                         log_error "请输入序号或路径"
@@ -58934,7 +58932,7 @@ wukongdaily_restore_system() {
 
             read -r -e -p "$(echo -e "${gl_bai}请输入备份文件路径(${gl_huang}0${gl_bai}返回): ")" file_path
 
-            [ "$file_path" = "0" ] && { cancel_return "上一级选单"; return 1; }
+            [ "$file_path" = "0" ] && return 1
 
             if [ -z "$file_path" ]; then
                 file_path="$DEFAULT_RESTORE_FILE"
@@ -59043,7 +59041,7 @@ wukongdaily_manage_backup_files() {
     else
         read -r -e -p "$(echo -e "${gl_bai}请输入备份目录(${gl_bai}默认: ${gl_lv}${DEFAULT_BACKUP_DIR}${gl_bai}/${gl_huang}0${gl_bai}返回): ")" user_input
 
-        [ "$user_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$user_input" = "0" ] && return 1
 
         if [ -z "$user_input" ]; then
             backup_dir="$DEFAULT_BACKUP_DIR"
@@ -59209,7 +59207,7 @@ wukongdaily_restore_from_url() {
 
         read -r -e -p "$(echo -e "${gl_bai}请输入备份文件URL或路径(${gl_huang}0${gl_bai}返回): ")" backup_url
 
-        [ "$backup_url" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$backup_url" = "0" ] && return 1
 
         if [ -z "$backup_url" ]; then
             log_error "未输入URL或路径"
@@ -59425,7 +59423,7 @@ istoreos_backup_system() {
 
         read -r -e -p "$(echo -e "${gl_bai}请输入备份目录(${gl_huang}0${gl_bai}返回): ")" user_input
 
-        [ "$user_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$user_input" = "0" ] && return 1
 
         if [ -z "$user_input" ]; then
             backup_path="$DEFAULT_BACKUP_DIR"
@@ -59599,7 +59597,7 @@ istoreos_restore_system() {
 
                 read -r -e -p "$(echo -e "${gl_bai}请输入备份文件路径(${gl_huang}0${gl_bai}返回): ")" file_path
 
-                [ "$file_path" = "0" ] && { cancel_return "上一级选单"; return 1; }
+                [ "$file_path" = "0" ] && return 1
 
                 if [ -z "$file_path" ]; then
                     file_path="$DEFAULT_RESTORE_FILE"
@@ -59635,7 +59633,7 @@ istoreos_restore_system() {
                 while true; do
                     read -r -e -p "$(echo -e "${gl_bai}请输入备份文件序号(${gl_huang}1-${#restore_list[@]}${gl_bai})或路径(${gl_huang}0${gl_bai}返回): ")" user_input
 
-                    [ "$user_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+                    [ "$user_input" = "0" ] && return 1
 
                     if [ -z "$user_input" ]; then
                         log_error "请输入序号或路径"
@@ -59676,7 +59674,7 @@ istoreos_restore_system() {
 
             read -r -e -p "$(echo -e "${gl_bai}请输入备份文件路径(${gl_huang}0${gl_bai}返回): ")" file_path
 
-            [ "$file_path" = "0" ] && { cancel_return "上一级选单"; return 1; }
+            [ "$file_path" = "0" ] && return 1
 
             if [ -z "$file_path" ]; then
                 file_path="$DEFAULT_RESTORE_FILE"
@@ -59827,7 +59825,7 @@ istoreos_manage_backup_files() {
     else
         read -r -e -p "$(echo -e "${gl_bai}请输入备份目录(${gl_bai}默认: ${gl_lv}${DEFAULT_BACKUP_DIR}${gl_bai}/${gl_huang}0${gl_bai}返回): ")" user_input
 
-        [ "$user_input" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$user_input" = "0" ] && return 1
 
         if [ -z "$user_input" ]; then
             backup_dir="$DEFAULT_BACKUP_DIR"
@@ -60035,7 +60033,7 @@ istoreos_restore_from_url() {
 
         read -r -e -p "$(echo -e "${gl_bai}请输入备份文件URL或路径(${gl_huang}0${gl_bai}返回): ")" backup_url
 
-        [ "$backup_url" = "0" ] && { cancel_return "上一级选单"; return 1; }
+        [ "$backup_url" = "0" ] && return 1
 
         if [ -z "$backup_url" ]; then
             log_error "未输入URL或路径"
