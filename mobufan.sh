@@ -44773,7 +44773,7 @@ show_inner_url() {
 
     local ip
     ip=$(hostname -I | awk '{print $1}')
-    echo -e "${gl_bufan}服务访问链接：${gl_lv}http://${ip}:${port}${gl_bai}"
+    echo -e "${gl_bai}服务访问链接：${gl_lv}http://${ip}:${port}${gl_bai}"
 }
 
 # 函数：显示Compose命令菜单
