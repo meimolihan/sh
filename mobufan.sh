@@ -40417,7 +40417,7 @@ mobufan_update() {
             if [[ -n "$key" ]]; then
                 echo -e "${gl_huang}已跳过倒计时${gl_bai}"
             fi
-            echo -e "${gl_bai}正在启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+            echo -ne "${gl_bai}正在启动新版本脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
             bash ~/mobufan.sh
             exit
