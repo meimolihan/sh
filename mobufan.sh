@@ -60735,7 +60735,6 @@ mobufan_sh() {
         echo -e "${gl_bufan}14. ${gl_bai}Git 管理"
         echo -e "${gl_bufan}15. ${gl_bai}常用工具"
         echo -e "${gl_bufan}16. ${gl_bai}后台工作"
-        echo -e "${gl_bufan}18. ${gl_bai}个人项目"
         echo -e "${gl_bufan}————————————————————————${gl_bai}"
         echo -e "${gl_lv}00. ${gl_bai}脚本更新"
         echo -e "${gl_hong}0.  ${gl_bai}退出脚本"
@@ -60759,7 +60758,6 @@ mobufan_sh() {
         14) linux_git_menu ;;               # Git 管理
         15) temp_dir_menu "" "主菜单" ;;     # 常用工具
         16) linux_work ;;                   # 后台工作
-        18) bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/ppm_tool.sh) ;;                   # 个人项目
         00) mobufan_update ;;               # 更新脚本
         0)  exit_script ;;
         *)  handle_invalid_input ;;
