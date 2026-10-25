@@ -37352,9 +37352,12 @@ disk_dd_test() {
     local count="500"
 
     if [[ $# -eq 0 ]]; then
-        test_dir=$(safe_read "输入测速目录" "" "string" "$(pwd)") || return 1
+        if ! safe_read "输入测速目录" test_dir dir "$(pwd)"; then
+            return 1
+        fi
     else
         test_dir="$1"
+        test_dir="${test_dir/#\~/$HOME}"
     fi
 
     local test_file="${test_dir}/.speed_test_tmp.dat"
