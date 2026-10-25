@@ -37316,6 +37316,112 @@ linux_cpu_particulars() {
     break_end
 }
 
+parse_speed_mbps() {
+    local out="$1"
+    local token
+    token=$(printf '%s\n' "${out}" | grep -Eo '[0-9]+([.,][0-9]+)?[[:space:]]*([kKmMgGtTpP]i?)?B/s' | tail -n 1)
+    if [[ -z "${token}" ]]; then
+        token=$(printf '%s\n' "${out}" | grep -Eo '[0-9]+([.,][0-9]+)?[[:space:]]*bytes/sec' | tail -n 1)
+    fi
+    [[ -z "${token}" ]] && return 1
+    printf '%s\n' "${token}" | awk '{
+        gsub(",", ".", $1)
+        value = $1 + 0
+        unit = $2
+        sub("/s$", "", unit)
+        sub("/sec$", "", unit)
+        if (unit == "B" || unit == "bytes") mult = 0.000001
+        else if (unit == "kB") mult = 0.001
+        else if (unit == "MB") mult = 1
+        else if (unit == "GB") mult = 1000
+        else if (unit == "TB") mult = 1000000
+        else if (unit == "PB") mult = 1000000000
+        else if (unit == "KiB") mult = 1024 / 1000000
+        else if (unit == "MiB") mult = 1048576 / 1000000
+        else if (unit == "GiB") mult = 1073741824 / 1000000
+        else if (unit == "TiB") mult = 1099511627776 / 1000000
+        else if (unit == "PiB") mult = 1125899906842624 / 1000000
+        else mult = 1
+        printf "%.1f\n", value * mult
+    }'
+}
+
+disk_dd_test() {
+    local test_dir
+    local bs="1M"
+    local count="500"
+
+    if [[ $# -eq 0 ]]; then
+        test_dir=$(safe_read "输入测速目录" "" "string" "$(pwd)") || return 1
+    else
+        test_dir="$1"
+    fi
+
+    local test_file="${test_dir}/.speed_test_tmp.dat"
+    local write_speed=""
+    local read_speed=""
+
+    [[ -d "${test_dir}" ]] || { log_error "目录不存在：${test_dir}"; return 1; }
+    [[ -w "${test_dir}" ]] || { log_error "目录无写入权限：${test_dir}"; return 1; }
+
+    cleanup_tmp() {
+        rm -f "${test_file}"
+    }
+    trap cleanup_tmp EXIT SIGINT SIGTERM
+
+    clear
+    echo -e ""
+    echo -e "${gl_zi}>>> 磁盘读写测速${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    log_info "测速目录地址: ${gl_huang}${test_dir}${gl_bai}"
+    log_info "测试文件大小: ${gl_huang}${count}MiB${gl_bai}, 块大小=${gl_huang}${bs}${gl_bai}, 优先启用直接IO"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+    echo -e "${gl_lv}▶ ${gl_bai}正在执行${gl_lv}写入${gl_bai}测速 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    local dd_out
+    dd_out=$(dd if=/dev/zero of="${test_file}" bs=${bs} count=${count} oflag=direct 2>&1)
+    local wr_ret=$?
+    echo "${dd_out}"
+
+    if [[ ${wr_ret} -ne 0 ]]; then
+        log_warn "直接IO写入失败，关闭直接IO重试（受系统缓存影响，结果仅供参考）"
+        dd_out=$(dd if=/dev/zero of="${test_file}" bs=${bs} count=${count} 2>&1)
+        echo "${dd_out}"
+    fi
+    write_speed=$(parse_speed_mbps "${dd_out}")
+
+    echo -e ""
+    echo -e "${gl_lv}▶ ${gl_bai}正在执行${gl_lv}读取${gl_bai}测速 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    dd_out=$(dd if="${test_file}" of=/dev/null bs=${bs} iflag=direct 2>&1)
+    local rd_ret=$?
+    echo "${dd_out}"
+
+    if [[ ${rd_ret} -ne 0 ]]; then
+        log_warn "直接IO读取失败，关闭直接IO重试（受系统缓存影响，结果仅供参考）"
+        dd_out=$(dd if="${test_file}" of=/dev/null bs=${bs} count=${count} 2>&1)
+        echo "${dd_out}"
+    fi
+    read_speed=$(parse_speed_mbps "${dd_out}")
+
+    cleanup_tmp
+    trap - EXIT SIGINT SIGTERM
+
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    echo -e "${gl_huang}测速汇总：${gl_bai}"
+    if [[ -n "${write_speed}" ]]; then
+        echo -e "  ${gl_bai}顺序${gl_lv}写入${gl_bai}速度：${gl_lv}${write_speed} MB/s${gl_bai}"
+    else
+        echo -e "  ${gl_bai}顺序${gl_lv}写入${gl_bai}速度：${gl_hong}获取失败${gl_bai}"
+    fi
+    if [[ -n "${read_speed}" ]]; then
+        echo -e "  ${gl_bai}顺序${gl_lv}读取${gl_bai}速度：${gl_lv}${read_speed} MB/s${gl_bai}"
+    else
+        echo -e "  ${gl_bai}顺序${gl_lv}读取${gl_bai}速度：${gl_hong}获取失败${gl_bai}"
+    fi
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    log_ok "磁盘测速完成"
+}
+
 # 系统工具菜单
 linux_Settings() {
     while true; do
@@ -37364,7 +37470,7 @@ linux_Settings() {
         echo -e "${gl_bufan}67. ${gl_bai}256色终端颜色       ${gl_bufan}68. ${gl_bai}脚本管理工具"
         echo -e "${gl_bufan}69. ${gl_bai}CPU详细信息显示     ${gl_bufan}70. ${gl_bai}PCI设备信息显示"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        echo -e "${gl_bufan}71. ${gl_bai}展示所有系统信息"
+        echo -e "${gl_bufan}71. ${gl_bai}展示所有系统信息    ${gl_bufan}72. ${gl_bai}磁盘测试工具"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         echo -e "${gl_huang}0.  ${gl_bai}返回主菜单          ${gl_hong}00. ${gl_bai}退出脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -37442,6 +37548,7 @@ linux_Settings() {
         69) linux_cpu_particulars ;;            # CPU详细信息显示
         70) linux_pci_particulars ;;            # PCI设备信息显示
         71) list_beautify_all ;;                # 展示所有系统信息
+        72) disk_dd_test ;;                     # 磁盘测速工具
         0) cancel_return "主菜单"; mobufan ;;
         00 | 000 | 0000) exit_script ;;
         *) handle_invalid_input ;;
