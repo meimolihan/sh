@@ -8999,13 +8999,13 @@ temp_dir_menu() {
         read -r -e -p "$(echo -e "${gl_bai}请输入你的选择: ")" choice
 
         case "$choice" in
-        1)  enter_directory "测试项目" ;;                                     # 进入指定目录
+        1)  enter_directory "常用工具" ;;                                     # 进入指定目录
         2)  go_parent_directory ;;                                           # 返回上一级目录
-        3)  cat_view_file_content "测试项目" ;;                               # 预览文件内容
+        3)  cat_view_file_content "常用工具" ;;                               # 预览文件内容
         4)  select_and_display_file_info "." 1 4 ;;                          # 查看文件信息
         5)  preview_file_content ;;                                          # 预览文件工具
         6)  format_and_copy_script ;;                                        # 格式化mobufan脚本
-        7)  linux_file "." "临时目录文件管理" "测试项目" ;;                    # 文件管理工具
+        7)  linux_file "." "临时目录文件管理" "常用工具" ;;                    # 文件管理工具
         8)  download_file ;;                                                 # 文件下载工具
         9)  interactive_delete ;;                                            # 安全删除工具
         10) compress_tool ;;                                                 # 文件压缩/解压
@@ -9014,7 +9014,7 @@ temp_dir_menu() {
         13) manual_file_search_and_process ;;                                # 文件搜索并处理
         14) remove_duplicate_files ;;                                        # 文件去重工具
         15) file_transfer_manager ;;                                         # lrzsz文件传输
-        16) download_and_extract "测试项目" ;;                                # 下载压缩包并解压
+        16) download_and_extract "常用工具" ;;                                # 下载压缩包并解压
         17) git_clone_docker_projects ;;                                     # 克隆Compose项目
         18) enter_compose_dir ;;                                             # Compose工具
         19) clone_custom_repo ;;                                             # Git克隆工具
@@ -9022,13 +9022,13 @@ temp_dir_menu() {
         21) git_safe_pull "$@" ;;                                            # 拉取当前项目更新
         22) push_all_repos "." "日常更新" "HD-Icons hd-Icons" ;;              # 推送当前所有仓库更改
         23) pull_all_repos "." ".排除文件" ;;                                 # 拉取当前所有仓库更新
-        24) linux_script_manager "测试项目" ;;                                # 脚本管理工具
+        24) linux_script_manager "常用工具" ;;                                # 脚本管理工具
         25) tv_rename_ultimate ;;                                            # 电视剧集重命名
         26) manage_backup_files_simple "linux_file" ;;                       # 常用目录管理
-        27) remote_rsync_manager "测试项目" ;;                                # Rsync远程同步工具
-        28) local_rsync_manager "测试项目" ;;                                 # rsync本地同步工具
-        29) linux_disk_manager "测试项目" ;;                                  # 硬盘分区管理工具
-        30) image_converter_main "测试项目" ;;                                # 图片格式转换工具
+        27) remote_rsync_manager "常用工具" ;;                                # Rsync远程同步工具
+        28) local_rsync_manager "常用工具" ;;                                 # rsync本地同步工具
+        29) linux_disk_manager "常用工具" ;;                                  # 硬盘分区管理工具
+        30) image_converter_main "常用工具" ;;                                # 图片格式转换工具
         0)  cancel_return "$menu_name" ; break ;;
         00 | 000 | 0000) exit_script ;;
         *) handle_invalid_input ;;
@@ -53096,7 +53096,7 @@ linux_fnos_menu() {
         26) tv_rename_ultimate ;;                                           # 电视剧集重命名
         27) fnos_enable_bbr ;;                                              # FnOS开启BBR
         28) fnos_disable_bbr ;;                                             # FnOS关闭BBR
-        29) linux_disk_manager "测试项目" ;;                                 # 硬盘分区管理工具
+        29) linux_disk_manager "常用工具" ;;                                 # 硬盘分区管理工具
         30) manage_backup_files_simple "linux_file" ;;                      # 常用目录管理
         66) install_add_docker ;;                                           # 安装更新Docker环境
         99) uninstall_docker_environment ;;                                 # 卸载Docker环境
