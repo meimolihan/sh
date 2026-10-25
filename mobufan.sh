@@ -40325,11 +40325,11 @@ NORMAL_GRAY=$'\033[1;30m'  # 深灰
 RESET=$'\033[0m'
 
     printf '%s\n' \
-"${NORMAL_BLUE}██▄  ▄██${RESET} ${NORMAL_BLUE} ▄█▀▀█▄ ${RESET} ${NORMAL_GRAY}██      ${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}████████${RESET} ${GRAY} ▄█▀▀█▄ ${RESET} ${GRAY}██▄   ██${RESET}    ${BLUE}▄█▀▀▀▀█▄${RESET} ${BLUE}██    ██${RESET}" \
-"${NORMAL_BLUE}██ ██ ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██      ${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}██      ${RESET} ${GRAY}██    ██${RESET} ${GRAY}██▀█▄ ██${RESET}    ${BLUE}██      ${RESET} ${NORMAL_BLUE}██    ██${RESET}" \
-"${NORMAL_BLUE}██    ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██▀▀▀▀█▄${RESET} ${GRAY}██    ██${RESET} ${GRAY}██████  ${RESET} ${GRAY}████████${RESET} ${BLUE}██ ▀█▄██${RESET}    ${NORMAL_BLUE} ▀▀▀██▄▄${RESET} ${NORMAL_BLUE}████████${RESET}" \
-"${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}██    ██${RESET} ${GRAY}██    ██${RESET} ${GRAY}██      ${RESET} ${BLUE}██    ██${RESET} ${BLUE}██   ▀██${RESET}    ${NORMAL_BLUE}      ██${RESET} ${NORMAL_BLUE}██    ██${RESET}" \
-"${NORMAL_GRAY}██    ██${RESET} ${GRAY} ▀█▄▄█▀ ${RESET} ${GRAY}██▄▄▄▄█▀${RESET} ${GRAY} ▀█▄▄█▀ ${RESET} ${BLUE}██      ${RESET} ${BLUE}██    ██${RESET} ${NORMAL_BLUE}██    ██${RESET} ${NORMAL_BLUE}██${RESET} ${NORMAL_BLUE}▀█▄▄▄▄█▀${RESET} ${NORMAL_BLUE}██    ██${RESET}"
+"${NORMAL_BLUE}██▄  ▄██${RESET} ${NORMAL_BLUE} ▄█▀▀█▄ ${RESET} ${NORMAL_GRAY}██▀▀▀█▄ ${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}████████${RESET} ${GRAY} ▄█▀▀█▄ ${RESET} ${GRAY}██▄   ██${RESET}    ${BLUE}▄█▀▀▀▀█▄${RESET} ${BLUE}██    ██${RESET}" \
+"${NORMAL_BLUE}██ ██ ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██   ██ ${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}██      ${RESET} ${GRAY}██    ██${RESET} ${GRAY}██▀█▄ ██${RESET}    ${BLUE}██      ${RESET} ${NORMAL_BLUE}██    ██${RESET}" \
+"${NORMAL_BLUE}██    ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██████  ${RESET} ${GRAY}██    ██${RESET} ${GRAY}██████  ${RESET} ${GRAY}████████${RESET} ${BLUE}██ ▀█▄██${RESET}    ${NORMAL_BLUE} ▀▀▀██▄▄${RESET} ${NORMAL_BLUE}████████${RESET}" \
+"${NORMAL_GRAY}██    ██${RESET} ${NORMAL_GRAY}██    ██${RESET} ${GRAY}██   ██ ${RESET} ${GRAY}██    ██${RESET} ${GRAY}██      ${RESET} ${BLUE}██    ██${RESET} ${BLUE}██   ▀██${RESET}    ${NORMAL_BLUE}      ██${RESET} ${NORMAL_BLUE}██    ██${RESET}" \
+"${NORMAL_GRAY}██    ██${RESET} ${GRAY} ▀█▄▄█▀ ${RESET} ${GRAY}██▄▄▄█▀ ${RESET} ${GRAY} ▀█▄▄█▀ ${RESET} ${BLUE}██      ${RESET} ${BLUE}██    ██${RESET} ${NORMAL_BLUE}██    ██${RESET} ${NORMAL_BLUE}██${RESET} ${NORMAL_BLUE}▀█▄▄▄▄█▀${RESET} ${NORMAL_BLUE}██    ██${RESET}"
 }
 
 mobufan_update() {
