@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.8.3"
+sh_v="1.8.4"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -3237,7 +3237,7 @@ CheckUserAgreement() {
     echo -e "${gl_bufan}欢迎使用 mobufan 脚本工具箱${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_huang}首次使用，请先阅读并同意用户许可协议：${gl_bai}"
-    echo -e "${gl_lv}https://sh.mobufan.eu.org:666/${gl_bai}"
+    echo -e "${gl_lv}https://mobufan-license.vercel.app/license.html${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}是否同意以上条款？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" input
 
