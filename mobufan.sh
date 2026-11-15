@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.8.1"
+sh_v="1.8.2"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -59,6 +59,8 @@ smb_cifs_cred_file() {
     SMB_CRED_FILE=$(mktemp /tmp/cifs_cred.XXXXXX)
     printf 'username=%s\npassword=%s\n' "$SMB_USER" "$SMB_PASS" >"$SMB_CRED_FILE"
     chmod 600 "$SMB_CRED_FILE"
+    # 明文凭据：Ctrl+C / TERM 时也要清理
+    trap 'rm -f "$SMB_CRED_FILE"' INT TERM
 }
 
 # 退出动画函数
@@ -2995,6 +2997,102 @@ mobufan() {
 # GitHub 代理前缀：默认直连；国内服务器如需加速可改为 https://gh.kejilion.pro/
 gh_proxy="https://"
 
+# ===== 安全辅助函数 =====
+# 阻断命令注入：禁止 shell 元字符进入 eval 字符串
+mf_guard_eval_args() {
+    local label="$1" v
+    shift
+    for v in "$@"; do
+        if [[ "$v" == *'$'* || "$v" == *'`'* || "$v" == *';'* || "$v" == *'&'* ||
+              "$v" == *'|'* || "$v" == *'>'* || "$v" == *'<'* || "$v" == *'('* ||
+              "$v" == *')'* || "$v" == *$'\n'* ]]; then
+            log_error "${label} 包含非法字符（可能被用于命令注入），已拒绝执行"
+            return 1
+        fi
+    done
+    return 0
+}
+
+# 安全地给「按变量名传入的数组」赋值（替代 eval "$var=(...)"）
+mf_set_named_array() {
+    local varname="$1"
+    shift
+    [[ "$varname" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || { log_error "非法的数组变量名: $varname"; return 1; }
+    if ((BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3))); then
+        local -n _mf_ref="$varname"
+        _mf_ref=("$@")
+    else
+        # bash < 4.3 无 nameref：变量名已白名单校验，元素已用 %q 转义
+        eval "$varname=($(printf '%q ' "$@"))"
+    fi
+}
+
+# 严格校验 SSH 公钥行格式
+mf_valid_ssh_pubkey() {
+    local line="$1"
+    [[ "$line" =~ ^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)[[:space:]]+[A-Za-z0-9+/=]+([[:space:]].*)?$ ]]
+}
+
+# 不再清空 /etc/ssh/sshd_config.d（会破坏发行版/云厂商配置，可能锁死 SSH）
+# 改为备份 + 写入高序号 drop-in 覆盖，并在重启前用 sshd -t 校验
+mf_harden_sshd() {
+    local mode="${1:-backup-only}" dropin="/etc/ssh/sshd_config.d/99-mobufan.conf"
+    if [[ -d /etc/ssh/sshd_config.d ]]; then
+        cp -r /etc/ssh/sshd_config.d "/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+        if [[ "$mode" == "no-password" ]]; then
+            printf '%s\n' '# mobufan.sh: 显式覆盖 drop-in，避免清空系统配置' \
+                'PasswordAuthentication no' 'PermitRootLogin prohibit-password' \
+                'PubkeyAuthentication yes' >"$dropin"
+            chmod 644 "$dropin"
+        fi
+    fi
+    if command -v sshd >/dev/null 2>&1 && ! sshd -t 2>/dev/null; then
+        log_error "sshd 配置校验失败，已回滚本次 drop-in 改动"
+        [[ "$mode" == "no-password" ]] && rm -f "$dropin"
+        return 1
+    fi
+    return 0
+}
+
+# ===== 远程脚本安全执行器 =====
+# 约束：仅 HTTPS；先落盘到临时文件，校验非空与 bash 语法，再执行；全程不跳过证书校验。
+# 可选强校验：设置环境变量 MF_REMOTE_SHA256 为期望的 sha256 值。
+# 用法: mf_run_remote "<https-url>" [传给远程脚本的参数...]
+mf_run_remote() {
+    local url="${1:-}"
+    shift || true
+    if [[ -z "$url" ]]; then
+        log_error "mf_run_remote: 缺少 URL"
+        return 1
+    fi
+    if [[ "$url" != https://* ]]; then
+        log_error "mf_run_remote: 拒绝非 HTTPS 地址: $url"
+        return 1
+    fi
+    local tmp rc=0
+    tmp=$(mktemp /tmp/mf_remote.XXXXXX) || return 1
+    if ! curl -fsSL --connect-timeout 10 --max-time 180 -o "$tmp" "$url"; then
+        log_error "远程脚本下载失败: $url"
+        rc=1
+    elif [[ ! -s "$tmp" ]]; then
+        log_error "远程脚本内容为空: $url"
+        rc=1
+    elif ! bash -n "$tmp" 2>/dev/null; then
+        log_error "远程脚本语法检查未通过: $url"
+        rc=1
+    elif [[ -n "${MF_REMOTE_SHA256:-}" ]]; then
+        if [[ "$(sha256sum "$tmp" 2>/dev/null | awk '{print $1}')" != "$MF_REMOTE_SHA256" ]]; then
+            log_error "远程脚本 sha256 校验失败: $url"
+            rc=1
+        fi
+    fi
+    if ((rc == 0)); then
+        bash "$tmp" "$@" || rc=$?
+    fi
+    rm -f "$tmp"
+    return "$rc"
+}
+
 # 版本比较：version_ge v1 v2 —— v1 >= v2 时返回 0
 version_ge() {
     [ "$1" = "$2" ] && return 0
@@ -3056,15 +3154,22 @@ deploy_self() {
         fi
     fi
 }
-deploy_self "$0"
+
 
 # 提示用户同意条款
 CheckUserAgreement() {
     local config="$HOME/.mobufan_license"
 
-    [[ -f "$config" && "$(cat "$config")" == "agreed" ]] && return
+    [[ -f "$config" && "$(cat "$config")" == "agreed" ]] && return 0
+    # 非交互环境（cron / ssh 远程执行 / CI）不阻塞，也不替用户写入同意状态
+    if [[ ! -t 0 ]]; then
+        log_warn "非交互环境，跳过用户协议确认（建议交互式运行一次）" >&2
+        return 0
+    fi
 
     clear
+    mobufan_banner
+    echo -e ""
     echo -e "${gl_bufan}欢迎使用 mobufan 脚本工具箱${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_huang}首次使用，请先阅读并同意用户许可协议：${gl_bai}"
@@ -3080,7 +3185,7 @@ CheckUserAgreement() {
         exit 1
     fi
 }
-CheckUserAgreement
+
 
 # 公用函数_检查软件是否安装
 check_and_install() {
@@ -3097,7 +3202,7 @@ check_and_install() {
 
         printf '%b即将自动安装 %s%b\n' "$gl_huang" "$pkg" "$gl_bai"
 
-        if ! install "$pkg"; then
+        if ! mf_pkg_install "$pkg"; then
             failed+=("$pkg")
         fi
     done
@@ -3140,7 +3245,7 @@ show_directory_list() {
         echo -e "${gl_huang}当前目录为空${gl_bai}"
         if [[ "$exit_on_empty" == "true" || "$exit_on_empty" == "1" ]]; then
             if [[ -n "$return_array_var" ]]; then
-                eval "$return_array_var=()"
+                mf_set_named_array "$return_array_var"
             fi
             return 0
         fi
@@ -3149,7 +3254,7 @@ show_directory_list() {
     mapfile -t dir_array < <(printf '%s\n' "${dir_array[@]}" | sort)
 
     if [[ -n "$return_array_var" ]]; then
-        eval "$return_array_var=($(printf '%q ' "${dir_array[@]}"))"
+        mf_set_named_array "$return_array_var" "${dir_array[@]}"
     fi
 
     get_display_width() {
@@ -3181,7 +3286,7 @@ show_directory_list() {
             fi
         done
 
-        echo $width
+        echo "$width"
     }
 
     local max_display_width=0
@@ -3205,7 +3310,7 @@ show_directory_list() {
 
         local padding=$((column_width - current_width))
 
-        printf "${gl_bufan}%s${gl_bai} %s" "$index_str" "${dir_array[i]}"
+        printf '%s%s%s %s' "$gl_bufan" "$index_str" "$gl_bai" "${dir_array[i]}"
 
         for ((s = 0; s < padding; s++)); do
             printf " "
@@ -3304,36 +3409,33 @@ mobufan_sh_update() {
 }
 
 # 智能获取本机IPv4和IPv6地址的网络信息收集函数。
-ip_address() {
-
-get_public_ip() {
-    curl -s https://ipinfo.io/ip && echo
-}
-
-get_local_ip() {
-    ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \K[^ ]+' || \
+# 修复：此处曾重复定义 get_public_ip()，覆盖了文件前部的多服务回退健壮实现。
+mf_get_local_ip() {
+    ip route get 8.8.8.8 2>/dev/null | awk '/src/ {for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}' || \
     hostname -I 2>/dev/null | awk '{print $1}' || \
     ifconfig 2>/dev/null | grep -E 'inet [0-9]' | grep -v '127.0.0.1' | awk '{print $2}' | head -n1
 }
 
-public_ip=$(get_public_ip)
-isp_info=$(curl -s --max-time 3 http://ipinfo.io/org)
+ip_address() {
+    public_ip=$(get_public_ip)
+    isp_info=$(curl -fsS --connect-timeout 3 --max-time 5 https://ipinfo.io/org 2>/dev/null || echo "")
 
+    if echo "$isp_info" | grep -Eiq 'mobile|unicom|telecom'; then
+        ipv4_address=$(mf_get_local_ip)
+    else
+        ipv4_address="$public_ip"
+    fi
 
-if echo "$isp_info" | grep -Eiq 'mobile|unicom|telecom'; then
-    ipv4_address=$(get_local_ip)
-else
-    ipv4_address="$public_ip"
-fi
-
-
-# ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
-ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
-
+    ipv6_address=$(curl -fsS --connect-timeout 2 --max-time 4 https://v6.ipinfo.io/ip 2>/dev/null || echo "")
 }
 
 # 跨Linux发行版的通用软件包安装函数
-install() {
+mf_pkg_install() {
+    # 兼容 GNU coreutils install 的选项式调用，避免把 -m 等选项当成包名
+    if [[ "${1:-}" == -* ]]; then
+        /usr/bin/install "$@"
+        return $?
+    fi
     [[ $# -eq 0 ]] && {
         log_error "未提供软件包参数!"
         return 1
@@ -3364,7 +3466,7 @@ install() {
                     ver=$(opkg list-installed | grep "^${pkg} " | awk '{print $3}' 2>/dev/null || echo "")
                 fi
             elif command -v dpkg-query &>/dev/null; then
-                if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+                if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "mf_pkg_install ok installed"; then
                     installed=true
                     ver=$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || echo "")
                 fi
@@ -3479,7 +3581,7 @@ check_disk_space() {
 
 install_dependency() {
     switch_mirror false false
-    install wget unzip tar jq grep
+    mf_pkg_install wget unzip tar jq grep
     check_swap
     auto_optimize_dns
     prefer_ipv4
@@ -3880,9 +3982,17 @@ safe_rm() {
     fi
 
     pushd "$target_dir" >/dev/null || return 1
+    local mf_abs
+    mf_abs=$(pwd -P)
+    case "$mf_abs" in
+        / | /home | /root | /etc | /usr | /var | /tmp | "$HOME")
+            echo -e "${gl_hong}拒绝在敏感目录执行删除: $mf_abs${gl_bai}"
+            popd >/dev/null || return 1
+            return 1 ;;
+    esac
 
     local file_count
-    file_count=$(ls -A | wc -l)
+    file_count=$(find . -maxdepth 1 -mindepth 1 2>/dev/null | wc -l)
     if [[ $file_count -eq 0 ]]; then
         echo -e "${gl_huang}当前目录 ${gl_lv}$(pwd) ${gl_huang}为空，无需删除${gl_bai}"
         popd >/dev/null || return
@@ -3899,28 +4009,32 @@ safe_rm() {
 
     if [[ "$interactive_mode" == true ]]; then
         echo -e "\n=== 交互式删除模式 ==="
-        for item in * .*; do
-            if [[ "$item" != "." && "$item" != ".." && -e "$item" ]]; then
-                read -r -p "删除 '$item'? [y/N]: " confirm
-                if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    if rm -rf "$item" 2>/dev/null; then
-                        echo -e "${gl_lv}已删除: ${gl_huang}$item${gl_bai}"
-                    else
-                        echo -e "${gl_hong}删除失败: ${gl_huang}$item${gl_bai}"
-                    fi
+        while IFS= read -r -d '' item; do
+            read -r -p "删除 '${item#./}'? [y/N]: " confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                if rm -rf -- "$item" 2>/dev/null; then
+                    echo -e "${gl_lv}已删除: ${gl_huang}${item#./}${gl_bai}"
                 else
-                    echo -e "${gl_huang}跳过: ${gl_lv}$item${gl_bai}"
+                    echo -e "${gl_hong}删除失败: ${gl_huang}${item#./}${gl_bai}"
                 fi
+            else
+                echo -e "${gl_huang}跳过: ${gl_lv}${item#./}${gl_bai}"
             fi
-        done
+        done < <(find . -maxdepth 1 -mindepth 1 -print0 2>/dev/null)
         popd >/dev/null || return
         return 0
     fi
 
     if [[ "$force_mode" == true ]]; then
+        echo -e "${gl_hong}强制删除模式仍需二次确认${gl_bai}"
+        read -r -e -p "确认清空 $(pwd) 全部内容？请输入 DELETE: " mf_force_confirm
+        if [[ "$mf_force_confirm" != "DELETE" ]]; then
+            popd >/dev/null || return 1
+            log_warn "已取消删除"
+            return 1
+        fi
         echo -e "${gl_bai}强制删除模式 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        rm -rf ./*
-        find . -maxdepth 1 -name ".*" ! -name "." ! -name ".." -exec rm -rf {} + 2>/dev/null
+        find . -maxdepth 1 -mindepth 1 -exec rm -rf -- {} + 2>/dev/null
         popd >/dev/null || return
         echo -e "${gl_lv}删除完成${gl_bai}"
         exit_animation
@@ -3935,8 +4049,7 @@ safe_rm() {
     y | yes)
         echo -e ""
         echo -e "正在删除 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        rm -rf ./*
-        find . -maxdepth 1 -name ".*" ! -name "." ! -name ".." -exec rm -rf {} + 2>/dev/null
+        find . -maxdepth 1 -mindepth 1 -exec rm -rf -- {} + 2>/dev/null
         echo -e "${gl_lv}删除完成${gl_bai}"
         ;;
     n | no | "")
@@ -3958,7 +4071,7 @@ safe_rm() {
 rz_download_files_to_local() {
     local target_dir="${1:-.}"
     local show_hidden=0
-    install lrzsz
+    mf_pkg_install lrzsz
 
     echo -e ""
     echo -e "${gl_zi}>>> 下载文件到本地 (sz)${gl_bai}"
@@ -6867,6 +6980,7 @@ tv_rename_ultimate() {
             local -n files_ref=$1
             local -n episode_info_ref=$2
             local -n pattern_types_ref=$3
+            mf_guard_eval_args "视频扩展名" "${VIDEO_EXTS[@]}" || return 1
             local ext_pattern=""
             for ext in "${VIDEO_EXTS[@]}"; do
                 if [ -z "$ext_pattern" ]; then
@@ -7807,7 +7921,7 @@ format_and_copy_script() {
         fi
     fi
 
-    install shfmt lrzsz
+    mf_pkg_install shfmt lrzsz
     clear
     echo -e "${gl_zi}>>> 开始格式化脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -7929,7 +8043,7 @@ format_and_copy_script() {
 
 # 上传文件到服务器
 rz_upload_file() {
-    install lrzsz
+    mf_pkg_install lrzsz
     clear
     if ! list_files "." 0 4; then
         return
@@ -8818,7 +8932,7 @@ rz_create_test_files() {
 # 文件传输管理器 - 支持sz/rz本地与服务器互传
 file_transfer_manager() {
     while true; do
-        install lrzsz bc
+        mf_pkg_install lrzsz bc
         clear
         if [ -z "$(ls -A 2>/dev/null)" ]; then
             echo -e "${gl_huang}>>> 当前目录文件列表：${gl_bai}(${gl_lv}$(pwd)${gl_bai})"
@@ -9418,7 +9532,7 @@ stop_containers_or_kill_process() {
     if [ -n "$containers" ]; then
         docker stop "$containers"
     else
-        install lsof
+        mf_pkg_install lsof
         for pid in $(lsof -t -i:"$port"); do
             kill -9 "$pid"
         done
@@ -9433,7 +9547,7 @@ check_port() {
 install_add_docker_cn() {
 
     local country
-    country=$(curl -s ipinfo.io/country)
+    country=$(curl -fsS --connect-timeout 5 --max-time 10 https://ipinfo.io/country || echo "")
     if [ "$country" = "CN" ]; then
         cat >/etc/docker/daemon.json <<EOF
 {
@@ -9471,14 +9585,14 @@ EOF
 
 install_add_docker_guanfang() {
     local country
-    country=$(curl -s ipinfo.io/country)
+    country=$(curl -fsS --connect-timeout 5 --max-time 10 https://ipinfo.io/country || echo "")
     if [ "$country" = "CN" ]; then
         cd ~ || return
-        curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/install" && chmod +x install
-        sh install --mirror Aliyun
-        rm -f install
+        mf_run_remote "${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/install" --mirror Aliyun
+
+
     else
-        curl -fsSL https://get.docker.com | sh
+        mf_run_remote "https://get.docker.com"
     fi
     install_add_docker_cn
 
@@ -9503,7 +9617,7 @@ install_add_docker() {
         dnf update -y
         dnf install -y yum-utils device-mapper-persistent-data lvm2
         rm -f /etc/yum.repos.d/docker*.repo >/dev/null
-        country=$(curl -s ipinfo.io/country)
+        country=$(curl -fsS --connect-timeout 5 --max-time 10 https://ipinfo.io/country || echo "")
         arch=$(uname -m)
         if [ "$country" = "CN" ]; then
             curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo | tee /etc/yum.repos.d/docker-ce.repo >/dev/null
@@ -9519,7 +9633,7 @@ install_add_docker() {
         apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
         rm -f /usr/share/keyrings/docker-archive-keyring.gpg
         local country
-        country=$(curl -s ipinfo.io/country)
+        country=$(curl -fsS --connect-timeout 5 --max-time 10 https://ipinfo.io/country || echo "")
         local arch
         arch=$(uname -m)
         if [ "$country" = "CN" ]; then
@@ -9554,7 +9668,7 @@ install_add_docker() {
     elif command -v apt &>/dev/null || command -v yum &>/dev/null; then
         install_add_docker_guanfang
     else
-        install docker docker-compose
+        mf_pkg_install docker docker-compose
         install_add_docker_cn
 
     fi
@@ -10987,7 +11101,7 @@ install_crontab() {
 
 docker_ipv6_on() {
     root_use
-    install jq
+    mf_pkg_install jq
     echo ""
     echo -e "${gl_zi}>>> 开启Docker-ipv6访问${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -11030,7 +11144,7 @@ docker_ipv6_on() {
 
 docker_ipv6_off() {
     root_use
-    install jq
+    mf_pkg_install jq
 
     echo ""
     echo -e "${gl_zi}>>> 关闭Docker-ipv6访问${gl_bai}"
@@ -11084,7 +11198,7 @@ save_iptables_rules() {
 }
 
 iptables_open() {
-    install iptables
+    mf_pkg_install iptables
     save_iptables_rules
     iptables -P INPUT ACCEPT
     iptables -P FORWARD ACCEPT
@@ -11105,7 +11219,7 @@ open_port() {
         return 1
     fi
 
-    install iptables
+    mf_pkg_install iptables
 
     for port in "${ports[@]}"; do
         iptables -D INPUT -p tcp --dport "$port" -j DROP 2>/dev/null
@@ -11131,7 +11245,7 @@ close_port() {
         return 1
     fi
 
-    install iptables
+    mf_pkg_install iptables
 
     for port in "${ports[@]}"; do
         iptables -D INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null
@@ -11164,7 +11278,7 @@ allow_ip() {
         return 1
     fi
 
-    install iptables
+    mf_pkg_install iptables
 
     for ip in "${ips[@]}"; do
         iptables -D INPUT -s "$ip" -j DROP 2>/dev/null
@@ -11186,7 +11300,7 @@ block_ip() {
         return 1
     fi
 
-    install iptables
+    mf_pkg_install iptables
 
     for ip in "${ips[@]}"; do
         iptables -D INPUT -s "$ip" -j ACCEPT 2>/dev/null
@@ -11228,7 +11342,7 @@ manage_country_rules() {
     local action="$1"
     shift # 去掉第一个参数，剩下的全是国家代码
 
-    install ipset
+    mf_pkg_install ipset
 
     for country_code in "$@"; do
         local ipset_name="${country_code,,}_block"
@@ -11298,7 +11412,7 @@ manage_country_rules() {
 linux_iptables_panel() {
     local menu_name="${1:-上一级选单}"
     root_use
-    install iptables
+    mf_pkg_install iptables
     save_iptables_rules
     while true; do
         clear
@@ -11478,7 +11592,7 @@ ldnmp_v() {
     local dbrootpasswd
     dbrootpasswd=$(grep -oP 'password=\K.*' /root/.my.cnf 2>/dev/null)
     local mysql_version
-    mysql_version=$(mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -e 'SELECT VERSION();' 2>/dev/null | tail -n 1)
+    mysql_version=$(MYSQL_PWD="$dbrootpasswd" mysql -u root -e 'SELECT VERSION();' 2>/dev/null | tail -n 1)
     echo -n -e "            mysql : ${gl_huang}v$mysql_version${gl_bai}"
 
     local php_version
@@ -11536,7 +11650,7 @@ update_docker_compose_with_db_creds() {
 
 auto_optimize_dns() {
     local country
-    country=$(curl -s ipinfo.io/country)
+    country=$(curl -fsS --connect-timeout 5 --max-time 10 https://ipinfo.io/country || echo "")
 
     if [ "$country" = "CN" ]; then
         local dns1_ipv4="223.5.5.5"
@@ -11678,7 +11792,7 @@ ssl_ps() {
 }
 
 default_server_ssl() {
-    install openssl
+    mf_pkg_install openssl
 
     if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
         openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout /etc/nginx/keyfile/default_server.key -out /etc/nginx/keyfile/default_server.crt -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
@@ -11737,7 +11851,8 @@ add_db() {
     dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
     dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
     dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
-    docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
+    [[ "$dbname" =~ ^[A-Za-z0-9_]+$ && "$dbuse" =~ ^[A-Za-z0-9_]+$ ]] || { log_error "数据库名或用户名含非法字符，已中止"; return 1; }
+    docker exec -e MYSQL_PWD="$dbrootpasswd" mysql mysql -u root -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 }
 
 reverse_proxy() {
@@ -11851,7 +11966,8 @@ web_del() {
         dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
 
         echo "正在删除数据库: $dbname"
-        docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE ${dbname};" >/dev/null 2>&1
+        [[ "$dbname" =~ ^[A-Za-z0-9_]+$ ]] || { log_error "数据库名含非法字符，已跳过"; continue; }
+        docker exec -e MYSQL_PWD="$dbrootpasswd" mysql mysql -u root -e "DROP DATABASE ${dbname};" >/dev/null 2>&1
     done
 
     docker exec nginx nginx -s reload
@@ -12842,7 +12958,7 @@ fail2ban_rules_list() {
 
 # 11. 配置黑名单
 fail2ban_edit_blacklist() {
-    install nano
+    mf_pkg_install nano
     clear
     nano /etc/fail2ban/jail.d/nginx-cc.conf
     echo -e ""
@@ -12951,7 +13067,7 @@ fail2ban_config_manager() {
 
 # 17. 配置白名单
 fail2ban_edit_whitelist() {
-    install nano
+    mf_pkg_install nano
     clear
     nano /etc/fail2ban/jail.d/nginx-cc.conf
     echo -e ""
@@ -13036,7 +13152,7 @@ fail2ban_auto_under_attack() {
     [ -z "$cfzonID" ] && return 1
 
     cd ~ || return
-    install jq bc
+    mf_pkg_install jq bc
     check_crontab_installed
     curl -sS -O "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh"
     chmod +x CF-Under-Attack.sh
@@ -13500,7 +13616,7 @@ done
 check_docker_image_update() {
     local container_name=$1
     local country
-    country=$(curl -s ipinfo.io/country)
+    country=$(curl -fsS --connect-timeout 5 --max-time 10 https://ipinfo.io/country || echo "")
     if [[ "$country" == "CN" ]]; then
         update_status=""
         return
@@ -13551,7 +13667,7 @@ block_container_port() {
         return 1
     fi
 
-    install iptables
+    mf_pkg_install iptables
 
     if ! iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
         iptables -I DOCKER-USER -p tcp -d "$container_ip" -j DROP
@@ -13596,7 +13712,7 @@ clear_container_rules() {
         return 1
     fi
 
-    install iptables
+    mf_pkg_install iptables
 
     if iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
         iptables -D DOCKER-USER -p tcp -d "$container_ip" -j DROP
@@ -13641,7 +13757,7 @@ block_host_port() {
         return 1
     fi
 
-    install iptables
+    mf_pkg_install iptables
 
     if ! iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
         iptables -I INPUT -p tcp --dport "$port" -j DROP
@@ -13686,7 +13802,7 @@ clear_host_port_rules() {
         return 1
     fi
 
-    install iptables
+    mf_pkg_install iptables
 
     if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
         iptables -D INPUT -p tcp --dport "$port" -j DROP
@@ -13793,7 +13909,7 @@ docker_app() {
             local app_port=${app_port:-${docker_port}}
             local docker_port=$app_port
 
-            install jq
+            mf_pkg_install jq
             install_docker
             docker_rum
             echo "$docker_port" >"/home/docker/${docker_name}_port.conf"
@@ -13916,7 +14032,7 @@ docker_app_plus() {
             [ -z "$app_port" ] && continue
             local app_port=${app_port:-${docker_port}}
             local docker_port=$app_port
-            install jq
+            mf_pkg_install jq
             install_docker
             docker_app_install
             echo "$docker_port" >"/home/docker/${docker_name}_port.conf"
@@ -14040,7 +14156,7 @@ check_f2b_status() {
 
 f2b_install_sshd() {
     docker rm -f fail2ban >/dev/null 2>&1
-    install fail2ban
+    mf_pkg_install fail2ban
     systemctl start fail2ban
     enable fail2ban
 
@@ -14509,7 +14625,7 @@ stream_panel() {
             read -r -e -p "请输入你要编辑的服务名: " stream_name
             [ "$stream_name" = "0" ] && continue
             [ -z "$stream_name" ] && continue
-            install nano
+            mf_pkg_install nano
             nano /etc/nginx/stream.d/"$stream_name".conf
             docker restart nginx
             ;;
@@ -14624,7 +14740,7 @@ ldnmp_web_status() {
         if command -v mysql &>/dev/null; then
             local dbrootpasswd
             dbrootpasswd=$(grep -oP 'password=\K.*' /root/.my.cnf 2>/dev/null)
-            db_count=$(mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -e 'SHOW DATABASES;' 2>/dev/null |
+            db_count=$(MYSQL_PWD="$dbrootpasswd" mysql -u root -e 'SHOW DATABASES;' 2>/dev/null |
                 grep -Ev 'Database|information_schema|mysql|performance_schema|sys' | wc -l)
         fi
         local db_output="${gl_lv}${db_count}${gl_bai}"
@@ -14655,7 +14771,7 @@ ldnmp_web_status() {
         echo ""
         echo -e "${gl_bufan}数据库: ${db_output}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -e 'SHOW DATABASES;' 2>/dev/null |
+        MYSQL_PWD="$dbrootpasswd" mysql -u root -e 'SHOW DATABASES;' 2>/dev/null |
             grep -Ev 'Database|information_schema|mysql|performance_schema|sys'
 
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -14685,8 +14801,8 @@ ldnmp_web_status() {
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
-            install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
-            install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
+            /usr/bin/install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
+            /usr/bin/install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
             install_ssltls
             certs_status
             systemctl reload nginx
@@ -14699,23 +14815,23 @@ ldnmp_web_status() {
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
-            install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
-            install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
+            /usr/bin/install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
+            /usr/bin/install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
             certs_status
 
             add_db
             local odd_dbname="${oddyuming//[^A-Za-z0-9]/_}"
             local dbname="${yuming//[^A-Za-z0-9]/_}"
-            mysqldump -u root ${dbrootpasswd:+-p"$dbrootpasswd"} "$odd_dbname" | mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} "$dbname"
+            MYSQL_PWD="$dbrootpasswd" mysqldump -u root "$odd_dbname" | MYSQL_PWD="$dbrootpasswd" mysql -u root "$dbname"
 
             local tables
-            tables=$(mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -D "$dbname" -e 'SHOW TABLES;' 2>/dev/null | awk 'NR>1{print $1}')
+            tables=$(MYSQL_PWD="$dbrootpasswd" mysql -u root -D "$dbname" -e 'SHOW TABLES;' 2>/dev/null | awk 'NR>1{print $1}')
 
             for table in $tables; do
                 local columns
-                columns=$(mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -D "$dbname" -e "SHOW COLUMNS FROM $table;" 2>/dev/null | awk 'NR>1{print $1}')
+                columns=$(MYSQL_PWD="$dbrootpasswd" mysql -u root -D "$dbname" -e "SHOW COLUMNS FROM $table;" 2>/dev/null | awk 'NR>1{print $1}')
                 for column in $columns; do
-                    mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -D "$dbname" \
+                    MYSQL_PWD="$dbrootpasswd" mysql -u root -D "$dbname" \
                         -e "UPDATE $table SET $column = REPLACE($column, '$oddyuming', '$yuming') WHERE $column LIKE '%$oddyuming%';" 2>/dev/null
                 done
             done
@@ -14743,8 +14859,8 @@ ldnmp_web_status() {
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
-            install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
-            install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
+            /usr/bin/install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
+            /usr/bin/install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
 
             cp /etc/nginx/conf.d/"$oddyuming".conf /etc/nginx/conf.d/"$yuming".conf
             sed -i "s|server_name $oddyuming|server_name $yuming|g" /etc/nginx/conf.d/"$yuming".conf
@@ -14768,7 +14884,7 @@ ldnmp_web_status() {
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
 
-            install nano
+            mf_pkg_install nano
             nano /etc/nginx/conf.d/"$yuming".conf
             systemctl reload nginx
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -14786,7 +14902,7 @@ ldnmp_web_status() {
             xdg-open http://localhost/phpmyadmin 2>/dev/null || echo "请手动访问 http://<你的IP>/phpmyadmin"
             ;;
         10)
-            install goaccess
+            mf_pkg_install goaccess
             goaccess /var/log/nginx/access.log --log-format=COMBINED
             ;;
         20)
@@ -14832,7 +14948,7 @@ install_panel() {
         case $choice in
         1)
             check_disk_space 1
-            install wget
+            mf_pkg_install wget
             iptables_open
             panel_app_install
             add_app_id
@@ -15149,7 +15265,7 @@ frps_panel() {
         read -r -e -p "输入你的选择: " choice
         case $choice in
         1)
-            install jq grep ss
+            mf_pkg_install jq grep ss
             install_docker
             generate_frps_config
             add_app_id
@@ -15240,7 +15356,7 @@ frpc_panel() {
         read -r -e -p "输入你的选择: " choice
         case $choice in
         1)
-            install jq grep ss
+            mf_pkg_install jq grep ss
             install_docker
             configure_frpc
 
@@ -15274,7 +15390,7 @@ frpc_panel() {
             delete_forwarding_service
             ;;
         6)
-            install nano
+            mf_pkg_install nano
             nano /home/frp/frpc.toml
             docker restart frpc
             ;;
@@ -15322,7 +15438,7 @@ yt_menu_pro() {
         case $choice in
         1)
             echo -e "正在安装 yt-dlp ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-            install ffmpeg
+            mf_pkg_install ffmpeg
             curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
             chmod a+rx /usr/local/bin/yt-dlp
 
@@ -15359,7 +15475,7 @@ yt_menu_pro() {
             read -r -e -p "$(echo -e "下载完成，按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}")"
             ;;
         6)
-            install nano
+            mf_pkg_install nano
             if [ ! -f "$URL_FILE" ]; then
                 echo -e "# 输入多个视频链接地址\n# https://www.bilibili.com/bangumi/play/ep733316?spm_id_from=333.337.0.0&from_spmid=666.25.episode.0" >"$URL_FILE"
             fi
@@ -15424,7 +15540,7 @@ current_timezone() {
 set_timedate() {
     local shiqu="$1"
     if grep -q 'Alpine' /etc/issue; then
-        install tzdata
+        mf_pkg_install tzdata
         cp /usr/share/zoneinfo/"${shiqu}" /etc/localtime
         hwclock --systohc
     else
@@ -15520,11 +15636,13 @@ linux_clean() {
         log_info "清理包管理器缓存"
         apk cache clean
         log_info "删除系统日志"
-        rm -rf /var/log/*
+        find /var/log -maxdepth 1 -type f \( -name '*.gz' -o -name '*.[0-9]' -o -name '*.old' \) -delete 2>/dev/null || true
+        log_info "已清理轮转日志（保留当前日志文件，避免丢失审计记录）"
         log_info "删除APK缓存"
         rm -rf /var/cache/apk/*
         log_info "删除临时文件"
-        rm -rf /tmp/*
+        find /tmp -maxdepth 1 -mindepth 1 -mtime +7 -exec rm -rf -- {} + 2>/dev/null || true
+        log_info "已清理 7 天前的临时文件"
         log_ok "apk 系统清理完成"
 
     elif command -v pacman &>/dev/null; then
@@ -15548,9 +15666,11 @@ linux_clean() {
     elif command -v opkg &>/dev/null; then
         log_info "使用 opkg 进行系统清理"
         log_info "删除系统日志"
-        rm -rf /var/log/*
+        find /var/log -maxdepth 1 -type f \( -name '*.gz' -o -name '*.[0-9]' -o -name '*.old' \) -delete 2>/dev/null || true
+        log_info "已清理轮转日志（保留当前日志文件，避免丢失审计记录）"
         log_info "删除临时文件"
-        rm -rf /tmp/*
+        find /tmp -maxdepth 1 -mindepth 1 -mtime +7 -exec rm -rf -- {} + 2>/dev/null || true
+        log_info "已清理 7 天前的临时文件"
         log_ok "opkg 系统清理完成"
 
     elif command -v pkg &>/dev/null; then
@@ -15560,9 +15680,11 @@ linux_clean() {
         log_info "清理包管理器缓存"
         pkg clean -y
         log_info "删除系统日志"
-        rm -rf /var/log/*
+        find /var/log -maxdepth 1 -type f \( -name '*.gz' -o -name '*.[0-9]' -o -name '*.old' \) -delete 2>/dev/null || true
+        log_info "已清理轮转日志（保留当前日志文件，避免丢失审计记录）"
         log_info "删除临时文件"
-        rm -rf /tmp/*
+        find /tmp -maxdepth 1 -mindepth 1 -mtime +7 -exec rm -rf -- {} + 2>/dev/null || true
+        log_info "已清理 7 天前的临时文件"
         log_ok "pkg 系统清理完成"
 
     else
@@ -15650,7 +15772,7 @@ linux_set_dns_ui() {
             set_dns
             ;;
         3)
-            install nano
+            mf_pkg_install nano
             chattr -i /etc/resolv.conf
             nano /etc/resolv.conf
             chattr +i /etc/resolv.conf
@@ -15697,7 +15819,7 @@ new_ssh_port() {
 
     correct_ssh_config
     [[ -d /etc/ssh/sshd_config.d ]] && cp -r /etc/ssh/sshd_config.d "/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null
-    rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+    mf_harden_sshd backup-only || return 1
 
     restart_ssh
     open_port "$new_port"
@@ -15727,7 +15849,7 @@ add_sshkey() {
         -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
         -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
     [[ -d /etc/ssh/sshd_config.d ]] && cp -r /etc/ssh/sshd_config.d "/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null
-    rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+    mf_harden_sshd no-password || return 1
     restart_ssh
     echo -e "${gl_lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -15816,6 +15938,17 @@ fetch_remote_ssh_keys() {
         return 1
     fi
 
+    echo -e "${gl_bai}待导入公钥指纹:${gl_bai}"
+    ssh-keygen -lf "${temp_file}" 2>/dev/null || log_warn "无法解析指纹，请确认文件来源可信"
+    if [[ -t 0 ]]; then
+        read -r -p "确认导入以上公钥？(y/N): " mf_confirm
+        [[ "$mf_confirm" =~ ^[Yy]$ ]] || { rm -f "${temp_file}"; log_warn "已取消导入"; return 1; }
+    else
+        log_error "非交互环境禁止从 URL 导入公钥，请改用 m sshkey <公钥内容>"
+        rm -f "${temp_file}"
+        return 1
+    fi
+
     mkdir -p ~/.ssh
     chmod 700 ~/.ssh
     touch "${authorized_keys}"
@@ -15825,6 +15958,15 @@ fetch_remote_ssh_keys() {
         cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
         echo -e "${gl_bai}已备份原有 ${gl_huang}authorized_keys ${gl_bai}文件"
     fi
+
+    while IFS= read -r line; do
+        [[ -z "${line}" || "${line}" =~ ^# ]] && continue
+        if ! mf_valid_ssh_pubkey "$line"; then
+            log_error "远程内容包含非法公钥行，已中止导入（未写入任何内容）"
+            rm -f "${temp_file}"
+            return 1
+        fi
+    done <"${temp_file}"
 
     local added=0
     while IFS= read -r line; do
@@ -15841,13 +15983,8 @@ fetch_remote_ssh_keys() {
     echo ""
     if ((added > 0)); then
         echo "成功添加 ${added} 条新的公钥到 ${authorized_keys}"
-        sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
-            -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
-            -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-            -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-
-        rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
-        restart_ssh
+        log_warn "为安全起见，不再自动修改 sshd_config / 关闭密码登录"
+        log_warn "请确认新公钥可登录后，再手动调整 SSH 认证方式"
     else
         echo "没有新的公钥需要添加（可能已全部存在）"
     fi
@@ -15867,8 +16004,8 @@ import_sshkey() {
         return 1
     fi
 
-    if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
-        echo -e "${gl_hong}错误：看起来不像合法的 SSH 公钥。${gl_bai}"
+    if ! mf_valid_ssh_pubkey "$public_key"; then
+        echo -e "${gl_hong}错误：公钥格式不合法（需为 ssh-rsa/ssh-ed25519/ecdsa-sha2-* 且含 base64 内容）。${gl_bai}"
         exit_animation
         return 1
     fi
@@ -15886,14 +16023,7 @@ import_sshkey() {
     echo "$public_key" >>~/.ssh/authorized_keys
     chmod 600 ~/.ssh/authorized_keys
 
-    sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
-        -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
-        -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-        -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-
-    rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
-    restart_ssh
-    echo -e "${gl_lv}公钥已成功导入，ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
+    echo -e "${gl_lv}公钥已成功导入（未改动 sshd 配置）${gl_bai}"
     break_end
 }
 
@@ -15906,7 +16036,7 @@ linux_add_sshpasswd() {
     passwd root
     sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config
     sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-    rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+    mf_harden_sshd backup-only || return 1
 
     grep -E 'PermitRootLogin|PasswordAuthentication' /etc/ssh/sshd_config |
         while read -r line; do
@@ -15940,19 +16070,19 @@ root_use() {
 
 linux_dd_xitong() {
     dd_xitong_MollyLau() {
-        wget --no-check-certificate -qO InstallNET.sh "${gh_proxy}raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh" && chmod a+x InstallNET.sh
+        wget -q --timeout=15 -O InstallNET.sh "${gh_proxy}raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh" && chmod a+x InstallNET.sh && bash -n InstallNET.sh || return 1
 
     }
 
     dd_xitong_bin456789() {
-        curl -O "${gh_proxy}raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh"
+        curl -fsSL --connect-timeout 10 --max-time 60 -O "${gh_proxy}raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh" && bash -n reinstall.sh || return 1
     }
 
     dd_xitong_1() {
         echo -e "重装后初始用户名: ${gl_huang}root${gl_bai}  初始密码: ${gl_huang}LeitboGi0ro${gl_bai}  初始端口: ${gl_huang}22${gl_bai}"
         echo -e "按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
         read -r -n 1 -s -r -p ""
-        install wget
+        mf_pkg_install wget
         dd_xitong_MollyLau
     }
 
@@ -15960,7 +16090,7 @@ linux_dd_xitong() {
         echo -e "重装后初始用户名: ${gl_huang}Administrator${gl_bai}  初始密码: ${gl_huang}Teddysun.com${gl_bai}  初始端口: ${gl_huang}3389${gl_bai}"
         echo -e "按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
         read -r -n 1 -s -r -p ""
-        install wget
+        mf_pkg_install wget
         dd_xitong_MollyLau
     }
 
@@ -16628,7 +16758,7 @@ update_locale() {
         . /etc/os-release
         case $ID in
         debian | ubuntu | kali)
-            install locales
+            mf_pkg_install locales
             sed -i "s/^\s*#\?\s*${locale_file}/${locale_file}/" /etc/locale.gen
             locale-gen
             echo "LANG=${lang}" >/etc/default/locale
@@ -16639,7 +16769,7 @@ update_locale() {
 
             ;;
         centos | rhel | almalinux | rocky | fedora)
-            install glibc-langpack-zh
+            mf_pkg_install glibc-langpack-zh
             localectl set-locale LANG="${lang}"
             echo "LANG=${lang}" | tee /etc/locale.conf
             echo -e "${gl_lv}系统语言已经修改为: $lang 重新连接SSH生效。${gl_bai}"
@@ -16790,7 +16920,7 @@ linux_trash() {
 
         case $choice in
         1)
-            install trash-cli
+            mf_pkg_install trash-cli
             sed -i '/alias rm/d' "$bashrc_profile"
             echo "alias rm='trash-put'" >>"$bashrc_profile"
             source "$bashrc_profile"
@@ -16832,7 +16962,7 @@ linux_trash() {
 # 命令收藏夹
 linux_fav() {
     clear
-    bash <(curl -l -s "${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh")
+    mf_run_remote "${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh"
 }
 
 # 创建备份
@@ -16877,7 +17007,7 @@ create_backup() {
     done
 
     log_info "正在创建备份 ${gl_bufan}$BACKUP_NAME${gl_bai} ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    install tar
+    mf_pkg_install tar
 
     if tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"; then
         log_ok "备份创建成功: $BACKUP_DIR/$BACKUP_NAME"
@@ -18427,7 +18557,7 @@ add_to_fstab() {
 }
 
 disk_edit_fstab() {
-    install nano
+    mf_pkg_install nano
     root_use
     nano /etc/fstab
 
@@ -19176,20 +19306,20 @@ remote_show_task_details() {
         echo -e "  ${gl_bai}连接测试:${gl_bai}"
         echo -e "  ${gl_bai}正在测试 SSH 连接 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
 
-        local ssh_test_cmd=""
+        local -a mf_ssh_test=()
         if [[ "$auth_method" == "password" ]]; then
             if command -v sshpass &>/dev/null; then
-                ssh_test_cmd="sshpass -p '$password_or_key' ssh -p $port -o StrictHostKeyChecking=no -o ConnectTimeout=5 $remote 'echo connected' 2>&1"
+                mf_ssh_test=(sshpass -p "$password_or_key" ssh -p "$port" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "$remote" "echo connected")
             else
                 echo -e "  ${gl_hong}  - sshpass 未安装，无法测试密码连接${gl_bai}"
             fi
         else
-            ssh_test_cmd="ssh -i '$password_or_key' -p $port -o StrictHostKeyChecking=no -o ConnectTimeout=5 $remote 'echo connected' 2>&1"
+            mf_ssh_test=(ssh -i "$password_or_key" -p "$port" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "$remote" "echo connected")
         fi
 
-        if [[ -n "$ssh_test_cmd" ]]; then
+        if ((${#mf_ssh_test[@]} > 0)); then
             local ssh_output
-            ssh_output=$(eval "$ssh_test_cmd" 2>&1)
+            ssh_output=$("${mf_ssh_test[@]}" 2>&1)
             if echo "$ssh_output" | grep -q "connected"; then
                 echo -e "  ${gl_bai}  - SSH 连接: ${gl_lv}成功${gl_bai}"
             else
@@ -19349,7 +19479,7 @@ remote_run_all_tasks_push() {
 remote_rsync_manager() {
     local menu_name="${1:-上一级选单}"
     CONFIG_FILE="$HOME/.remote_rsync_tasks"
-    install sshpass rsync
+    mf_pkg_install sshpass rsync
     while true; do
         clear
         list_tasks
@@ -19649,7 +19779,7 @@ tools_install_curl() {
     clear
     echo -e "${gl_zi}>>> 安装 curl 中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install curl
+    mf_pkg_install curl
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19666,7 +19796,7 @@ tools_install_wget() {
     clear
     echo -e "${gl_zi}>>> 安装 wget 中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install wget
+    mf_pkg_install wget
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19683,7 +19813,7 @@ tools_install_sudo() {
     clear
     echo -e "${gl_zi}>>> 安装 sudo 中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install sudo
+    mf_pkg_install sudo
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19697,7 +19827,7 @@ tools_install_socat() {
     clear
     echo -e "${gl_zi}>>> 安装 socat通信连接工具 中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install socat
+    mf_pkg_install socat
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19711,7 +19841,7 @@ tools_install_htop() {
     clear
     echo -e "${gl_zi}>>> 安装 htop系统监控工具 中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install htop
+    mf_pkg_install htop
     htop
 }
 
@@ -19720,7 +19850,7 @@ tools_install_iftop() {
     clear
     echo -e "${gl_zi}>>> 安装 iftop网络流量监控工具 中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install iftop
+    mf_pkg_install iftop
     iftop
 }
 
@@ -19729,7 +19859,7 @@ tools_install_unzip() {
     clear
     echo -e "${gl_zi}>>> 安装 unzipZIP压缩解压 中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install unzip
+    mf_pkg_install unzip
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19746,7 +19876,7 @@ tools_install_tar() {
     clear
     echo -e "${gl_zi}>>> 安装 tarGZ压缩解压工具 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install tar
+    mf_pkg_install tar
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19763,7 +19893,7 @@ tools_install_tmux() {
     clear
     echo -e "${gl_zi}>>> 安装 tmux多路后台运行 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install tmux
+    mf_pkg_install tmux
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     tmux --help
@@ -19776,7 +19906,7 @@ tools_install_ffmpeg() {
     clear
     echo -e "${gl_zi}>>> 安装 rsync文件同步工具 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install ffmpeg
+    mf_pkg_install ffmpeg
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     ffmpeg --help
@@ -19789,7 +19919,7 @@ tools_install_btop() {
     clear
     echo -e "${gl_zi}>>> 安装 btop现代化监控 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install btop
+    mf_pkg_install btop
     btop
 }
 
@@ -19798,7 +19928,7 @@ tools_install_ranger() {
     clear
     echo -e "${gl_zi}>>> 安装 ranger文件管理工具 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install ranger
+    mf_pkg_install ranger
     cd /
     clear
     ranger
@@ -19810,7 +19940,7 @@ tools_install_ncdu() {
     clear
     echo -e "${gl_zi}>>> 安装 ncdu磁盘占用查看 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install ncdu
+    mf_pkg_install ncdu
     cd /
     clear
     ncdu
@@ -19822,7 +19952,7 @@ tools_install_fzf() {
     clear
     echo -e "${gl_zi}>>> 安装 fzf全局搜索工具 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install fzf
+    mf_pkg_install fzf
     cd /
     clear
     fzf
@@ -19834,7 +19964,7 @@ tools_install_vim() {
     clear
     echo -e "${gl_zi}>>> 安装 vim文本编辑器 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install vim
+    mf_pkg_install vim
     cd /
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
@@ -19849,7 +19979,7 @@ tools_install_nano() {
     clear
     echo -e "${gl_zi}>>> 安装 nano文本编辑器 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install nano
+    mf_pkg_install nano
     fix_nano_config
     echo ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
@@ -19881,7 +20011,7 @@ tools_install_git() {
     clear
     echo -e "${gl_zi}>>> 安装 git版本控制系统 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install "git"
+    mf_pkg_install "git"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -19891,7 +20021,7 @@ tools_install_rsync() {
     clear
     echo -e "${gl_zi}>>> 安装 rsync文件同步工具 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install rsync
+    mf_pkg_install rsync
     echo -e ""
     echo -e "${gl_huang}>>> 工具已安装，使用方法如下："
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -19903,7 +20033,7 @@ tools_install_rsync() {
 # 21. 黑客帝国屏保
 tools_install_cmatrix() {
     clear
-    install cmatrix
+    mf_pkg_install cmatrix
     clear
     cmatrix
 }
@@ -19911,7 +20041,7 @@ tools_install_cmatrix() {
 # 22. 跑火车屏保
 tools_install_sl() {
     clear
-    install sl
+    mf_pkg_install sl
     clear
     sl
 }
@@ -19919,7 +20049,7 @@ tools_install_sl() {
 # 23. 俄罗斯方块游戏
 tools_install_bastet() {
     clear
-    install bastet
+    mf_pkg_install bastet
     clear
     bastet
 }
@@ -19927,7 +20057,7 @@ tools_install_bastet() {
 # 24. 贪吃蛇小游戏
 tools_install_nsnake() {
     clear
-    install nsnake
+    mf_pkg_install nsnake
     clear
     nsnake
 }
@@ -19935,7 +20065,7 @@ tools_install_nsnake() {
 # 25. 太空入侵者游戏
 tools_install_ninvaders() {
     clear
-    install ninvaders
+    mf_pkg_install ninvaders
     clear
     ninvaders
 }
@@ -19943,7 +20073,7 @@ tools_install_ninvaders() {
 # 31. 全部安装
 tools_install_all() {
     clear
-    install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
+    mf_pkg_install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
     break_end
 }
 
@@ -19952,7 +20082,7 @@ tools_install_yellow() {
     clear
     echo -e "${gl_zi}>>> 全部安装黄色序号软件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install curl wget sudo unzip tar btop vim nano rsync
+    mf_pkg_install curl wget sudo unzip tar btop vim nano rsync
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -19994,117 +20124,117 @@ tools_install_custom() {
     if [[ "$installname" =~ ^[0-9]+$ ]]; then
         case "$installname" in
         1)
-            install "curl"
+            mf_pkg_install "curl"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         2)
-            install "wget"
+            mf_pkg_install "wget"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         3)
-            install "sudo"
+            mf_pkg_install "sudo"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         4)
-            install "socat"
+            mf_pkg_install "socat"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         5)
-            install "htop"
+            mf_pkg_install "htop"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         6)
-            install "iftop"
+            mf_pkg_install "iftop"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         7)
-            install "unzip"
+            mf_pkg_install "unzip"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         8)
-            install "tar"
+            mf_pkg_install "tar"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         9)
-            install "tmux"
+            mf_pkg_install "tmux"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         10)
-            install "ffmpeg"
+            mf_pkg_install "ffmpeg"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         11)
-            install "btop"
+            mf_pkg_install "btop"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         12)
-            install "ranger"
+            mf_pkg_install "ranger"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         13)
-            install "ncdu"
+            mf_pkg_install "ncdu"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         14)
-            install "fzf"
+            mf_pkg_install "fzf"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         15)
-            install "vim"
+            mf_pkg_install "vim"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         16)
-            install "nano"
+            mf_pkg_install "nano"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         17)
-            install "git"
+            mf_pkg_install "git"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         18)
-            install "rsync"
+            mf_pkg_install "rsync"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         21)
-            install "cmatrix"
+            mf_pkg_install "cmatrix"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         22)
-            install "sl"
+            mf_pkg_install "sl"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         23)
-            install "bastet"
+            mf_pkg_install "bastet"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         24)
-            install "nsnake"
+            mf_pkg_install "nsnake"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
         25)
-            install "ninvaders"
+            mf_pkg_install "ninvaders"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
@@ -20115,7 +20245,7 @@ tools_install_custom() {
             ;;
         esac
     else
-        install "$installname"
+        mf_pkg_install "$installname"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         break_end
     fi
@@ -20344,8 +20474,8 @@ linux_bbr() {
             esac
         done
     else
-        install wget
-        wget --no-check-certificate -O tcpx.sh "${gh_proxy}raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh"
+        mf_pkg_install wget
+        wget -q --timeout=15 -O tcpx.sh "${gh_proxy}raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh" && bash -n tcpx.sh || return 1
         chmod +x tcpx.sh
         ./tcpx.sh
     fi
@@ -20373,7 +20503,7 @@ docker_ssh_migration() {
         [ "$containers" = "0" ] && return 1
         [ -z "$containers" ] && return 1
 
-        install tar jq gzip
+        mf_pkg_install tar jq gzip
         install_docker
 
         local BACKUP_ROOT="/tmp"
@@ -20487,7 +20617,7 @@ docker_ssh_migration() {
             return
         }
 
-        install tar jq gzip
+        mf_pkg_install tar jq gzip
         install_docker
         clear
         echo -e ""
@@ -20544,25 +20674,23 @@ docker_ssh_migration() {
                 return
             }
 
-            PORT_ARGS=""
+            mf_docker_args=(-d --name "$container")
             mapfile -t PORTS < <(jq -r '.[0].HostConfig.PortBindings | to_entries[]? | "\(.value[0].HostPort):\(.key | split("/")[0])"' "$json")
             for p in "${PORTS[@]}"; do
-                [[ -n "$p" ]] && PORT_ARGS="$PORT_ARGS -p $p"
+                [[ -n "$p" ]] && mf_docker_args+=(-p "$p")
             done
 
-            ENV_ARGS=""
             mapfile -t ENVS < <(jq -r '.[0].Config.Env[]' "$json")
             for e in "${ENVS[@]}"; do
-                ENV_ARGS="$ENV_ARGS -e \"$e\""
+                mf_docker_args+=(-e "$e")
             done
 
-            VOL_ARGS=""
             mapfile -t VOLS < <(jq -r '.[0].Mounts[] | "\(.Source):\(.Destination)"' "$json")
             for v in "${VOLS[@]}"; do
                 VOL_SRC=$(echo "$v" | cut -d':' -f1)
                 VOL_DST=$(echo "$v" | cut -d':' -f2)
                 mkdir -p "$VOL_SRC"
-                VOL_ARGS="$VOL_ARGS -v $VOL_SRC:$VOL_DST"
+                mf_docker_args+=(-v "$VOL_SRC:$VOL_DST")
 
                 VOL_FILE="$BACKUP_DIR/${container}_$(basename "$VOL_SRC").tar.gz"
                 if [[ -f "$VOL_FILE" ]]; then
@@ -20576,8 +20704,8 @@ docker_ssh_migration() {
                 docker rm -f "$container"
             fi
 
-            echo "执行还原命令: docker run -d --name \"$container\" $PORT_ARGS $VOL_ARGS $ENV_ARGS \"$IMAGE\""
-            eval "docker run -d --name \"$container\" $PORT_ARGS $VOL_ARGS $ENV_ARGS \"$IMAGE\""
+            echo "执行还原命令: docker run ${mf_docker_args[*]} $IMAGE"
+            docker run "${mf_docker_args[@]}" "$IMAGE"
         done
 
         [[ "$has_container" == false ]] && echo -e "${gl_bufan}未找到普通容器的备份信息${gl_bai}"
@@ -20594,7 +20722,7 @@ docker_ssh_migration() {
     }
 
     migrate_docker() {
-        install jq
+        mf_pkg_install jq
         read -r -e -p "请输入要迁移的备份目录: " BACKUP_DIR
         [[ ! -d "$BACKUP_DIR" ]] && {
             echo -e "${gl_huang}备份目录不存在${gl_bai}"
@@ -20915,12 +21043,12 @@ remove_user_from_docker() {
 # Docker更换源
 install_docker_via_mirrors() {
     clear
-    bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
+    mf_run_remote "https://linuxmirrors.cn/docker.sh"
 }
 
 # 编辑daemon.json文件
 edit_docker_daemon_json() {
-    install nano
+    mf_pkg_install nano
     clear
     mkdir -p /etc/docker && nano /etc/docker/daemon.json
     echo -e ""
@@ -21381,7 +21509,7 @@ ldnmp_tato() {
     if command -v mysql &>/dev/null; then
         local dbrootpasswd
         dbrootpasswd=$(grep -oP 'password=\K.*' /root/.my.cnf 2>/dev/null)
-        db_count=$(mysql -u root ${dbrootpasswd:+-p"$dbrootpasswd"} -e 'SHOW DATABASES;' 2>/dev/null |
+        db_count=$(MYSQL_PWD="$dbrootpasswd" mysql -u root -e 'SHOW DATABASES;' 2>/dev/null |
             grep -Ev 'Database|information_schema|mysql|performance_schema|sys' | wc -l)
     fi
 
@@ -21414,8 +21542,8 @@ docker_install_baota() {
     local panelurl="https://www.bt.cn/new/index.html"
 
     panel_app_install() {
-        if [ -f /usr/bin/curl ]; then curl -sSO https://download.bt.cn/install/install_panel.sh; else wget -O install_panel.sh https://download.bt.cn/install/install_panel.sh; fi
-        bash install_panel.sh ed8484bec
+
+        mf_run_remote "https://download.bt.cn/install/install_panel.sh" ed8484bec
     }
 
     panel_app_manage() {
@@ -21423,9 +21551,9 @@ docker_install_baota() {
     }
 
     panel_app_uninstall() {
-        curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh >/dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh
-        chmod +x bt-uninstall.sh
-        ./bt-uninstall.sh
+        mf_run_remote "https://download.bt.cn/install/bt-uninstall.sh"
+
+
     }
     install_panel
 }
@@ -21438,8 +21566,8 @@ docker_install_aapanel() {
     local panelurl="https://www.aapanel.com/new/index.html"
 
     panel_app_install() {
-        URL=https://www.aapanel.com/script/docker_install_7.0_en.sh && if [ -f /usr/bin/curl ]; then curl -ksSO "$URL"; else wget --no-check-certificate -O docker_install_7.0_en.sh "$URL"; fi
-        bash docker_install_7.0_en.sh aapanel
+
+        mf_run_remote "https://www.aapanel.com/script/docker_install_7.0_en.sh" aapanel
     }
 
     panel_app_manage() {
@@ -21447,9 +21575,9 @@ docker_install_aapanel() {
     }
 
     panel_app_uninstall() {
-        curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh >/dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh
-        chmod +x bt-uninstall.sh
-        ./bt-uninstall.sh
+        mf_run_remote "https://download.bt.cn/install/bt-uninstall.sh"
+
+
     }
     install_panel
 }
@@ -21462,8 +21590,8 @@ docker_install_1panel() {
     local panelurl="https://1panel.cn/"
 
     panel_app_install() {
-        install bash
-        bash -c "$(curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh)"
+        mf_pkg_install bash
+        mf_run_remote "https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh"
     }
 
     panel_app_manage() {
@@ -21605,9 +21733,9 @@ docker_install_nezha() {
         case $choice in
         1)
             check_disk_space 1
-            install unzip jq
+            mf_pkg_install unzip jq
             docker_install_docker
-            curl -sL "${gh_proxy}raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh" -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
+            mf_run_remote "${gh_proxy}raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh"
             local docker_port
             docker_port=$(docker port "$docker_name" | awk -F'[:]' '/->/ {print $NF}' | uniq)
             check_docker_app_ip
@@ -21716,7 +21844,7 @@ docker_install_mailserver() {
             echo -e "按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
             read -r -n 1 -s -r -p ""
 
-            install jq
+            mf_pkg_install jq
             docker_install_docker
 
             docker run \
@@ -21832,7 +21960,7 @@ docker_install_zentao() {
 
     docker_rum() {
         docker run -d -p "${docker_port}":80 \
-            -e ADMINER_USER="root" -e ADMINER_PASSWD="password" \
+            -e ADMINER_USER="root" -e ADMINER_PASSWD="$(openssl rand -hex 12)" \
             -e BIND_ADDRESS="false" \
             -v /home/docker/zentao-server/:/opt/zbox/ \
             --add-host smtp.exmail.qq.com:163.177.90.125 \
@@ -22069,7 +22197,7 @@ docker_install_safeline() {
         1)
             docker_install_docker
             check_disk_space 5
-            bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
+            mf_run_remote "https://waf-ce.chaitin.cn/release/latest/setup.sh"
 
             add_app_id
             clear
@@ -22078,7 +22206,7 @@ docker_install_safeline() {
             docker exec safeline-mgt resetadmin
             ;;
         2)
-            bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
+            mf_run_remote "https://waf-ce.chaitin.cn/release/latest/upgrade.sh"
             docker rmi "$(docker images | grep "safeline" | grep "none" | awk '{print $3}')"
             echo ""
 
@@ -22550,7 +22678,7 @@ docker_install_xiaoya() {
     clear
     docker_install_docker
     check_disk_space 1
-    bash -c "$(curl --insecure -fsSL https://ddsrem.com/xiaoya_install.sh)"
+    mf_run_remote "https://ddsrem.com/xiaoya_install.sh"
 }
 
 # 安装Bililive-go直播录制工具
@@ -22608,8 +22736,8 @@ docker_install_haozi_panel() {
 
     panel_app_install() {
         mkdir -p ~/haozi && cd ~/haozi || return
-        curl -fsLm 10 -o install.sh https://dl.acepanel.net/helper.sh
-        bash install.sh
+        mf_run_remote "https://dl.acepanel.net/helper.sh"
+
         cd ~ || return
     }
 
@@ -22619,7 +22747,7 @@ docker_install_haozi_panel() {
 
     panel_app_uninstall() {
         mkdir -p ~/haozi && cd ~/haozi || return
-        curl -fsLm 10 -o uninstall.sh https://dl.cdn.haozi.net/panel/uninstall.sh && bash uninstall.sh
+        mf_run_remote "https://dl.cdn.haozi.net/panel/uninstall.sh"
         cd ~ || return
     }
     install_panel
@@ -22840,7 +22968,7 @@ docker_install_changedetection() {
 docker_install_pve() {
     clear
     check_disk_space 1
-    curl -L "${gh_proxy}raw.githubusercontent.com/oneclickvirt/pve/main/scripts/docker_install_pve.sh" -o docker_install_pve.sh && chmod +x docker_install_pve.sh && bash docker_install_pve.sh
+    mf_run_remote "${gh_proxy}raw.githubusercontent.com/oneclickvirt/pve/main/scripts/docker_install_pve.sh"
 }
 
 # 安装Dpanel Docker可视化面板
@@ -22892,7 +23020,7 @@ docker_install_amh() {
 
     panel_app_install() {
         cd ~ || return
-        wget https://dl.amh.sh/amh.sh && bash amh.sh
+        mf_run_remote "https://dl.amh.sh/amh.sh"
     }
 
     panel_app_manage() {
@@ -22945,7 +23073,7 @@ docker_install_dify() {
     local app_size="3"
 
     docker_app_install() {
-        install git
+        mf_pkg_install git
         mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env || return
         sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
         docker compose up -d
@@ -22982,7 +23110,7 @@ docker_install_new_api() {
     local app_size="3"
 
     docker_app_install() {
-        install git
+        mf_pkg_install git
         mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/Calcium-Ion/new-api.git && cd new-api || return
         sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
             -e 's/container_name: redis/container_name: redis-new-api/g' \
@@ -23028,7 +23156,7 @@ docker_install_jumpserver() {
     local app_size="2"
 
     docker_app_install() {
-        curl -sSL "${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh" | bash
+        mf_run_remote "${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh"
         clear
         echo "已经安装完成"
         check_docker_app_ip
@@ -23087,7 +23215,7 @@ docker_install_ragflow() {
     local app_size="8"
 
     docker_app_install() {
-        install git
+        mf_pkg_install git
         mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/infiniflow/ragflow.git && cd ragflow/docker || return
         sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
         docker compose up -d
@@ -23484,7 +23612,7 @@ docker_install_pandawiki() {
     local app_size="2"
 
     docker_app_install() {
-        bash -c "$(curl -fsSLk https://release.baizhi.cloud/panda-wiki/manager.sh)"
+        mf_run_remote "https://release.baizhi.cloud/panda-wiki/manager.sh"
     }
 
     docker_app_update() {
@@ -23533,7 +23661,7 @@ docker_install_linkwarden() {
     local app_size="3"
 
     docker_app_install() {
-        install git openssl
+        mf_pkg_install git openssl
         mkdir -p /home/docker/linkwarden && cd /home/docker/linkwarden || return
         curl -O "${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml"
         curl -L "${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample" -o ".env"
@@ -23710,7 +23838,7 @@ docker_install_immich() {
     local app_size="3"
 
     docker_app_install() {
-        install git openssl wget
+        mf_pkg_install git openssl wget
         mkdir -p "/home/docker/${docker_name}" && cd "/home/docker/${docker_name}" || return
         wget -O docker-compose.yml "${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml"
         wget -O .env "${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env"
@@ -24266,7 +24394,7 @@ docker_install_moneyprinterturbo() {
     local app_size="3"
 
     docker_app_install() {
-        install git
+        mf_pkg_install git
         mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/ || return
         sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
         docker compose up -d
@@ -24325,7 +24453,7 @@ docker_install_umami() {
     local app_size="1"
 
     docker_app_install() {
-        install git
+        mf_pkg_install git
         mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/umami-software/umami.git && cd umami || return
         sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/umami/docker-compose.yml
         docker compose up -d
@@ -24444,7 +24572,7 @@ docker_install_langbot() {
     local app_size="1"
 
     docker_app_install() {
-        install git
+        mf_pkg_install git
         mkdir -p /home/docker/ && cd /home/docker/ || return && git clone https://github.com/langbot-app/LangBot && cd LangBot/docker || return
         sed -i "s/5300:5300/${docker_port}:5300/g" /home/docker/LangBot/docker/docker-compose.yaml
         docker compose up -d
@@ -25589,7 +25717,7 @@ linux_ldnmp() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             echo "按任意键继续，可以详细设置站点配置，如伪静态等内容 \c"
             read -n 1 -s -r -p ""
-            install nano
+            mf_pkg_install nano
             nano "/etc/nginx/conf.d/$yuming.conf"
 
             clear
@@ -25611,9 +25739,9 @@ linux_ldnmp() {
                 gunzip "$(ls -t *.gz | head -n 1)"
                 latest_sql=$(ls -t *.sql | head -n 1)
                 dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /etc/nginx/docker-compose.yml | tr -d '[:space:]')
-                docker exec -i mysql mysql -u root -p"$dbrootpasswd" "$dbname" <"/home/$latest_sql"
+                docker exec -e MYSQL_PWD="$dbrootpasswd" -i mysql mysql -u root "$dbname" <"/home/$latest_sql"
                 echo "数据库导入的表数据"
-                docker exec -i mysql mysql -u root -p"$dbrootpasswd" -e "USE $dbname; SHOW TABLES;"
+                docker exec -e MYSQL_PWD="$dbrootpasswd" -i mysql mysql -u root -e "USE $dbname; SHOW TABLES;"
                 rm -f *.sql
                 echo "数据库导入完成"
                 ;;
@@ -25637,7 +25765,7 @@ linux_ldnmp() {
             ;;
 
         21)
-            install nginx
+            mf_pkg_install nginx
             ;;
 
         22)
@@ -25900,7 +26028,7 @@ linux_ldnmp() {
                 ;;
             esac
 
-            install sshpass
+            mf_pkg_install sshpass
 
             ;;
 
@@ -26139,10 +26267,10 @@ _debian_like_zh() {
     echo -e "${gl_zi}>>> 安装中文语言包与字体 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    install locales locales-all fonts-wqy-zenhei fonts-wqy-microhei fonts-noto-cjk
+    mf_pkg_install locales locales-all fonts-wqy-zenhei fonts-wqy-microhei fonts-noto-cjk
 
     log_info "安装apt中文语言包 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-    if install language-pack-zh-hans-base apt-translation-zh-hans 2>/dev/null; then
+    if mf_pkg_install language-pack-zh-hans-base apt-translation-zh-hans 2>/dev/null; then
         log_ok "apt中文语言包安装成功"
     else
         log_warn "未找到特定的apt中文包，将使用通用配置"
@@ -26178,7 +26306,7 @@ _redhat_like_zh() {
     echo -e "${gl_zi}>>> 安装中文语言包与字体 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    install langpacks-zh_CN glibc-langpack-zh \
+    mf_pkg_install langpacks-zh_CN glibc-langpack-zh \
         wqy-zenhei-fonts wqy-microhei-fonts google-noto-sans-cjk-fonts
 
     log_info "设置 locale ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -26200,7 +26328,7 @@ _arch_like_zh() {
     echo -e "${gl_zi}>>> 安装中文语言包与字体 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    install glibc-locales wqy-zenhei wqy-microhei noto-fonts-cjk
+    mf_pkg_install glibc-locales wqy-zenhei wqy-microhei noto-fonts-cjk
 
     log_info "生成 locale ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     sed -i 's/#zh_CN.UTF-8 UTF-8/zh_CN.UTF-8 UTF-8/' /etc/locale.gen
@@ -26222,7 +26350,7 @@ _suse_like_zh() {
     echo -e "${gl_zi}>>> 安装中文语言包与字体 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    install glibc-locale wqy-zenhei-fonts wqy-microhei-fonts noto-sans-cjk-fonts
+    mf_pkg_install glibc-locale wqy-zenhei-fonts wqy-microhei-fonts noto-sans-cjk-fonts
 
     log_info "设置 locale ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     localectl set-locale LANG=zh_CN.UTF-8
@@ -26237,7 +26365,7 @@ _alpine_like_zh() {
     echo -e "${gl_zi}>>> 安装中文语言包与字体 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    install musl-locales musl-locales-lang wqy-zenhei
+    mf_pkg_install musl-locales musl-locales-lang wqy-zenhei
 
     log_info "设置 locale ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     sed -i 's/# zh_CN.UTF-8/zh_CN.UTF-8/' /etc/locale.conf
@@ -26337,7 +26465,7 @@ EOF
 
         if [[ -n "$SUDO_USER" ]] && [[ "$SUDO_USER" != "root" ]]; then
             local user_home
-            user_home=$(eval echo "~$SUDO_USER")
+            user_home=$(awk -F: -v u="$SUDO_USER" '$1==u{print $6; exit}' /etc/passwd 2>/dev/null)
             if [[ -d "$user_home" ]]; then
                 if [[ -f "$user_home/.bash_profile" ]] && grep -q "由set_locales_zh脚本添加" "$user_home/.bash_profile" 2>/dev/null; then
                     log_warn "用户 $SUDO_USER 的 .bash_profile 已配置，跳过"
@@ -26407,7 +26535,7 @@ EOF
 
         if [[ -n "$SUDO_USER" ]] && [[ "$SUDO_USER" != "root" ]]; then
             local user_home
-            user_home=$(eval echo "~$SUDO_USER")
+            user_home=$(awk -F: -v u="$SUDO_USER" '$1==u{print $6; exit}' /etc/passwd 2>/dev/null)
             if [[ -d "$user_home" ]]; then
                 if grep -q "中文环境强制设置（由set_locales_zh脚本添加）" "$user_home/.bashrc" 2>/dev/null; then
                     log_warn "用户 $SUDO_USER 的 .bashrc 已配置中文环境，跳过"
@@ -28661,7 +28789,7 @@ samba_uninstall_menu() {
 
 # 编辑配置文件并可选重启服务
 samba_edit_and_restart() {
-    install nano
+    mf_pkg_install nano
     nano /etc/samba/smb.conf
     echo -e ""
     echo -e "${gl_zi}>>> 重启 Samba 服务${gl_bai}"
@@ -30704,7 +30832,7 @@ linux_sshkey_panel() {
             break_end
             ;;
         5)
-            install nano
+            mf_pkg_install nano
             nano ~/.ssh/authorized_keys
             ;;
         6)
@@ -30743,13 +30871,13 @@ switch_mirror() {
     local clean_cache=${2:-false}
 
     local country
-    country=$(curl -s ipinfo.io/country)
+    country=$(curl -fsS --connect-timeout 5 --max-time 10 https://ipinfo.io/country || echo "")
 
     echo "检测到国家：$country"
 
     if [ "$country" = "CN" ]; then
         echo -e "使用国内镜像源 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+        mf_run_remote "https://linuxmirrors.cn/main.sh" \
             --source mirrors.huaweicloud.com \
             --protocol https \
             --use-intranet-source false \
@@ -30761,7 +30889,7 @@ switch_mirror() {
             --pure-mode
     else
         echo -e "使用官方镜像源 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+        mf_run_remote "https://linuxmirrors.cn/main.sh" \
             --use-official-source true \
             --protocol https \
             --use-intranet-source false \
@@ -30847,13 +30975,13 @@ switch_mirror_menu() {
 
         case $choice in
         1)
-            bash <(curl -sSL https://linuxmirrors.cn/main.sh)
+            mf_run_remote "https://linuxmirrors.cn/main.sh"
             ;;
         2)
-            bash <(curl -sSL https://linuxmirrors.cn/main.sh) --edu
+            mf_run_remote "https://linuxmirrors.cn/main.sh" --edu
             ;;
         3)
-            bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
+            mf_run_remote "https://linuxmirrors.cn/main.sh" --abroad
             ;;
         4)
             echo -e ""
@@ -31139,7 +31267,7 @@ linux_env_menu() {
         local file="$1"
         echo "${gl_bai}>>> 编辑变量文件${gl_huang}$file${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        install nano
+        mf_pkg_install nano
         nano "$file"
     }
 
@@ -31440,7 +31568,7 @@ local_add_task() {
         fi
         ;;
     3)
-        options="$options --exclude='\$RECYCLE.BIN/' --exclude='System Volume Information/' --exclude='Thumbs.db' --exclude='Desktop.ini'"
+        options="$options --exclude='RECYCLE.BIN/' --exclude='System Volume Information/' --exclude='Thumbs.db' --exclude='Desktop.ini'"
         echo -e "${gl_lv}已排除Windows系统目录，解决权限问题${gl_bai}"
         ;;
     4 | "")
@@ -31617,6 +31745,7 @@ local_run_task() {
     local sync_result
     local error_count=0
 
+    mf_guard_eval_args "rsync 参数" "$options" "$source_path" "$target_path" || return 1
     eval rsync $options "$source_path" "$target_path" 2>&1 | tee "$output_file"
     sync_result=${PIPESTATUS[0]}
 
@@ -31705,6 +31834,7 @@ local_run_all_tasks() {
 
         local output_file
         output_file=$(mktemp)
+    mf_guard_eval_args "rsync 参数" "$options" "$source_path" "$target_path" || return 1
         eval rsync $options "$source_path" "$target_path" >"$output_file" 2>&1
         local sync_result=$?
 
@@ -32148,6 +32278,7 @@ local_run_task_reverse() {
     local sync_result
     local error_count=0
 
+    mf_guard_eval_args "rsync 参数" "$options" "$source_path" "$target_path" || return 1
     eval rsync $options "$target_path" "$source_path" 2>&1 | tee "$output_file"
     sync_result=${PIPESTATUS[0]}
 
@@ -32567,7 +32698,7 @@ local_rsync_manager() {
     local_init_globals || return 1
 
     while true; do
-        install sshpass rsync
+        mf_pkg_install sshpass rsync
         clear
         local_list_tasks
         echo ""
@@ -33427,7 +33558,7 @@ create_script_in_opt() {
     echo -e "${gl_zi}>>> 在${gl_huang}/opt/scripts${gl_zi}创建脚本文件并用${gl_lv}nano${gl_zi}打开${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-    install nano
+    mf_pkg_install nano
 
     local target_dir="/opt/scripts"
 
@@ -34033,7 +34164,7 @@ install_1panel() {
     case "$confirm" in
     [yY][eE][sS] | [yY])
         log_info "正在安装 1Panel ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if bash -c "$(curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh)"; then
+        if mf_run_remote "https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh"; then
             log_ok "1Panel 安装完成"
         else
             log_error "安装失败"
@@ -35019,7 +35150,7 @@ dd_backup_restore_tool() {
 image_converter_main() {
     local menu_name="${1:-上一级选单}"
     while true; do
-        install ffmpeg
+        mf_pkg_install ffmpeg
 
         check_directory_empty "." "图片格式转换工具" "true" || return
 
@@ -36013,7 +36144,7 @@ linux_user_management() {
             useradd -m -s /bin/bash "$new_username"
             passwd "$new_username"
             echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
-            install sudo
+            mf_pkg_install sudo
             echo "操作已完成。"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
@@ -36026,7 +36157,7 @@ linux_user_management() {
             [ "$new_username" = "0" ] && continue
             [ -z "$new_username" ] && continue
             echo "$username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
-            install sudo
+            mf_pkg_install sudo
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
@@ -36451,7 +36582,7 @@ linux_ssh_key_distribution() {
 
     host_args="${hosts[*]}"
 
-    bash <(curl -sL https://gitee.com/meimolihan/script/raw/master/sh/ssh/auto_keypush.sh ) $host_args
+    mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/ssh/auto_keypush.sh" $host_args
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -36731,7 +36862,7 @@ linux_python_version_management() {
             return
         fi
 
-        curl https://pyenv.run | bash
+        mf_run_remote "https://pyenv.run"
         cat <<EOF >>~/.bashrc
 
 export PYENV_ROOT="\$HOME/.pyenv"
@@ -36794,7 +36925,7 @@ linux_set_ip_priority() {
             ;;
         3)
             clear
-            bash <(curl -L -s jhb.ovh/jb/v6.sh)
+            mf_run_remote "https://jhb.ovh/jb/v6.sh"
             echo "该功能由jhb大神提供，感谢他！"
             ;;
         0) cancel_return "系统工具"; break ;;
@@ -36883,7 +37014,7 @@ linux_tg_bot_monitor() {
     case "$choice" in
     [Yy])
         cd ~ || return
-        install nano tmux bc jq
+        mf_pkg_install nano tmux bc jq
         check_crontab_installed
         if [ -f ~/TG-check-notify.sh ]; then
             chmod +x ~/TG-check-notify.sh
@@ -36933,7 +37064,7 @@ linux_install_kejilion() {
     echo -e ""
     echo -e "${gl_zi}>>> 安装科技Lion脚本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_lv}bash <(curl -sL kejilion.sh)${gl_bai}"
+    echo -e "${gl_lv}mf_run_remote https://kejilion.sh${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定卸载科技Lion脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
     [ "$choice" = "0" ] && return 1
@@ -36941,7 +37072,7 @@ linux_install_kejilion() {
     case "$choice" in
     [Yy])
         clear
-        bash <(curl -sL kejilion.sh)
+        mf_run_remote "https://kejilion.sh"
         ;;
     [Nn])
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -36989,7 +37120,7 @@ linux_install_mobufan() {
     echo -e ""
     echo -e "${gl_zi}>>> 安装mobufan脚本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_lv}bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)${gl_bai}"
+    echo -e "${gl_lv}m u${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定卸载科技Lion脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
     [ "$choice" = "0" ] && return 1
@@ -36997,7 +37128,13 @@ linux_install_mobufan() {
     case "$choice" in
     [Yy])
         clear
-        bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
+        if install_downloaded_script; then
+            log_ok "更新完成，正在启动新版本"
+            exec bash "$HOME/mobufan.sh"
+        else
+            log_error "更新失败，已保留当前版本"
+            exit 1
+        fi
         ;;
     [Nn])
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -37093,7 +37230,7 @@ linux_set_shortcut() {
 # Linux信息显示脚本函数
 linux_system_info_display() {
     clear
-    bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/install/check.sh)
+    mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/install/check.sh"
     break_end
 }
 
@@ -37172,7 +37309,7 @@ linux_system_optimization() {
         echo -e ""
         echo -e "${gl_zi}>>> 安装基础工具 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        install wget sudo tar unzip socat btop nano vim
+        mf_pkg_install wget sudo tar unzip socat btop nano vim
 
         echo -e ""
         echo -e "${gl_zi}>>> Linux系统内核参数优化 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -37197,7 +37334,7 @@ linux_system_optimization() {
 
 # 256色终端颜色函数
 linux_256_colors() {
-    bash <(curl -sL gitee.com/meimolihan/sh/raw/master/color/256color.sh)
+    mf_run_remote "https://gitee.com/meimolihan/sh/raw/master/color/256color.sh"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e "${gl_hui}灰色示例文本:  Hello World!${gl_bai}"
     echo -e "${gl_hong}红色示例文本:  Hello World!${gl_bai}"
@@ -37213,7 +37350,7 @@ linux_256_colors() {
 
 # 设置BBR3加速函数
 linux_install_bbr3() {
-    bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/bbr/install-bbr.sh)
+    mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/bbr/install-bbr.sh"
 }
 
 # 用户信息生成器
@@ -38899,7 +39036,7 @@ transfer_file_to_remote() {
 
 # 生成目录树
 show_directory_tree() {
-    install tree
+    mf_pkg_install tree
     check_directory_empty "." "生成目录树" "true" || return
     clear
     echo -e "${gl_zi}当前 ${gl_huang}$(pwd)${gl_zi} 目录树${gl_bai}"
@@ -39555,7 +39692,7 @@ batch_extract_all() {
 # 解压文件/目录
 extract_archive() {
     if ! command -v tar &> /dev/null; then
-        install tar
+        mf_pkg_install tar
     fi
     echo -e ""
     echo -e "${gl_zi}>>> 解压文件/目录${gl_bai}"
@@ -39948,7 +40085,7 @@ edit_file_with_nano() {
         return 1
     fi
 
-    install nano
+    mf_pkg_install nano
     nano "$target_file"
 }
 
@@ -40275,7 +40412,7 @@ compress_file_or_directory() {
         return 1
     fi
 
-    install tar
+    mf_pkg_install tar
     tar -czvf "$name.tar.gz" "$name" && echo -e "${gl_lv}已压缩为 ${gl_huang}$name.tar.gz${gl_bai}" || echo -e "${gl_hong}压缩失败${gl_bai}"
 }
 
@@ -40383,12 +40520,12 @@ verify_script_checksum() {
     local remote_sum local_sum
     remote_sum=$(curl -fsSL --connect-timeout 5 -A "Mozilla/5.0" "${url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
     if [[ -z "$remote_sum" ]]; then
-        # log_warn "未获取到官方校验和文件（${url}.sha256），跳过完整性校验"
-        return 0
+        log_error "未获取到官方校验和文件（${url}.sha256），已中止更新"
+        return 1
     fi
     if ! command -v sha256sum >/dev/null 2>&1; then
-        log_warn "系统无 sha256sum 命令，跳过完整性校验"
-        return 0
+        log_error "系统无 sha256sum 命令，无法校验，已中止更新"
+        return 1
     fi
     local_sum=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
     [[ -n "$local_sum" && "$local_sum" == "$remote_sum" ]]
@@ -40397,18 +40534,22 @@ verify_script_checksum() {
 # 下载并安装新版脚本：先下到临时文件，语法和校验都通过后才替换，并保留旧版备份
 install_downloaded_script() {
     local tmp_sh="$HOME/.mobufan_update.sh"
+    local dl_url="${download_url:-https://gitee.com/meimolihan/sh/raw/master/mobufan.sh}"
+    local bk_url="${backup_url:-https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh}"
+    local used_url="$dl_url"
     rm -f "$tmp_sh"
-    if ! curl -fsSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$download_url" 2>/dev/null; then
-        curl -fsSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$backup_url" 2>/dev/null || {
+    if ! curl -fsSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$dl_url" 2>/dev/null; then
+        curl -fsSL --connect-timeout 10 -A "Mozilla/5.0" -o "$tmp_sh" "$bk_url" 2>/dev/null || {
             log_error "下载失败，请检查网络"
             rm -f "$tmp_sh"
             return 1
         }
+        used_url="$bk_url"
     fi
     [[ -s "$tmp_sh" ]] || { log_error "下载文件为空"; rm -f "$tmp_sh"; return 1; }
     bash -n "$tmp_sh" 2>/dev/null || { log_error "下载的文件语法检查未通过，已取消更新"; rm -f "$tmp_sh"; return 1; }
 
-    if ! verify_script_checksum "$tmp_sh" "$download_url"; then
+    if ! verify_script_checksum "$tmp_sh" "$used_url"; then
         log_error "更新文件校验失败，已取消更新"
         rm -f "$tmp_sh"
         return 1
@@ -40544,9 +40685,9 @@ curl -fsSL -A "Mozilla/5.0" --connect-timeout 10 -o "$tmp" "$download_url" || ex
 [ -s "$tmp" ] || exit 1
 bash -n "$tmp" 2>/dev/null || exit 1
 sum=$(curl -fsSL -A "Mozilla/5.0" --connect-timeout 5 "${download_url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
-if [ -n "$sum" ] && command -v sha256sum >/dev/null 2>&1; then
-    [ "$(sha256sum "$tmp" | awk '{print $1}')" = "$sum" ] || exit 1
-fi
+[ -n "$sum" ] || exit 1
+command -v sha256sum >/dev/null 2>&1 || exit 1
+[ "$(sha256sum "$tmp" | awk '{print $1}')" = "$sum" ] || exit 1
 mv -f "$tmp" "$HOME/mobufan.sh" && chmod +x "$HOME/mobufan.sh"
 EOF
             chmod +x "$updater"
@@ -41209,7 +41350,7 @@ menu_edit_vm_conf() {
         if ! is_pve_system; then
             return 1
         fi
-        install nano
+        mf_pkg_install nano
         clear
         echo -e "${gl_huang}>>> 虚拟机列表${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -41248,7 +41389,7 @@ menu_edit_vm_conf() {
 menu_edit_lxc_conf() {
     local CONF_DIR="/etc/pve/lxc"
     while true; do
-        install nano
+        mf_pkg_install nano
         clear
         echo -e "${gl_huang}>>> LXC容器列表${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -43394,7 +43535,7 @@ install_fastpve() {
     echo -e ""
     echo -e "${gl_zi}>>> 正在安装 FastPVE 配置脚本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    bash -c "$(curl -sSL https://fastpve.linkease.com/)"
+    mf_run_remote "https://fastpve.linkease.com/"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -44594,7 +44735,7 @@ linux_pve_menu() {
         echo -e "${gl_bufan}31. ${gl_bai}虚拟机ID和名称修改  ${gl_bufan}32. ${gl_bai}LXC容器ID和名称修改"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
-        echo -e "${gl_huang}0.  ${gl_bai}返回主菜单         ${gl_hong}00. ${gl_bai}退出脚本"
+        echo -e "${gl_huang}0.  ${gl_bai}返回主菜单          ${gl_hong}00. ${gl_bai}退出脚本"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         read -r -e -p "请输入你的选择: " sub_choice
 
@@ -44613,7 +44754,7 @@ linux_pve_menu() {
         12) check_sriov_status || continue ;;                                   # 检查SR-IOV状态
         13) menu_edit_vm_conf ;;                                                # 编辑虚拟机配置
         14) is_pve_system || continue && menu_edit_lxc_conf ;;                  # 编辑LXC容器配置
-        15) is_pve_system || continue && install nano && nano /etc/apt/sources.list ;;                      # 编辑软件源配置
+        15) is_pve_system || continue && mf_pkg_install nano && nano /etc/apt/sources.list ;;                      # 编辑软件源配置
         16) show_storage_info ;;                                                                            # 查看磁盘分配详情
         17) is_pve_system || continue && linux_file "/var/lib/vz/dump" "管理备份目录"  "PVE 管理" ;;          # 管理备份目录
         18) is_pve_system || continue && linux_file "/var/lib/vz/template/iso" "管理固件目录" "PVE 管理" ;;   # 管理固件目录
@@ -44948,7 +45089,7 @@ show_compose_commands_menu() {
             echo
             echo -e "${gl_huang}$current_dir_name${gl_bai}服务列表 & 实时资源占用（Ctrl-C 退出）"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            bash <(curl -sL https://cmdbox.meimolihan.eu.org/sh/docker_occupy_find.sh) "$current_dir_name"
+            mf_run_remote "https://cmdbox.meimolihan.eu.org/sh/docker_occupy_find.sh" "$current_dir_name"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             ;;
         14)
@@ -45619,7 +45760,7 @@ git_status() {
 # 个人Docker镜像加速
 set_mirrors() {
     local mirrors="$1"
-    install jq || return 1
+    mf_pkg_install jq || return 1
 
     local tmp
     tmp=$(mktemp)
@@ -46066,7 +46207,7 @@ docker_mirror_menu() {
             break_end
             ;;
         5)
-            install nano
+            mf_pkg_install nano
             nano /etc/hosts
             break_end
             ;;
@@ -46173,7 +46314,7 @@ docker_mirror_menu() {
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             read -n 1 -s -r -p "$(echo -e "${gl_bai}按任意键执行加速脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c")"
             clear
-            bash <(curl -sL xuanyuan.cloud/docker.sh)
+            mf_run_remote "https://xuanyuan.cloud/docker.sh"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
@@ -46184,7 +46325,7 @@ docker_mirror_menu() {
 
                 if [ "$install_docker" = "y" ] || [ "$install_docker" = "Y" ]; then
                     echo -e "${gl_huang}正在安装 Docker ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-                    if bash <(curl -sL kejilion.sh) docker install; then
+                    if mf_run_remote "https://kejilion.sh" docker install; then
                         echo -e "${gl_lv}Docker 安装成功！${gl_bai}"
                         sleep_fractional 3
                     else
@@ -46382,7 +46523,7 @@ docker_compose_env_tools() {
         echo -e ""
         echo -e "${gl_zi}安装依赖中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        install tar jq gzip sshpass
+        mf_pkg_install tar jq gzip sshpass
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         clear
@@ -46644,7 +46785,7 @@ EOF
         echo -e ""
         echo -e "${gl_zi}安装依赖中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        install tar jq gzip sshpass
+        mf_pkg_install tar jq gzip sshpass
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         clear
@@ -46751,7 +46892,7 @@ EOF
         echo -e ""
         echo -e "${gl_zi}安装依赖中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        install tar jq gzip sshpass
+        mf_pkg_install tar jq gzip sshpass
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         clear
@@ -47043,7 +47184,7 @@ docker_image_backup_tools() {
         echo -e ""
         echo -e "${gl_zi}安装依赖中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        install tar jq gzip sshpass pigz
+        mf_pkg_install tar jq gzip sshpass pigz
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
@@ -47248,7 +47389,7 @@ EOF
         echo -e ""
         echo -e "${gl_zi}安装依赖中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        install tar jq gzip sshpass pigz
+        mf_pkg_install tar jq gzip sshpass pigz
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
@@ -47465,7 +47606,7 @@ EOF
         echo -e ""
         echo -e "${gl_zi}安装依赖中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        install tar jq gzip pigz
+        mf_pkg_install tar jq gzip pigz
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
         if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
@@ -50271,7 +50412,7 @@ compare_pc_directories() {
 
 # 电脑壁纸整理函数
 wallpaper_pc_organizer_ffmpeg() {
-    install ffmpeg
+    mf_pkg_install ffmpeg
 
     local PHOTOS_DIR="/vol1/1000/compose/random-pic-api/photos"       # 待处理目录
     local BACKUP_DIR="/vol2/1000/阿里云盘/教程文件/壁纸原图/电脑原图"    # 壁纸原图目录
@@ -50469,7 +50610,7 @@ wallpaper_pc_organizer_ffmpeg() {
 
 # 手机壁纸整理函数
 wallpaper_phone_organizer_ffmpeg() {
-    install ffmpeg
+    mf_pkg_install ffmpeg
 
     local PHOTOS_DIR="/vol1/1000/compose/random-pic-api/photos"      # 待处理目录
     local BACKUP_DIR="/vol2/1000/阿里云盘/教程文件/壁纸原图/手机原图"                # 壁纸原图目录
@@ -50753,7 +50894,7 @@ wallpaper_pc_organizer_python() {
 
         log_info "正在执行: ${GITEE_SCRIPT_BASE_URL}/${script_name}"
 
-        if bash <(curl -sL "$script_url"); then
+        if mf_run_remote "$script_url"; then
             log_ok "${GITEE_SCRIPT_BASE_URL}/${script_name} 执行完成"
             return 0
         else
@@ -51214,7 +51355,7 @@ random_wallpaper_menu() {
             break
         fi
 
-        install find du bc
+        mf_pkg_install find du bc
         clear
 
         dir1="/vol1/1000/compose/random-pic-api/landscape"
@@ -51701,7 +51842,7 @@ uninstall_docker_environment() {
 fnos_security_tool() {
     is_fnos_system || return 1  # 非FnOS退出
     clear
-    bash <(curl -sL gitee.com/meimolihan/script/raw/master/fnos/fnos_xxck1.sh)
+    mf_run_remote "https://gitee.com/meimolihan/script/raw/master/fnos/fnos_xxck1.sh"
 }
 
 # 下载压缩包并解压
@@ -53029,7 +53170,7 @@ compose_restore_local() {
         fi
     fi
 
-    bash <(curl -sL gitee.com/meimolihan/cmdbox/raw/master/sh/compose_restore_local.sh) "${src_dir}" "${dst_dir}"
+    mf_run_remote "https://gitee.com/meimolihan/cmdbox/raw/master/sh/compose_restore_local.sh" "${src_dir}" "${dst_dir}"
 }
 
 # 函数_FnOS命令
@@ -53644,7 +53785,7 @@ view_cert_expiry() {
 # 安装Nginx
 install_nginx() {
     clear
-    install nginx
+    mf_pkg_install nginx
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e ""
     echo -e "${gl_zi}>>> 下载配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -53775,8 +53916,8 @@ linux_nginx_menu() {
         16) check_ssl_certificate_expiry ;;                                  # 查看证书过期时间
         17) gateway_menu ;;                                                  # 切换网关
         18) extract_nginx_links_simple "/etc/nginx/conf.d" ;;                # 查看所有nginx服务
-        19) bash <(curl -sL https://gitee.com/meimolihan/script/raw/master/sh/nginx/create_nginx_conf.sh) ;;     # 反代网站脚本Web
-        20) bash <(curl -sL https://gitee.com/meimolihan/script/raw/master/sh/nginx/create_nginx_html_conf.sh) ;; # 反代网站脚本HTML
+        19) mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/nginx/create_nginx_conf.sh" ;;     # 反代网站脚本Web
+        20) mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/nginx/create_nginx_html_conf.sh" ;; # 反代网站脚本HTML
         21) linux_ldnmp ;;                                                   # LDNMP建站
         22) view_cert_expiry ;;                                              # 查看所有证书过期时间
         66) install_nginx ;;                                                 # 安装Nginx
@@ -54251,6 +54392,7 @@ push_all_repos() {
         done
     fi
 
+    mf_guard_eval_args "find 参数" "$find_cmd" || return 1
     eval "$find_cmd" | while read -r git_dir; do
         repo_dir=$(dirname "$git_dir")
 
@@ -54750,7 +54892,7 @@ fix_git_safe_directories() {
 configure_gitee_ssh() {
     check_and_install git || return 1
     clear
-    bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/git-ssh/gitee-ssh-init.sh)
+    mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/git-ssh/gitee-ssh-init.sh"
     if [[ -n "$direct_exec" ]]; then
         exit 0
     fi
@@ -54761,7 +54903,7 @@ configure_gitee_ssh() {
 configure_github_ssh() {
     check_and_install git || return 1
     clear
-    bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/git-ssh/github-ssh-init.sh)
+    mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/git-ssh/github-ssh-init.sh"
     if [[ -n "$direct_exec" ]]; then
         exit 0
     fi
@@ -54772,7 +54914,7 @@ configure_github_ssh() {
 init_gitee_new_repo() {
     check_and_install git || return 1
     clear
-    bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/git/gitee_new_godown.sh)
+    mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/git/gitee_new_godown.sh"
     if [[ -n "$direct_exec" ]]; then
         exit 0
     fi
@@ -54783,7 +54925,7 @@ init_gitee_new_repo() {
 init_github_new_repo() {
     check_and_install git || return 1
     clear
-    bash <(curl -sL gitee.com/meimolihan/script/raw/master/sh/git/github_new_godown.sh)
+    mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/git/github_new_godown.sh"
     if [[ -n "$direct_exec" ]]; then
         exit 0
     fi
@@ -55298,7 +55440,7 @@ linux_git_menu() {
         22) git_clean_cache ;;                                            # Git缓存清理工具
         23) func_git_status ;;
         24) func_git_remote ;;
-        66) install git ;;                                                # 安装 Git
+        66) mf_pkg_install git ;;                                                # 安装 Git
         99) remove git ;;                                                 # 卸载 Git
         0) cancel_return "主菜单"; mobufan ;;
         00 | 000 | 0000) exit_script ;;
@@ -55594,7 +55736,9 @@ load_trash_config() {
                     TRASH_CMD=""
                 fi
             else
-                if ! eval "$TRASH_CMD --help" &>/dev/null && ! eval "$TRASH_CMD -h" &>/dev/null; then
+                local -a mf_trash_probe=()
+                read -r -a mf_trash_probe <<< "$TRASH_CMD"
+                if ! "${mf_trash_probe[@]}" --help &>/dev/null && ! "${mf_trash_probe[@]}" -h &>/dev/null; then
                     echo -e "${gl_huang}配置的回收站工具可能不可用，重新检测${gl_bai}"
                     TRASH_CMD=""
                 fi
@@ -55754,12 +55898,14 @@ delete_file_with_trash() {
         echo -e ""
         echo -e "${gl_huang}正在移动到回收站: ${gl_lv}$file${gl_bai}"
 
-        if eval "$TRASH_CMD \"$file\"" 2>/dev/null; then
+        local -a mf_trash_cmd=()
+        read -r -a mf_trash_cmd <<< "$TRASH_CMD"
+        if "${mf_trash_cmd[@]}" "$file" 2>/dev/null; then
             echo -e "${gl_lv}✓ ${gl_bai}已移动到回收站: ${gl_lv}$file${gl_bai}"
             return 0
         else
             local error_msg
-            error_msg=$(eval "$TRASH_CMD \"$file\"" 2>&1)
+            error_msg=$("${mf_trash_cmd[@]}" "$file" 2>&1)
 
             if echo "$error_msg" | grep -q "不支持在系统内部挂载上的丢弃到回收站操作" ||
                 echo "$error_msg" | grep -qi "not supported.*trash" ||
@@ -56956,7 +57102,14 @@ extract_file() {
 
                 for method in "${methods[@]}"; do
                     echo -e "${gl_bai}尝试: ${gl_huang}$method${gl_bai}"
-                    if eval "$method \"$archive_name\" > \"$extracted_file\"" 2>/dev/null; then
+                    local mf_dc_rc=1
+                    case "$method" in
+                        "gzip -dc") gzip -dc -- "$archive_name" > "$extracted_file" 2>/dev/null && mf_dc_rc=0 ;;
+                        "gunzip -c") gunzip -c -- "$archive_name" > "$extracted_file" 2>/dev/null && mf_dc_rc=0 ;;
+                        "zcat") zcat -- "$archive_name" > "$extracted_file" 2>/dev/null && mf_dc_rc=0 ;;
+                        "cat | gzip -d") gzip -dc -- "$archive_name" > "$extracted_file" 2>/dev/null && mf_dc_rc=0 ;;
+                    esac
+                    if [[ $mf_dc_rc -eq 0 ]]; then
                         if [[ -f "$extracted_file" ]] && [[ -s "$extracted_file" ]]; then
                             decompress_success=true
                             echo -e "${gl_lv}✓ $method 解压成功${gl_bai}"
@@ -57472,7 +57625,7 @@ compress_tool() {
             echo -e ""
             echo -e "${gl_zi}安装依赖中 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-            install zip 7zip gzip
+            mf_pkg_install zip 7zip gzip
             clear
             list_dir_colorful 0 2 # 当前目录列表
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -57544,7 +57697,7 @@ compress_tool() {
 
 ### 函数_打包Docker镜像
 docker_image_pack() {
-    set -euo pipefail # 严格错误处理
+    # 不在函数内启用 set -e：该状态会泄漏到全局 shell，导致后续菜单意外退出
     clear
     echo -e "${gl_huang}本地镜像列表：${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -57819,7 +57972,7 @@ download_file() {
 ##### 后台工作
 linux_work() {
     while true; do
-        install tmux
+        mf_pkg_install tmux
         clear
         echo -e "${gl_zi}>>> 后台工作区${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -57854,61 +58007,61 @@ linux_work() {
 
         case $sub_choice in
         1)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work1"
             tmux_run
             ;;
         2)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work2"
             tmux_run
             ;;
         3)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work3"
             tmux_run
             ;;
         4)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work4"
             tmux_run
             ;;
         5)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work5"
             tmux_run
             ;;
         6)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work6"
             tmux_run
             ;;
         7)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work7"
             tmux_run
             ;;
         8)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work8"
             tmux_run
             ;;
         9)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work9"
             tmux_run
             ;;
         10)
-            install tmux
+            mf_pkg_install tmux
             clear
             local SESSION_NAME="work10"
             tmux_run
@@ -57932,7 +58085,7 @@ linux_work() {
 
                 case "$gongzuoqu_del" in
                 1)
-                    install tmux
+                    mf_pkg_install tmux
                     local SESSION_NAME="sshd"
                     grep -q "tmux attach-session -t sshd" ~/.bashrc || echo -e "\n# 自动进入 tmux 会话\nif [[ -z \"\$TMUX\" ]]; then\n    tmux attach-session -t sshd || tmux new-session -s sshd\nfi" >>~/.bashrc
                     source ~/.bashrc
@@ -57952,7 +58105,7 @@ linux_work() {
             tmux_run
             ;;
         23)
-            read -r -e -p "请输入你要后台执行的命令，如:curl -fsSL https://get.docker.com | sh: " tmuxd
+            read -r -e -p "请输入你要后台执行的命令，如:mf_run_remote https://get.docker.com: " tmuxd
             tmux_run_d
             ;;
         24)
@@ -57987,7 +58140,7 @@ istoreos_check_style_installed() {
         log_ok "检测到 luci-app-filetransfer 已安装"
     else
         log_info "未检测到 luci-app-filetransfer，正在恢复一键iStoreOS风格化 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        if wget -O /tmp/restore.sh https://gitee.com/wukongdaily/gl_onescript/raw/master/restore.sh && sh /tmp/restore.sh; then
+        if mf_run_remote "https://gitee.com/wukongdaily/gl_onescript/raw/master/restore.sh"; then
             log_ok "iStoreOS风格化恢复完成"
         else
             log_error "iStoreOS风格化恢复失败"
@@ -58396,7 +58549,7 @@ istoreos_install_custom() {
     fi
 
     opkg update
-    install "$tool_name"
+    mf_pkg_install "$tool_name"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -58425,7 +58578,7 @@ istoreos_install_often() {
     echo -e ""
     echo -e "${gl_zi}>>> 安装常用工具${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    install bash nano rsync curl fdisk vsftpd openssh-sftp-server
+    mf_pkg_install bash nano rsync curl fdisk vsftpd openssh-sftp-server
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     log_ok "常用工具安装完成 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bai}按任意键继续 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai} \c"
@@ -58620,7 +58773,8 @@ istoreos_clean() {
         rm -rf /root/.cache/* 2>/dev/null
         true > /root/.ash_history 2>/dev/null
 
-        rm -rf /var/log/*.gz /var/log.* 2>/dev/null
+        find /var/log -maxdepth 1 -type f \( -name '*.gz' -o -name '*.[0-9]' -o -name '*.old' \) -delete 2>/dev/null || true
+        log_info "已清理轮转日志（保留当前日志文件，避免丢失审计记录）".gz /var/log.* 2>/dev/null
         true > /var/log/syslog 2>/dev/null
         true > /var/log/cloudflared.log 2>/dev/null
 
@@ -60847,13 +61001,16 @@ linux_m_info() {
     break_end
 }
 
-if [ "$#" -eq 0 ]; then
+main() {
+    deploy_self "$0"
+    CheckUserAgreement
+    if [ "$#" -eq 0 ]; then
     mobufan_sh
 else
     case $1 in
     install | add | 安装)
         shift
-        install "$@"
+        mf_pkg_install "$@"
         ;;
     查看安装)
         shift
@@ -60861,7 +61018,13 @@ else
         ;;
     u | up)
         echo -e "${gl_bai}正在强制更新 ${gl_bufan}mobufan.sh${gl_bai} 脚本 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
-        bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)
+        if install_downloaded_script; then
+            log_ok "更新完成，正在启动新版本"
+            exec bash "$HOME/mobufan.sh"
+        else
+            log_error "更新失败，已保留当前版本"
+            exit 1
+        fi
         ;;
     f | file | 文件管理)
         shift
@@ -61129,4 +61292,10 @@ else
         linux_m_info
         ;;
     esac
+fi
+}
+
+# 仅当脚本被直接执行（而非被 source）时才运行主流程，避免加载即改环境
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
 fi
