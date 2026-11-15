@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>用户许可协议 · mobufan 脚本工具箱</title>
+<style>
+:root {
+    --bg-a: #e8f5e9;
+    --bg-b: #c8e6c9;
+    --text: #1b5e20;
+    --text-soft: #33691e;
+    --muted: #4caf50;
+    --card: rgba(255, 255, 255, .88);
+    --border: rgba(76, 175, 80, .24);
+    --accent: #2e7d32;
+    --accent-2: #43a047;
+    --soft: rgba(76, 175, 80, .10);
+    --code-bg: #f1f8e9;
+    --code-text: #274c22;
+    --shadow: 0 8px 32px rgba(27, 94, 32, .12);
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-a: #0b1710;
+        --bg-b: #152c1c;
+        --text: #dcf0e0;
+        --text-soft: #b4d8bb;
+        --muted: #7bc88a;
+        --card: rgba(19, 38, 25, .88);
+        --border: rgba(120, 200, 135, .22);
+        --accent: #66bb6a;
+        --accent-2: #4caf50;
+        --soft: rgba(102, 187, 106, .10);
+        --code-bg: rgba(6, 18, 10, .85);
+        --code-text: #c8e6c9;
+        --shadow: 0 8px 36px rgba(0, 0, 0, .35);
+    }
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--bg-a) 0%, var(--bg-b) 100%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 32px;
+    line-height: 1.75;
+    overflow-x: hidden;
+}
+.wrap { max-width: 880px; margin: 0 auto; }
+
+header { text-align: center; margin-bottom: 26px; }
+.brand {
+    display: inline-block; font-size: .76rem; letter-spacing: .22em; font-weight: 700;
+    color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
+    background: var(--card); padding: 5px 16px; margin-bottom: 16px;
+}
+h1 { font-size: 2.3rem; letter-spacing: .04em; margin-bottom: 6px; }
+.subtitle { font-size: .95rem; color: var(--muted); }
+.meta { margin-top: 12px; font-size: .82rem; color: var(--muted); display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.meta span { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 2px 10px; }
+
+.card {
+    background: var(--card); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: 18px;
+    box-shadow: var(--shadow); padding: 34px 40px 30px;
+}
+.terms h2 {
+    font-size: 1.02rem; margin: 30px 0 10px; color: var(--text);
+    display: flex; align-items: baseline; gap: 10px;
+}
+.terms h2:first-child { margin-top: 0; }
+.terms h2 .num {
+    font-family: Consolas, 'Courier New', monospace; font-size: .8rem;
+    background: var(--accent-2); color: #fff; border-radius: 5px;
+    padding: 1px 8px; flex: none;
+}
+.terms p, .terms li { font-size: .94rem; color: var(--text-soft); line-height: 1.9; }
+.terms p { margin-bottom: 8px; }
+.terms ul { margin: 6px 0 10px 22px; }
+.terms li { margin-bottom: 5px; }
+.terms strong { color: var(--text); }
+.terms code {
+    font-family: Consolas, 'Courier New', monospace; font-size: .87em;
+    background: var(--code-bg); color: var(--code-text);
+    padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border);
+}
+.terms a { color: var(--accent); }
+.notice {
+    margin: 12px 0 10px; padding: 11px 15px;
+    border-left: 3px solid var(--accent-2); background: var(--soft);
+    border-radius: 0 8px 8px 0; font-size: .9rem; color: var(--text-soft);
+}
+.rule { height: 1px; background: var(--border); margin: 28px 0 0; border: 0; }
+.end-mark { text-align: center; color: var(--muted); font-size: .8rem; letter-spacing: .12em; margin-top: 18px; }
+
+footer { text-align: center; margin-top: 22px; font-size: .82rem; color: var(--muted); }
+footer a { color: var(--accent); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+    body { padding: 26px 12px 22px; }
+    h1 { font-size: 1.75rem; }
+    .card { padding: 24px 20px 22px; }
+    .terms p, .terms li { font-size: .9rem; }
+    .terms h2 { font-size: .98rem; margin-top: 26px; }
+}
+@media print {
+    body { background: #fff; color: #000; padding: 0; }
+    .card { border: none; box-shadow: none; background: #fff; padding: 0; }
+    .terms p, .terms li, .terms h2, .terms strong, footer { color: #000; }
+    .terms h2 { break-after: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+    <header>
+        <div class="brand">MOBUFAN / SCRIPT TOOLBOX</div>
+        <h1>用户许可协议</h1>
+        <div class="subtitle">mobufan 脚本工具箱 · 使用前请完整阅读以下条款</div>
+        <div class="meta">
+            <span>版本 v1.8.3</span>
+            <span>更新于 2026-11-15</span>
+            <span>简体中文</span>
+        </div>
+    </header>
+
+    <main class="card">
+        <article class="terms">
+
+            <h2><span class="num">01</span>协议范围与接受方式</h2>
+            <p>本协议适用于 <strong>mobufan 脚本工具箱</strong>（下称「本工具箱」），包括主脚本 <code>mobufan.sh</code>、一键安装脚本，以及仓库内附带的 Nginx、Fail2ban、BBR、Docker Compose、系统工具与媒体文件重命名等配置与脚本。</p>
+            <p>首次运行主脚本时，终端会提示阅读本协议并要求输入 <code>y</code> 或 <code>N</code>：输入 <code>y</code> 即表示你已完整阅读、理解并接受全部条款；输入 <code>N</code> 或直接回车，脚本将退出，你无法继续使用本工具箱。</p>
+
+            <h2><span class="num">02</span>来源与自用性质</h2>
+            <p>本工具箱基于 <a href="https://github.com/kejilion/sh" target="_blank" rel="noopener noreferrer">kejilion.sh</a> 二次开发，仅用于个人学习、研究与自有服务器的管理维护。原项目及其依赖组件的授权归各自权利人所有。</p>
+            <p>本工具箱并非面向生产环境发行的通用软件，作者未承诺持续维护、版本兼容或技术支持。</p>
+
+            <h2><span class="num">03</span>系统级操作与使用风险</h2>
+            <p>本工具箱中的功能会执行系统级变更，包括但不限于：</p>
+            <ul>
+                <li>安装 / 卸载系统软件包、更换 TCP 拥塞控制算法与内核；</li>
+                <li>修改 SSH / sshd 配置、部署 SSL 证书与 Nginx 站点、配置 Fail2ban 封禁规则；</li>
+                <li>创建、停止、删除 Docker 容器与镜像，备份 / 恢复 Compose 配置；</li>
+                <li>磁盘分区、挂载、文件压缩解压与定向删除，以及剧集文件批量重命名。</li>
+            </ul>
+            <p class="notice"><strong>请特别注意：</strong>大量配置与逻辑仅适配作者本人的本地环境（目录结构、服务器 IP、个人偏好等），<strong>未做通用性兼容处理</strong>，不保证在其他设备或系统中正常运行。执行任何操作前请自行备份数据，并先在测试环境验证。</p>
+
+            <h2><span class="num">04</span>免责声明</h2>
+            <p>本工具箱按「现状」提供，不附带任何明示或默示的担保，包括但不限于对适用性、稳定性、安全性与不侵权的保证。因使用或无法使用本工具箱而导致的数据丢失、系统损坏、服务中断、配置错误或业务损失，作者不承担任何责任。</p>
+            <p><strong>若执意使用，请自行承担全部风险。</strong>你应理解所执行的每一条命令，并对自己的服务器与数据负责。</p>
+
+            <h2><span class="num">05</span>网络安全与数据</h2>
+            <p>脚本会从 Gitee、GitHub 及作者自建站点拉取主脚本与更新日志。自 v1.8.2 起，远程脚本统一采用 HTTPS 下载，并在执行前进行 Bash 语法检查与可选的 sha256 校验；已移除明文 HTTP 下载与跳过证书校验的行为。你仍应自行核验下载源的可信度。</p>
+            <p>部分功能会访问第三方服务（如 <code>ipinfo.io</code>）以检测网络地区与公网 IP。脚本不会主动上传你的服务器数据，但涉及 SMB、MySQL 等凭据的功能请自行妥善保管，避免写入明文或共享环境。</p>
+
+            <h2><span class="num">06</span>非交互环境</h2>
+            <p>在 cron、SSH 远程单条命令、CI 等非交互场景下，脚本不会弹出协议确认，也<strong>不会代替你写入同意状态</strong>，仅提示跳过。建议至少以交互方式运行一次，主动完成协议确认。</p>
+
+            <h2><span class="num">07</span>同意状态的记录与撤回</h2>
+            <p>同意状态仅保存在你自己的设备上，以当前用户主目录下的 <code>~/.mobufan_license</code> 文件内容为 <code>agreed</code> 为准。执行脚本自带的卸载功能时，该文件会被一并删除，下次安装运行将重新提示确认。</p>
+            <p>你可以随时删除该文件以撤回同意并重新阅读本协议。</p>
+
+            <h2><span class="num">08</span>协议的更新与解释</h2>
+            <p>本协议条款可能随脚本版本更新而调整，更新后继续使用即视为接受最新版本；历史变更可查阅<a href="https://gitee.com/meimolihan/sh/raw/master/log/mobufan_sh_log.txt" target="_blank" rel="noopener noreferrer">更新日志</a>。</p>
+            <p>如你不同意上述任何条款，请在终端的确认提示处输入 <code>N</code> 退出脚本，不要使用本工具箱。</p>
+
+            <hr class="rule">
+            <div class="end-mark">—— 协议正文结束 · 感谢阅读 ——</div>
+        </article>
+    </main>
+
+    <footer>
+        mobufan 脚本工具箱 v1.8.3 · 基于 <a href="https://github.com/kejilion/sh" target="_blank" rel="noopener noreferrer">kejilion.sh</a> 二次开发 ·
+        <a href="https://gitee.com/meimolihan/sh" target="_blank" rel="noopener noreferrer">项目仓库</a>
+    </footer>
+</div>
+</body>
+</html>

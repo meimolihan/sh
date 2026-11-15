@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.8.2"
+sh_v="1.8.3"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -17,7 +17,6 @@ list_color_init() {
     export gl_ok=$'\033[38;5;46m'
     export gl_reset=$'\033[0m'
 }
-list_color_init
 
 log_info() { echo -e "${gl_lan}[信息]${gl_bai} $*"; }
 log_ok() { echo -e "${gl_lv}[成功]${gl_bai} $*"; }
@@ -59,8 +58,9 @@ smb_cifs_cred_file() {
     SMB_CRED_FILE=$(mktemp /tmp/cifs_cred.XXXXXX)
     printf 'username=%s\npassword=%s\n' "$SMB_USER" "$SMB_PASS" >"$SMB_CRED_FILE"
     chmod 600 "$SMB_CRED_FILE"
-    # 明文凭据：Ctrl+C / TERM 时也要清理
-    trap 'rm -f "$SMB_CRED_FILE"' INT TERM
+    # 明文凭据：中断时清理并立即退出，不要吞掉 Ctrl+C
+    trap 'rm -f "$SMB_CRED_FILE"; exit 130' INT
+    trap 'rm -f "$SMB_CRED_FILE"; exit 143' TERM
 }
 
 # 退出动画函数
@@ -3005,7 +3005,8 @@ mf_guard_eval_args() {
     for v in "$@"; do
         if [[ "$v" == *'$'* || "$v" == *'`'* || "$v" == *';'* || "$v" == *'&'* ||
               "$v" == *'|'* || "$v" == *'>'* || "$v" == *'<'* || "$v" == *'('* ||
-              "$v" == *')'* || "$v" == *$'\n'* ]]; then
+              "$v" == *')'* || "$v" == *'"'* || "$v" == *"'"* || "$v" == *\\* ||
+              "$v" == *'#'* || "$v" == *'!'* || "$v" == *$'\n'* || "$v" == *$'\r'* ]]; then
             log_error "${label} 包含非法字符（可能被用于命令注入），已拒绝执行"
             return 1
         fi
@@ -3030,25 +3031,66 @@ mf_set_named_array() {
 # 严格校验 SSH 公钥行格式
 mf_valid_ssh_pubkey() {
     local line="$1"
+    # 拒绝嵌入换行/回车，避免一次调用写入多条 authorized_keys 记录
+    [[ "$line" != *$'\n'* && "$line" != *$'\r'* ]] || return 1
     [[ "$line" =~ ^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)[[:space:]]+[A-Za-z0-9+/=]+([[:space:]].*)?$ ]]
 }
 
 # 不再清空 /etc/ssh/sshd_config.d（会破坏发行版/云厂商配置，可能锁死 SSH）
 # 改为备份 + 写入高序号 drop-in 覆盖，并在重启前用 sshd -t 校验
+# 模式：
+#   no-password    关闭密码登录（仅公钥）
+#   enable-password 恢复密码登录（显式覆盖之前的 drop-in，避免被锁在门外）
+#   verify-only    只备份并校验现状，不改动任何配置
 mf_harden_sshd() {
-    local mode="${1:-backup-only}" dropin="/etc/ssh/sshd_config.d/99-mobufan.conf"
-    if [[ -d /etc/ssh/sshd_config.d ]]; then
-        cp -r /etc/ssh/sshd_config.d "/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
-        if [[ "$mode" == "no-password" ]]; then
-            printf '%s\n' '# mobufan.sh: 显式覆盖 drop-in，避免清空系统配置' \
-                'PasswordAuthentication no' 'PermitRootLogin prohibit-password' \
-                'PubkeyAuthentication yes' >"$dropin"
-            chmod 644 "$dropin"
-        fi
+    local mode="${1:-verify-only}" conf_dir="/etc/ssh/sshd_config.d"
+    local dropin="$conf_dir/99-mobufan.conf"
+    local backup_dir="/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d)"
+    local prev_content=""
+
+    if [[ -d "$conf_dir" ]]; then
+        # 同一天只备份一次，避免无限累积备份目录
+        [[ -d "$backup_dir" ]] || cp -r "$conf_dir" "$backup_dir" 2>/dev/null || log_warn "sshd 配置目录备份失败"
+        [[ -f "$dropin" ]] && prev_content=$(cat "$dropin" 2>/dev/null)
+        case "$mode" in
+            no-password)
+                printf '%s\n' '# mobufan.sh: 显式覆盖 drop-in，避免清空系统配置' \
+                    'PasswordAuthentication no' 'PermitRootLogin prohibit-password' \
+                    'PubkeyAuthentication yes' >"$dropin" || { log_error "写入 sshd drop-in 失败"; return 1; }
+                chmod 644 "$dropin" 2>/dev/null
+                ;;
+            enable-password)
+                printf '%s\n' '# mobufan.sh: 显式覆盖 drop-in，恢复密码登录' \
+                    'PasswordAuthentication yes' 'PermitRootLogin yes' \
+                    'PubkeyAuthentication yes' >"$dropin" || { log_error "写入 sshd drop-in 失败"; return 1; }
+                chmod 644 "$dropin" 2>/dev/null
+                ;;
+            verify-only)
+                ;;
+            *)
+                log_error "未知的 sshd 加固模式: $mode"
+                return 1
+                ;;
+        esac
+    elif [[ "$mode" != "verify-only" ]]; then
+        log_warn "未找到 $conf_dir，已跳过 drop-in 写入（主配置按原有逻辑处理）"
     fi
-    if command -v sshd >/dev/null 2>&1 && ! sshd -t 2>/dev/null; then
+
+    # verify-only 未改动任何配置，不需要用 sshd -t 校验现状
+    [[ "$mode" == "verify-only" ]] && return 0
+    if ! command -v sshd >/dev/null 2>&1; then
+        log_warn "系统无 sshd 命令，无法用 sshd -t 校验，请在重启 SSH 前自行检查配置"
+        return 0
+    fi
+    if ! sshd -t 2>/dev/null; then
         log_error "sshd 配置校验失败，已回滚本次 drop-in 改动"
-        [[ "$mode" == "no-password" ]] && rm -f "$dropin"
+        if [[ -d "$conf_dir" ]]; then
+            if [[ -n "$prev_content" ]]; then
+                printf '%s\n' "$prev_content" >"$dropin"
+            else
+                rm -f "$dropin"
+            fi
+        fi
         return 1
     fi
     return 0
@@ -3056,7 +3098,25 @@ mf_harden_sshd() {
 
 # ===== 远程脚本安全执行器 =====
 # 约束：仅 HTTPS；先落盘到临时文件，校验非空与 bash 语法，再执行；全程不跳过证书校验。
-# 可选强校验：设置环境变量 MF_REMOTE_SHA256 为期望的 sha256 值。
+# 可选强校验：
+#   MF_REMOTE_SHA256="url=hash;url=hash"   按 URL 指定期望摘要（推荐）
+#   MF_REMOTE_SHA256="<64位hash>" + MF_REMOTE_SHA256_URL="<url>"  兼容单值写法
+# 单值但未指定 URL 时不启用强校验，避免让所有调用一起失败。
+mf_expected_remote_hash() {
+    local url="$1" spec="${MF_REMOTE_SHA256:-}" entry
+    [[ -n "$spec" ]] || return 0
+    if [[ "$spec" == *=* ]]; then
+        local IFS=';'
+        for entry in $spec; do
+            [[ "${entry%%=*}" == "$url" ]] && { printf '%s' "${entry#*=}"; return 0; }
+        done
+        return 0
+    fi
+    if [[ -n "${MF_REMOTE_SHA256_URL:-}" && "${MF_REMOTE_SHA256_URL}" == "$url" ]]; then
+        printf '%s' "$spec"
+    fi
+}
+
 # 用法: mf_run_remote "<https-url>" [传给远程脚本的参数...]
 mf_run_remote() {
     local url="${1:-}"
@@ -3071,7 +3131,7 @@ mf_run_remote() {
     fi
     local tmp rc=0
     tmp=$(mktemp /tmp/mf_remote.XXXXXX) || return 1
-    if ! curl -fsSL --connect-timeout 10 --max-time 180 -o "$tmp" "$url"; then
+    if ! curl -fsSL -A "Mozilla/5.0" --retry 2 --retry-delay 1 --connect-timeout 10 --max-time 180 -o "$tmp" "$url"; then
         log_error "远程脚本下载失败: $url"
         rc=1
     elif [[ ! -s "$tmp" ]]; then
@@ -3080,10 +3140,14 @@ mf_run_remote() {
     elif ! bash -n "$tmp" 2>/dev/null; then
         log_error "远程脚本语法检查未通过: $url"
         rc=1
-    elif [[ -n "${MF_REMOTE_SHA256:-}" ]]; then
-        if [[ "$(sha256sum "$tmp" 2>/dev/null | awk '{print $1}')" != "$MF_REMOTE_SHA256" ]]; then
-            log_error "远程脚本 sha256 校验失败: $url"
-            rc=1
+    else
+        local expected
+        expected=$(mf_expected_remote_hash "$url")
+        if [[ -n "$expected" ]]; then
+            if [[ "$(sha256sum "$tmp" 2>/dev/null | awk '{print $1}')" != "$expected" ]]; then
+                log_error "远程脚本 sha256 校验失败: $url"
+                rc=1
+            fi
         fi
     fi
     if ((rc == 0)); then
@@ -3411,9 +3475,13 @@ mobufan_sh_update() {
 # 智能获取本机IPv4和IPv6地址的网络信息收集函数。
 # 修复：此处曾重复定义 get_public_ip()，覆盖了文件前部的多服务回退健壮实现。
 mf_get_local_ip() {
-    ip route get 8.8.8.8 2>/dev/null | awk '/src/ {for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}' || \
-    hostname -I 2>/dev/null | awk '{print $1}' || \
-    ifconfig 2>/dev/null | grep -E 'inet [0-9]' | grep -v '127.0.0.1' | awk '{print $2}' | head -n1
+    local ip=""
+    ip=$(ip route get 8.8.8.8 2>/dev/null | awk '/src/ {for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')
+    [[ -n "$ip" ]] && { printf '%s\n' "$ip"; return 0; }
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    [[ -n "$ip" ]] && { printf '%s\n' "$ip"; return 0; }
+    ip=$(ifconfig 2>/dev/null | grep -E 'inet [0-9]' | grep -v '127.0.0.1' | awk '{print $2}' | head -n1)
+    [[ -n "$ip" ]] && printf '%s\n' "$ip"
 }
 
 ip_address() {
@@ -3466,7 +3534,7 @@ mf_pkg_install() {
                     ver=$(opkg list-installed | grep "^${pkg} " | awk '{print $3}' 2>/dev/null || echo "")
                 fi
             elif command -v dpkg-query &>/dev/null; then
-                if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "mf_pkg_install ok installed"; then
+                if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
                     installed=true
                     ver=$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || echo "")
                 fi
@@ -3985,7 +4053,7 @@ safe_rm() {
     local mf_abs
     mf_abs=$(pwd -P)
     case "$mf_abs" in
-        / | /home | /root | /etc | /usr | /var | /tmp | "$HOME")
+        / | /home | /root | /etc | /usr | /var | /tmp | "$HOME" | /etc/* | /usr/* | /bin* | /sbin* | /lib* | /boot* | /dev* | /proc* | /sys* | /root/* | /var/lib | /var/lib/* | /var/log | /var/log/*)
             echo -e "${gl_hong}拒绝在敏感目录执行删除: $mf_abs${gl_bai}"
             popd >/dev/null || return 1
             return 1 ;;
@@ -6980,13 +7048,12 @@ tv_rename_ultimate() {
             local -n files_ref=$1
             local -n episode_info_ref=$2
             local -n pattern_types_ref=$3
-            mf_guard_eval_args "视频扩展名" "${VIDEO_EXTS[@]}" || return 1
-            local ext_pattern=""
+            local -a mf_find_ext=()
             for ext in "${VIDEO_EXTS[@]}"; do
-                if [ -z "$ext_pattern" ]; then
-                    ext_pattern="-name \"*.$ext\""
+                if ((${#mf_find_ext[@]} == 0)); then
+                    mf_find_ext+=(-name "*.$ext")
                 else
-                    ext_pattern="$ext_pattern -o -name \"*.$ext\""
+                    mf_find_ext+=(-o -name "*.$ext")
                 fi
             done
             while IFS= read -r file; do
@@ -7011,7 +7078,7 @@ tv_rename_ultimate() {
                         log_warn "无法识别集数: $filename"
                     fi
                 fi
-            done < <(eval "find . -maxdepth 1 -type f \( $ext_pattern \) 2>/dev/null" | sort -V)
+            done < <(find . -maxdepth 1 -type f \( "${mf_find_ext[@]}" \) 2>/dev/null | sort -V)
         }
 
         while true; do
@@ -15818,8 +15885,7 @@ new_ssh_port() {
     sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
 
     correct_ssh_config
-    [[ -d /etc/ssh/sshd_config.d ]] && cp -r /etc/ssh/sshd_config.d "/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null
-    mf_harden_sshd backup-only || return 1
+    mf_harden_sshd verify-only || return 1
 
     restart_ssh
     open_port "$new_port"
@@ -15844,11 +15910,7 @@ add_sshkey() {
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     cat ~/.ssh/sshkey
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
-        -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
-        -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-        -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-    [[ -d /etc/ssh/sshd_config.d ]] && cp -r /etc/ssh/sshd_config.d "/etc/ssh/sshd_config.d.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null
+    # 认证方式统一由 mf_harden_sshd 通过 drop-in 管理，不再直接改主配置
     mf_harden_sshd no-password || return 1
     restart_ssh
     echo -e "${gl_lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
@@ -16036,7 +16098,7 @@ linux_add_sshpasswd() {
     passwd root
     sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config
     sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-    mf_harden_sshd backup-only || return 1
+    mf_harden_sshd enable-password || return 1
 
     grep -E 'PermitRootLogin|PasswordAuthentication' /etc/ssh/sshd_config |
         while read -r line; do
@@ -20575,23 +20637,21 @@ docker_ssh_migration() {
                     tar -czpf "${BACKUP_DIR}/${c}_$(basename "$path").tar.gz" -C / "$(echo "$path" | sed 's/^\///')"
                 done
 
-                local PORT_ARGS=""
+                local -a PORTS=() ENVS=()
                 mapfile -t PORTS < <(jq -r '.[0].HostConfig.PortBindings | to_entries[] | "\(.value[0].HostPort):\(.key | split("/")[0])"' "$inspect_file" 2>/dev/null)
-                for p in "${PORTS[@]}"; do PORT_ARGS+="-p $p "; done
-
-                local ENV_VARS=""
-                mapfile -t ENVS < <(jq -r '.[0].Config.Env[] | @sh' "$inspect_file")
-                for e in "${ENVS[@]}"; do ENV_VARS+="-e $e "; done
-
-                local VOL_ARGS=""
-                for path in $VOL_PATHS; do VOL_ARGS+="-v $path:$path "; done
+                mapfile -t ENVS < <(jq -r '.[0].Config.Env[]' "$inspect_file")
 
                 local IMAGE
                 IMAGE=$(jq -r '.[0].Config.Image' "$inspect_file")
 
+                # 用 %q 逐项转义，避免环境变量值/路径中的 shell 元字符注入生成的还原脚本
                 {
                     echo -e "\n# 还原容器: $c"
-                    echo "docker run -d --name $c $PORT_ARGS $VOL_ARGS $ENV_VARS $IMAGE"
+                    printf 'docker run -d --name %q' "$c"
+                    for p in "${PORTS[@]}"; do [[ -n "$p" ]] && printf ' -p %q' "$p"; done
+                    for e in "${ENVS[@]}"; do printf ' -e %q' "$e"; done
+                    for path in $VOL_PATHS; do printf ' -v %q' "$path:$path"; done
+                    printf ' %q\n' "$IMAGE"
                 } >> "$RESTORE_SCRIPT"
             fi
         done
@@ -20667,6 +20727,8 @@ docker_ssh_migration() {
                 return
             fi
 
+            local IMAGE VOL_SRC VOL_DST VOL_FILE
+            local -a mf_docker_args=() PORTS=() ENVS=() VOLS=()
             IMAGE=$(jq -r '.[0].Config.Image' "$json")
             [[ -z "$IMAGE" || "$IMAGE" == "null" ]] && {
                 echo -e "${gl_huang}未找到镜像信息，跳过: $container${gl_bai}"
@@ -21958,9 +22020,20 @@ docker_install_zentao() {
     local docker_img="idoop/zentao:latest"
     local docker_port=82
 
+    # 口令只生成一次并持久化，避免重建容器后变化；openssl 缺失时回退到 /dev/urandom
+    local mf_pass_file="/home/docker/zentao-server/.mobufan_adminer_pass"
+    local mf_zentao_pass=""
+    [[ -f "$mf_pass_file" ]] && mf_zentao_pass=$(head -n1 "$mf_pass_file" 2>/dev/null)
+    if [[ -z "$mf_zentao_pass" ]]; then
+        mf_zentao_pass=$(openssl rand -hex 12 2>/dev/null)
+        [[ -z "$mf_zentao_pass" ]] && mf_zentao_pass=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
+        mkdir -p "$(dirname "$mf_pass_file")" 2>/dev/null
+        printf '%s\n' "$mf_zentao_pass" >"$mf_pass_file" && chmod 600 "$mf_pass_file" 2>/dev/null
+    fi
+
     docker_rum() {
         docker run -d -p "${docker_port}":80 \
-            -e ADMINER_USER="root" -e ADMINER_PASSWD="$(openssl rand -hex 12)" \
+            -e ADMINER_USER="root" -e ADMINER_PASSWD="$mf_zentao_pass" \
             -e BIND_ADDRESS="false" \
             -v /home/docker/zentao-server/:/opt/zbox/ \
             --add-host smtp.exmail.qq.com:163.177.90.125 \
@@ -21972,7 +22045,7 @@ docker_install_zentao() {
     local docker_describe="禅道是通用的项目管理软件"
     local docker_url="${gl_bai}官网介绍: ${gl_lv} https://www.zentao.net/${gl_bai}"
     local docker_use="echo \"初始用户名: admin\""
-    local docker_passwd="echo \"初始密码: 123456\""
+    local docker_passwd="echo \"禅道初始密码: 123456 ；ADMINER_PASSWD: ${mf_zentao_pass}（存于 ${mf_pass_file}）\""
     local app_size="2"
 
     docker_app
@@ -28748,6 +28821,7 @@ local_mount_win11d_menu() {
     smb_cifs_cred_file "10.10.10.248"
     mount -t cifs //10.10.10.248/D /vol2/1000/mydisk/Win11-D -o "credentials=$SMB_CRED_FILE,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
     rm -f "$SMB_CRED_FILE"
+    trap - INT TERM
     ls /vol2/1000/mydisk/Win11-D
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -28969,6 +29043,7 @@ samba_mount_pve() {
     smb_cifs_cred_file "10.10.10.254"
     mount -t cifs //10.10.10.254/PVE-VZ /vol2/1000/mydisk/SMB_PVE -o "credentials=$SMB_CRED_FILE,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
     rm -f "$SMB_CRED_FILE"
+    trap - INT TERM
     ls /vol2/1000/mydisk/SMB_PVE
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -28995,6 +29070,7 @@ samba_mount_win11_r() {
     smb_cifs_cred_file "10.10.10.248"
     mount -t cifs //10.10.10.248/R /vol2/1000/mydisk/Win11-R -o "credentials=$SMB_CRED_FILE,rw,file_mode=0777,dir_mode=0777,uid=$(id -u),gid=$(id -g),noperm"
     rm -f "$SMB_CRED_FILE"
+    trap - INT TERM
     ls /vol2/1000/mydisk/Win11-R
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -31745,8 +31821,9 @@ local_run_task() {
     local sync_result
     local error_count=0
 
-    mf_guard_eval_args "rsync 参数" "$options" "$source_path" "$target_path" || return 1
-    eval rsync $options "$source_path" "$target_path" 2>&1 | tee "$output_file"
+    local -a mf_rsync_opts=()
+    read -r -a mf_rsync_opts <<<"$options"
+    rsync "${mf_rsync_opts[@]}" "$source_path" "$target_path" 2>&1 | tee "$output_file"
     sync_result=${PIPESTATUS[0]}
 
     error_count=$(grep -c "Permission denied\|rsync error\|failed" "$output_file" || echo 0)
@@ -31834,8 +31911,9 @@ local_run_all_tasks() {
 
         local output_file
         output_file=$(mktemp)
-    mf_guard_eval_args "rsync 参数" "$options" "$source_path" "$target_path" || return 1
-        eval rsync $options "$source_path" "$target_path" >"$output_file" 2>&1
+        local -a mf_rsync_opts=()
+        read -r -a mf_rsync_opts <<<"$options"
+        rsync "${mf_rsync_opts[@]}" "$source_path" "$target_path" >"$output_file" 2>&1
         local sync_result=$?
 
         if [[ $sync_result -eq 0 ]]; then
@@ -32278,8 +32356,9 @@ local_run_task_reverse() {
     local sync_result
     local error_count=0
 
-    mf_guard_eval_args "rsync 参数" "$options" "$source_path" "$target_path" || return 1
-    eval rsync $options "$target_path" "$source_path" 2>&1 | tee "$output_file"
+    local -a mf_rsync_opts=()
+    read -r -a mf_rsync_opts <<<"$options"
+    rsync "${mf_rsync_opts[@]}" "$target_path" "$source_path" 2>&1 | tee "$output_file"
     sync_result=${PIPESTATUS[0]}
 
     error_count=$(grep -c "Permission denied\|rsync error\|failed" "$output_file" || echo 0)
@@ -37064,7 +37143,7 @@ linux_install_kejilion() {
     echo -e ""
     echo -e "${gl_zi}>>> 安装科技Lion脚本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_lv}mf_run_remote https://kejilion.sh${gl_bai}"
+    echo -e "${gl_lv}脚本来源: https://kejilion.sh （由本菜单下载校验后执行）${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定卸载科技Lion脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
     [ "$choice" = "0" ] && return 1
@@ -37120,7 +37199,7 @@ linux_install_mobufan() {
     echo -e ""
     echo -e "${gl_zi}>>> 安装mobufan脚本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_lv}bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)${gl_bai}"
+    echo -e "${gl_lv}本菜单将下载官方脚本，经语法与校验后安装/更新；也可用 m u 强制更新${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}确定安装 mobufan 脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
     [ "$choice" = "0" ] && return 1
@@ -40515,20 +40594,53 @@ linux_file() {
 
 
 # mobufan.sh 脚本更新
+# 更新校验策略（fail-closed，但不再因官方未提供 .sha256 而完全失效）：
+#   1) 取到官方 ${url}.sha256  -> 强校验，不符即拒绝
+#   2) 未取到且 MF_STRICT_UPDATE=1 -> 直接拒绝
+#   3) 未取到则下载备用源，比对两个官方源内容 sha256 是否一致；不一致/不可用即拒绝
 verify_script_checksum() {
-    local file="$1" url="$2"
-    local remote_sum local_sum
-    remote_sum=$(curl -fsSL --connect-timeout 5 -A "Mozilla/5.0" "${url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
-    if [[ -z "$remote_sum" ]]; then
-        log_error "未获取到官方校验和文件（${url}.sha256），已中止更新"
-        return 1
-    fi
+    local file="$1" url="$2" backup_url="${3:-}"
+    local remote_sum local_sum second_sum tmp_second
+
     if ! command -v sha256sum >/dev/null 2>&1; then
         log_error "系统无 sha256sum 命令，无法校验，已中止更新"
         return 1
     fi
     local_sum=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
-    [[ -n "$local_sum" && "$local_sum" == "$remote_sum" ]]
+    [[ -n "$local_sum" ]] || { log_error "无法计算下载文件的校验和，已中止更新"; return 1; }
+
+    remote_sum=$(curl -fsSL --connect-timeout 5 --max-time 20 -A "Mozilla/5.0" "${url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
+    if [[ -n "$remote_sum" ]]; then
+        if [[ "$local_sum" != "$remote_sum" ]]; then
+            log_error "官方 sha256 校验失败，已中止更新"
+            return 1
+        fi
+        return 0
+    fi
+
+    if [[ -n "${MF_STRICT_UPDATE:-}" ]]; then
+        log_error "缺少官方 .sha256（严格模式 MF_STRICT_UPDATE），已中止更新"
+        return 1
+    fi
+    if [[ -z "$backup_url" ]]; then
+        log_error "缺少官方 .sha256 且无备用源，已中止更新"
+        return 1
+    fi
+
+    tmp_second=$(mktemp "$HOME/.mobufan_crosscheck.XXXXXX") || return 1
+    if ! curl -fsSL --connect-timeout 10 --max-time 90 -A "Mozilla/5.0" -o "$tmp_second" "$backup_url" 2>/dev/null || [[ ! -s "$tmp_second" ]]; then
+        log_error "备用源不可用，无法完成双源交叉校验，已中止更新"
+        rm -f "$tmp_second"
+        return 1
+    fi
+    second_sum=$(sha256sum "$tmp_second" 2>/dev/null | awk '{print $1}')
+    rm -f "$tmp_second"
+    if [[ -z "$second_sum" || "$local_sum" != "$second_sum" ]]; then
+        log_error "两个官方源内容不一致，已中止更新（可能镜像延迟或仓库投毒）"
+        return 1
+    fi
+    log_warn "官方未提供 .sha256，已通过双源内容一致性校验"
+    return 0
 }
 
 # 下载并安装新版脚本：先下到临时文件，语法和校验都通过后才替换，并保留旧版备份
@@ -40549,7 +40661,19 @@ install_downloaded_script() {
     [[ -s "$tmp_sh" ]] || { log_error "下载文件为空"; rm -f "$tmp_sh"; return 1; }
     bash -n "$tmp_sh" 2>/dev/null || { log_error "下载的文件语法检查未通过，已取消更新"; rm -f "$tmp_sh"; return 1; }
 
-    if ! verify_script_checksum "$tmp_sh" "$used_url"; then
+    # 防止旧副本覆盖新版本
+    local local_v remote_v
+    local_v=$(grep -m1 '^sh_v="' "$HOME/mobufan.sh" 2>/dev/null | cut -d'"' -f2)
+    remote_v=$(grep -m1 '^sh_v="' "$tmp_sh" 2>/dev/null | cut -d'"' -f2)
+    if [[ -n "$local_v" && -n "$remote_v" ]] && ! version_ge "$remote_v" "$local_v"; then
+        log_error "远端版本 ($remote_v) 低于本地 ($local_v)，已取消更新"
+        rm -f "$tmp_sh"
+        return 1
+    fi
+
+    if ! verify_script_checksum "$tmp_sh" \
+        "https://gitee.com/meimolihan/sh/raw/master/mobufan.sh" \
+        "https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"; then
         log_error "更新文件校验失败，已取消更新"
         rm -f "$tmp_sh"
         return 1
@@ -40678,16 +40802,34 @@ mobufan_update() {
             cat >"$updater" <<'EOF'
 #!/bin/bash
 # mobufan.sh 自动更新任务（由 mobufan_update 生成）
-# 先下载到临时文件，语法与 sha256 校验通过后才替换，失败则保留原版本
+# 官方 .sha256 优先强校验；缺失时改为双源内容交叉校验，任一失败都保留旧版本
 download_url="https://gitee.com/meimolihan/sh/raw/master/mobufan.sh"
+backup_url="https://raw.githubusercontent.com/meimolihan/sh/master/mobufan.sh"
 tmp="$HOME/.mobufan_auto_update.download"
-curl -fsSL -A "Mozilla/5.0" --connect-timeout 10 -o "$tmp" "$download_url" || exit 1
+tmp2="$HOME/.mobufan_auto_update.crosscheck"
+curl -fsSL -A "Mozilla/5.0" --connect-timeout 10 --max-time 120 -o "$tmp" "$download_url" || exit 1
 [ -s "$tmp" ] || exit 1
 bash -n "$tmp" 2>/dev/null || exit 1
-sum=$(curl -fsSL -A "Mozilla/5.0" --connect-timeout 5 "${download_url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
-[ -n "$sum" ] || exit 1
 command -v sha256sum >/dev/null 2>&1 || exit 1
-[ "$(sha256sum "$tmp" | awk '{print $1}')" = "$sum" ] || exit 1
+
+# 防降级：远端版本不得低于本地
+new_v=$(grep -m1 '^sh_v="' "$tmp" | cut -d'"' -f2)
+old_v=$(grep -m1 '^sh_v="' "$HOME/mobufan.sh" 2>/dev/null | cut -d'"' -f2)
+if [ -n "$new_v" ] && [ -n "$old_v" ]; then
+    [ "$(printf '%s\n%s\n' "$old_v" "$new_v" | sort -V | tail -n1)" = "$new_v" ] || exit 1
+fi
+
+sum=$(curl -fsSL -A "Mozilla/5.0" --connect-timeout 5 --max-time 20 "${download_url}.sha256" 2>/dev/null | grep -Eo '[0-9a-fA-F]{64}' | head -n 1)
+if [ -n "$sum" ]; then
+    [ "$(sha256sum "$tmp" | awk '{print $1}')" = "$sum" ] || exit 1
+else
+    curl -fsSL -A "Mozilla/5.0" --connect-timeout 10 --max-time 120 -o "$tmp2" "$backup_url" || exit 1
+    [ -s "$tmp2" ] || { rm -f "$tmp2"; exit 1; }
+    [ "$(sha256sum "$tmp" | awk '{print $1}')" = "$(sha256sum "$tmp2" | awk '{print $1}')" ] || { rm -f "$tmp2"; exit 1; }
+    rm -f "$tmp2"
+fi
+
+cp -f "$HOME/mobufan.sh" "$HOME/mobufan.sh.bak" 2>/dev/null
 mv -f "$tmp" "$HOME/mobufan.sh" && chmod +x "$HOME/mobufan.sh"
 EOF
             chmod +x "$updater"
@@ -54385,15 +54527,14 @@ push_all_repos() {
         return 1
     }
 
-    local find_cmd="find . -type d -name \".git\""
+    local -a mf_find_args=(. -type d -name ".git")
     if [ -n "$exclude_dirs" ]; then
         for dir in $exclude_dirs; do
-            find_cmd="$find_cmd -not -path \"*/$dir/*\""
+            mf_find_args+=(-not -path "*/$dir/*")
         done
     fi
 
-    mf_guard_eval_args "find 参数" "$find_cmd" || return 1
-    eval "$find_cmd" | while read -r git_dir; do
+    find "${mf_find_args[@]}" | while read -r git_dir; do
         repo_dir=$(dirname "$git_dir")
 
         if [ ! -f "$git_dir/config" ]; then
@@ -58105,7 +58246,7 @@ linux_work() {
             tmux_run
             ;;
         23)
-            read -r -e -p "请输入你要后台执行的命令，如:mf_run_remote https://get.docker.com: " tmuxd
+            read -r -e -p "请输入你要后台执行的命令，如: ping -c 100 8.8.8.8 : " tmuxd
             tmux_run_d
             ;;
         24)
@@ -61002,6 +61143,7 @@ linux_m_info() {
 }
 
 main() {
+    list_color_init
     deploy_self "$0"
     CheckUserAgreement
     if [ "$#" -eq 0 ]; then
@@ -61295,7 +61437,8 @@ else
 fi
 }
 
-# 仅当脚本被直接执行（而非被 source）时才运行主流程，避免加载即改环境
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+# 直接执行、进程替换或从标准输入管道执行时启动主流程；
+# 被 source 时不执行，避免污染调用者环境。
+if [[ "${BASH_SOURCE[0]}" == "$0" || -z "${BASH_SOURCE[0]}" ]]; then
     main "$@"
 fi
