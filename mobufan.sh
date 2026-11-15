@@ -37120,9 +37120,9 @@ linux_install_mobufan() {
     echo -e ""
     echo -e "${gl_zi}>>> 安装mobufan脚本${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    echo -e "${gl_lv}m u${gl_bai}"
+    echo -e "${gl_lv}bash <(curl -fsSL https://gitee.com/meimolihan/sh/raw/master/install/mobufan.sh)${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    read -r -e -p "$(echo -e "${gl_bai}确定卸载科技Lion脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
+    read -r -e -p "$(echo -e "${gl_bai}确定安装 mobufan 脚本吗？(${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" choice
     [ "$choice" = "0" ] && return 1
 
     case "$choice" in
