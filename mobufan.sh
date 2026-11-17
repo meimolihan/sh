@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.8.5"
+sh_v="1.8.6"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -2221,7 +2221,8 @@ linux_info() {
         colorize_output() {
                 local label="$1"
                 local value="$2"
-                if [[ "$value" =~ ^无法获取$|^未知$|^未知系统$|^未知CPU$|^未知用户$|^未知时区$ ]]; then
+                # 前缀匹配，新增「未知XXX」类失败值也能命中，避免枚举补漏遗漏
+                if [[ "$value" =~ ^无法获取$|^未知.*$ ]]; then
                         echo -e "${gl_bai}${label} : ${gl_huang}${value}${gl_bai}"
                 else
                         echo -e "${gl_bai}${label} : ${gl_lv}${value}"
@@ -2232,9 +2233,9 @@ linux_info() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         colorize_output "操作系统" "$(get_os_info)"
         colorize_output "主机名称" "$(get_hostname)"
-        colorize_output "内核版本" "$(uname -r 2>/dev/null || echo -e "${gl_huang}无法获取${gl_bai}")"
+        colorize_output "内核版本" "$(uname -r 2>/dev/null || echo "无法获取")"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-        colorize_output "CPU 架构" "$(uname -m 2>/dev/null || echo -e "${gl_huang}无法获取${gl_bai}")"
+        colorize_output "CPU 架构" "$(uname -m 2>/dev/null || echo "无法获取")"
         colorize_output "CPU 型号" "$(get_cpu_model)"
         colorize_output "CPU 核心" "$(get_cpu_cores)"
         colorize_output "CPU 占用" "$(get_cpu_usage)"
@@ -15646,6 +15647,7 @@ linux_update() {
         zypper update
     elif command -v opkg &>/dev/null; then
         opkg update
+        opkg upgrade
     else
         echo "未知的包管理器!"
         return
@@ -15767,10 +15769,14 @@ linux_clean() {
 
 bbr_on() {
 
-    cat >/etc/sysctl.conf <<EOF
+    # drop-in 方式写入 BBR 参数，不整体覆盖 /etc/sysctl.conf（避免清空用户既有内核参数）
+    local conf="/etc/sysctl.d/99-mobufan-bbr.conf"
+    mkdir -p /etc/sysctl.d 2>/dev/null
+    cat >"$conf" <<EOF
+# mobufan.sh: 启用 BBR 拥塞控制（独立 drop-in，不影响系统既有配置）
 net.ipv4.tcp_congestion_control=bbr
 EOF
-    sysctl -p
+    sysctl -p "$conf"
 
 }
 
@@ -20135,7 +20141,7 @@ tools_install_ninvaders() {
 # 31. 全部安装
 tools_install_all() {
     clear
-    mf_pkg_install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
+    mf_pkg_install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git rsync
     break_end
 }
 
@@ -20526,8 +20532,10 @@ linux_bbr() {
             case $sub_choice in
             1) bbr_on ;;
             2)
-                sed -i '/net.ipv4.tcp_congestion_control=bbr/d' /etc/sysctl.conf
-                sysctl -p
+                # 与 bbr_on 的 drop-in 位置保持一致，删除 BBR 参数行
+                local bbr_conf="/etc/sysctl.d/99-mobufan-bbr.conf"
+                [[ -f "$bbr_conf" ]] && sed -i '/net.ipv4.tcp_congestion_control=bbr/d' "$bbr_conf"
+                sysctl -p "$bbr_conf" 2>/dev/null || sysctl -p
                 server_reboot
                 ;;
             0) cancel_return; break ;;
@@ -22420,7 +22428,7 @@ docker_install_webtop() {
             -e PASSWORD="${admin_password}" \
             -e LC_ALL=zh_CN.UTF-8 \
             -e DOCKER_MODS=linuxserver/mods:universal-package-install \
-            -e docker_install_PACKAGES=font-noto-cjk \
+            -e INSTALL_PACKAGES=font-noto-cjk \
             -p "${docker_port}":3000 \
             -v /home/docker/webtop/data:/config \
             -v /var/run/docker.sock:/var/run/docker.sock \
@@ -53289,7 +53297,7 @@ compose_restore_local() {
 
     if [ $# -ne 2 ]; then
         echo -e "用法: ${gl_huang}compose_restore_local ${gl_lv}<备份源目录> <compose目标目录>${gl_bai}"
-        echo -e "示例: ${gl_huang}compose_restore_local ${gl_lv}/vol2/1000/file/compose/downloads /vol1/1000/compose${gl_bai}"
+        echo -e "示例: ${gl_huang}compose_restore_local ${gl_lv}/vol2/1000/file/myfile/compose/downloads /vol1/1000/compose${gl_bai}"
         return 1
     fi
 
@@ -53366,7 +53374,7 @@ linux_fnos_menu() {
         12) clone_docker_repo ;;                                            # 克隆Compose项目
         13 | 15) backup_compose_project ;;                                  # 备份Compose项目
         14) download_docker_repo ;;                                         # 恢复Compose项目
-        16) compose_restore_local /vol2/1000/file/compose/downloads /vol1/1000/compose ;;  # 恢复Compose项目
+        16) compose_restore_local /vol2/1000/file/myfile/compose/downloads /vol1/1000/compose ;;  # 恢复Compose项目
         17) docker_compose_manager ;;                                       # 配置文件管理器
         18) is_fnos_system || continue && temp_dir_menu "/vol2/1000/tmp" "FnOS 管理" ;; # 临时目录管理器
         19) docker_image_backup_tools ;;                                    # 备份Docker镜像
@@ -58527,7 +58535,7 @@ linux_work() {
                     ;;
                 2)
                     sed -i '/# 自动进入 tmux 会话/,+4d' ~/.bashrc
-                    tmux kill-window -t sshd
+                    tmux kill-session -t sshd
                     ;;
                 0) cancel_return; break ;;
                 *) handle_invalid_input ;;
@@ -58544,7 +58552,7 @@ linux_work() {
             ;;
         24)
             read -r -e -p "请输入要删除的工作区名称: " gongzuoqu_name
-            tmux kill-window -t "$gongzuoqu_name"
+            tmux kill-session -t "$gongzuoqu_name"
             ;;
         0) cancel_return "主菜单"; break ;;
         00 | 000 | 0000) exit_script ;;
@@ -61533,7 +61541,7 @@ else
         linux_dd_xitong
         ;;
     bbr3 | bbrv3)
-        bbrv3
+        linux_install_bbr3
         ;;
     nhyh | 内核优化)
         linux_Kernel_optimize
