@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.8.4"
+sh_v="1.8.5"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -14872,7 +14872,7 @@ ldnmp_web_status() {
             /usr/bin/install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
             install_ssltls
             certs_status
-            systemctl reload nginx
+            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
             ;;
         2)
             read -rp "请输入旧域名: " oddyuming
@@ -14912,7 +14912,7 @@ ldnmp_web_status() {
             sed -i "s|/etc/nginx/keyfile/${oddyuming}_cert.pem|/etc/nginx/keyfile/${yuming}_cert.pem|g" /etc/nginx/conf.d/"$yuming".conf
             sed -i "s|/etc/nginx/keyfile/${oddyuming}_key.pem|/etc/nginx/keyfile/${yuming}_key.pem|g" /etc/nginx/conf.d/"$yuming".conf
 
-            systemctl reload nginx
+            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
             ;;
         3)
             web_cache
@@ -14934,7 +14934,7 @@ ldnmp_web_status() {
             sed -i "s|/etc/nginx/keyfile/${oddyuming}_cert.pem|/etc/nginx/keyfile/${yuming}_cert.pem|g" /etc/nginx/conf.d/"$yuming".conf
             sed -i "s|/etc/nginx/keyfile/${oddyuming}_key.pem|/etc/nginx/keyfile/${yuming}_key.pem|g" /etc/nginx/conf.d/"$yuming".conf
 
-            systemctl reload nginx
+            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
             ;;
         5)
             tail -n 200 /var/log/nginx/access.log
@@ -14953,7 +14953,7 @@ ldnmp_web_status() {
 
             mf_pkg_install nano
             nano /etc/nginx/conf.d/"$yuming".conf
-            systemctl reload nginx
+            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
@@ -14962,7 +14962,7 @@ ldnmp_web_status() {
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
             $EDITOR /etc/nginx/conf.d/"$yuming".conf
-            systemctl reload nginx
+            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
             ;;
         9)
             echo -e "正在尝试打开 phpMyAdmin ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -53653,9 +53653,12 @@ switch_gateway() {
 
 # 切换网关菜单
 gateway_menu() {
+    # 允许切换网关的主机 IP，默认沿用原值，可用环境变量覆盖
+    local allowed_ip="${NGINX_GATEWAY_ALLOWED_IP:-10.10.10.246}"
     CUR_IP=$(get_internal_ip)
-    if [[ "$CUR_IP" != "10.10.10.246" ]]; then
-        echo "❌ 当前 IPv4 为 $CUR_IP，非 10.10.10.246，禁止切换网关！"
+    if [[ "$CUR_IP" != "$allowed_ip" ]]; then
+        echo "❌ 当前 IPv4 为 $CUR_IP，非 $allowed_ip，禁止切换网关！"
+        echo "   如需变更，请设置环境变量 NGINX_GATEWAY_ALLOWED_IP"
         return 0
     fi
 
@@ -53718,6 +53721,251 @@ check_linux_distro() {
     echo -e "${gl_bufan}内核 ${gl_bai}版本：${gl_lv}$kernel_version${gl_bai}"
 }
 
+# ==================== Nginx 服务编排层 (nginx_ops) ====================
+# 目标：把宿主机 nginx 的配置变更收敛到「校验 → 备份 → 生效 → 失败回滚」统一状态机
+# 边界：LDNMP 的 docker exec nginx 保持原有调用方式，避免改坏建站流程
+# 兼容：现有对外函数签名全部保留，仅在内部改走编排层
+
+# 配置备份根目录（可用环境变量覆盖）
+NGINX_OPS_BACKUP_DIR="${NGINX_OPS_BACKUP_DIR:-/etc/nginx.backups}"
+# 最近一次备份文件路径（供回滚使用，避免命令替换吞掉日志输出）
+NGINX_OPS_LAST_BACKUP=""
+
+# 备份 nginx 配置，保留最近 5 份
+nginx_ops_backup() {
+    local tag="${1:-manual}"
+    local stamp
+    stamp=$(date +%Y%m%d-%H%M%S)
+    mkdir -p "$NGINX_OPS_BACKUP_DIR" || { log_error "无法创建备份目录 $NGINX_OPS_BACKUP_DIR"; return 1; }
+    local dest="$NGINX_OPS_BACKUP_DIR/${stamp}-${tag}.tar.gz"
+    if tar -czf "$dest" -C /etc nginx 2>/dev/null; then
+        NGINX_OPS_LAST_BACKUP="$dest"
+        log_ok "配置已备份：$dest"
+        ls -1t "$NGINX_OPS_BACKUP_DIR"/*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -f
+        return 0
+    fi
+    log_error "配置备份失败，已中止本次变更"
+    return 1
+}
+
+# 统一配置校验：mode = systemd(默认) | docker
+nginx_ops_test() {
+    local mode="${1:-systemd}"
+    case "$mode" in
+        docker) docker exec nginx nginx -t &>/dev/null ;;
+        *)      nginx -t &>/dev/null ;;
+    esac
+}
+
+# 回滚配置：nginx_ops_rollback [备份文件] [silent]
+nginx_ops_rollback() {
+    local backup="${1:-}"
+    local quiet="${2:-}"
+    if [[ -z "$backup" ]]; then
+        backup=$(ls -1t "$NGINX_OPS_BACKUP_DIR"/*.tar.gz 2>/dev/null | head -n1)
+    fi
+    if [[ -z "$backup" || ! -f "$backup" ]]; then
+        [[ "$quiet" = "silent" ]] || log_error "未找到可回滚的备份"
+        return 1
+    fi
+    if ! tar -xzf "$backup" -C /etc 2>/dev/null; then
+        [[ "$quiet" = "silent" ]] || log_error "回滚失败：$backup"
+        return 1
+    fi
+    if nginx_ops_test systemd; then
+        systemctl reload nginx &>/dev/null || systemctl restart nginx &>/dev/null
+    fi
+    [[ "$quiet" = "silent" ]] || log_ok "已回滚到备份：$backup"
+    return 0
+}
+
+# 交互式回滚菜单：列出备份供选择，带确认与等待，供 Web 管理菜单 23 调用
+nginx_ops_rollback_menu() {
+    echo -e "${gl_zi}>>> 一键回滚 Nginx 配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+    if [[ ! -d "$NGINX_OPS_BACKUP_DIR" ]]; then
+        log_warn "还没有备份目录：$NGINX_OPS_BACKUP_DIR"
+        echo -e "${gl_huang}安装/变更 Nginx 配置时会自动备份，之后即可在此回滚${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
+        return 0
+    fi
+
+    # 按时间倒序列出备份（最新在前）
+    local backups=()
+    while IFS= read -r f; do
+        [[ -n "$f" ]] && backups+=("$f")
+    done < <(ls -1t "$NGINX_OPS_BACKUP_DIR"/*.tar.gz 2>/dev/null)
+
+    if ((${#backups[@]} == 0)); then
+        log_warn "备份目录为空，暂无可回滚的备份"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
+        return 0
+    fi
+
+    echo -e "${gl_bai}可用备份（${gl_huang}${#backups[@]}${gl_bai} 份，最新在前）：${gl_bai}"
+    local i=1
+    for f in "${backups[@]}"; do
+        echo -e "  ${gl_huang}${i}${gl_bai}. ${gl_bufan}$(basename "$f")${gl_bai}  ${gl_bai}$(stat -c '%y' "$f" 2>/dev/null | cut -d. -f1)${gl_bai}"
+        i=$((i + 1))
+    done
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+    local pick
+    read -r -e -p "$(echo -e "${gl_bai}输入序号选择备份 (${gl_huang}1${gl_bai}~${gl_huang}${#backups[@]}${gl_bai}，${gl_huang}0${gl_bai}取消): ")" pick
+    if ! [[ "$pick" =~ ^[0-9]+$ ]] || [[ "$pick" -lt 1 || "$pick" -gt ${#backups[@]} ]]; then
+        echo -e "${gl_huang}已取消回滚${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
+        return 0
+    fi
+
+    local chosen="${backups[$((pick - 1))]}"
+    echo -e "${gl_huang}即将回滚到：${gl_bai}$(basename "$chosen")"
+    read -r -e -p "$(echo -e "${gl_bai}确认回滚? 整个 /etc/nginx 将被覆盖 (${gl_lv}y${gl_bai}/${gl_hong}N${gl_bai}): ")" confirm
+    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${gl_huang}已取消回滚${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
+        return 0
+    fi
+
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    if nginx_ops_rollback "$chosen"; then
+        log_ok "回滚完成，Nginx 配置已恢复并生效"
+    else
+        log_error "回滚失败，请检查备份文件是否完整"
+    fi
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    break_end
+}
+
+# 交互式备份菜单：手动创建一份配置备份，供 23 号回滚使用
+nginx_ops_backup_menu() {
+    echo -e "${gl_zi}>>> 手动备份 Nginx 配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+    if ! command -v nginx &>/dev/null; then
+        log_warn "Nginx 未安装，仍可备份现有 /etc/nginx 目录（若存在）"
+    fi
+
+    # 备注标签：只保留字母/数字/下划线/连字符，避免污染文件名
+    local label
+    read -r -e -p "$(echo -e "${gl_bai}备份备注（可留空，字母数字下划线连字符，${gl_huang}0${gl_bai}取消）: ")" label
+    if [[ "$label" == "0" ]]; then
+        echo -e "${gl_huang}已取消备份${gl_bai}"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+        break_end
+        return 0
+    fi
+    label=$(printf '%s' "$label" | sed 's|[^A-Za-z0-9_-]||g')
+    [[ -z "$label" ]] && label="manual"
+
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    if nginx_ops_backup "$label"; then
+        echo -e "${gl_bai}备份文件：${gl_lv}${NGINX_OPS_LAST_BACKUP}${gl_bai}"
+        # 列出当前所有备份
+        local cnt=0 f
+        while IFS= read -r f; do
+            [[ -n "$f" ]] && cnt=$((cnt + 1))
+        done < <(ls -1 "$NGINX_OPS_BACKUP_DIR"/*.tar.gz 2>/dev/null)
+        echo -e "${gl_bai}当前共有 ${gl_huang}${cnt}${gl_bai} 份备份（最多保留 5 份，超出自动清理最旧的）${gl_bai}"
+    else
+        log_error "备份失败，请检查目录权限：${NGINX_OPS_BACKUP_DIR}"
+    fi
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    break_end
+}
+
+# 统一生效：校验 → 备份 → reload/restart → 失败自动回滚
+# 用法：nginx_ops_apply [systemd|docker] [reload|restart] [备份标签]
+nginx_ops_apply() {
+    local mode="${1:-systemd}"
+    local action="${2:-reload}"
+    local tag="${3:-apply}"
+
+    if ! nginx_ops_test "$mode"; then
+        log_error "Nginx 配置校验失败，已中止生效（配置未改动）"
+        return 1
+    fi
+    nginx_ops_backup "$tag" || return 1
+
+    local ok=1
+    case "$mode" in
+        docker)
+            docker exec nginx nginx -s reload &>/dev/null || ok=0
+            ;;
+        systemd)
+            if [[ "$action" = "restart" ]]; then
+                systemctl restart nginx &>/dev/null || ok=0
+            else
+                systemctl reload nginx &>/dev/null || ok=0
+            fi
+            ;;
+    esac
+
+    if [[ "$ok" -eq 0 ]]; then
+        log_error "${mode} nginx ${action} 失败，正在自动回滚配置..."
+        nginx_ops_rollback "$NGINX_OPS_LAST_BACKUP" "silent"
+        return 1
+    fi
+    log_ok "Nginx 配置已生效（${mode}/${action}）"
+    return 0
+}
+
+# 统一服务动作：start|stop|restart|status（补返回值检查，消除假成功）
+nginx_ops_service() {
+    local action="${1:-status}"
+    if ! command -v nginx &>/dev/null; then
+        log_error "Nginx 未安装"
+        return 1
+    fi
+    case "$action" in
+        start)
+            if systemctl start nginx 2>/dev/null; then
+                log_ok "Nginx 已启动"
+                return 0
+            fi
+            log_error "Nginx 启动失败，请执行：journalctl -u nginx -n 30"
+            return 1
+            ;;
+        stop)
+            if systemctl stop nginx 2>/dev/null; then
+                log_ok "Nginx 已停止"
+                return 0
+            fi
+            log_error "Nginx 停止失败"
+            return 1
+            ;;
+        restart)
+            nginx_ops_apply systemd restart manual
+            ;;
+        status)
+            systemctl status nginx --no-pager 2>/dev/null
+            ;;
+    esac
+}
+
+# 菜单顶部状态摘要：状态 + 站点数 + 备份数
+nginx_ops_summary() {
+    if ! command -v nginx &>/dev/null; then
+        echo -e "${gl_bai}Nginx状态：${gl_hong}未安装${gl_bai}  ${gl_huang}按 66 安装${gl_bai}"
+        return
+    fi
+    local state
+    if systemctl is-active --quiet nginx 2>/dev/null; then
+        state="${gl_lv}运行中${gl_bai}"
+    else
+        state="${gl_hong}已停止${gl_bai}"
+    fi
+    local conf_count=0 backup_count=0
+    [[ -d /etc/nginx/conf.d ]] && conf_count=$(find /etc/nginx/conf.d -maxdepth 1 -name '*.conf' 2>/dev/null | wc -l)
+    [[ -d "$NGINX_OPS_BACKUP_DIR" ]] && backup_count=$(find "$NGINX_OPS_BACKUP_DIR" -maxdepth 1 -name '*.tar.gz' 2>/dev/null | wc -l)
+    echo -e "${gl_bai}Nginx状态：${state}${gl_bai}  站点配置：${gl_huang}${conf_count}${gl_bai}  配置备份：${gl_huang}${backup_count}${gl_bai}"
+}
+
 # 未安装nginx退出
 check_nginx_installed() {
     if ! command -v nginx &>/dev/null; then
@@ -53736,11 +53984,7 @@ stop_nginx_service() {
     check_nginx_installed || return 1
     echo -e "${gl_zi}>>> 正在停止Nginx ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    if systemctl stop nginx; then
-        echo -e "${gl_bufan}Nginx已停止${gl_bai}"
-    else
-        echo -e "${gl_bufan}${gl_hong}Nginx停止失败${gl_bai}"
-    fi
+    nginx_ops_service stop
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -53751,8 +53995,7 @@ start_nginx_service() {
     echo -e ""
     echo -e "${gl_zi}>>> 正在启动Nginx ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    systemctl start nginx
-    echo -e "${gl_bufan}Nginx已启动${gl_bai}"
+    nginx_ops_service start
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -53763,10 +54006,9 @@ test_and_restart_nginx() {
     echo -e "${gl_zi}>>> 测试Nginx并重启 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     if nginx -t; then
-        systemctl restart nginx
-        echo -e "${gl_bufan}Nginx 已重启${gl_bai}"
+        nginx_ops_apply systemd restart manual || echo -e "${gl_hong}重启失败，原配置已保留${gl_bai}"
     else
-        echo -e "${gl_bufan}${gl_hong}Nginx 配置测试失败，未重启${gl_bai}"
+        echo -e "${gl_bufan}${gl_hong}Nginx 配置测试失败，未重启、未备份、未变更配置${gl_bai}"
     fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
@@ -53778,7 +54020,9 @@ show_nginx_status() {
     echo -e ""
     echo -e "${gl_zi}>>> 当前Nginx运行状态 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    systemctl status nginx
+    nginx_ops_summary
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    nginx_ops_service status
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -53789,7 +54033,10 @@ check_port_80_usage() {
     echo -e "${gl_zi}>>> 当前 ${gl_huang}80${gl_bai} 端口占用情况 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     local res
-    res=$(ss -tulnp | grep -E ':(80)\s')
+    res=$(ss -tulnp 2>/dev/null | grep -E ':(80)\s')
+    if [[ -z "$res" ]]; then
+        res=$(sudo ss -tulnp 2>/dev/null | grep -E ':(80)\s')
+    fi
 
     if [[ -n "$res" ]]; then
         echo -e "$res"
@@ -53826,7 +54073,9 @@ monitor_nginx_access_logs() {
     echo -e ""
     echo -e "${gl_zi}>>> 访问日志实时监控 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    tail -f /var/log/nginx/access.log
+    echo -e "${gl_huang}按 Ctrl+C 或等待 5 分钟自动返回菜单${gl_bai}"
+    timeout 300 tail -f /var/log/nginx/access.log
+    break_end
 }
 
 # 错误日志实时监控
@@ -53836,7 +54085,9 @@ monitor_nginx_error_logs() {
     echo -e ""
     echo -e "${gl_zi}>>> 错误日志实时监控 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    tail -f /var/log/nginx/error.log
+    echo -e "${gl_huang}按 Ctrl+C 或等待 5 分钟自动返回菜单${gl_bai}"
+    timeout 300 tail -f /var/log/nginx/error.log
+    break_end
 }
 
 show_ssl_certificate_paths() {
@@ -53888,8 +54139,8 @@ search_config_files() {
     echo -e "${gl_zi}>>> 搜索配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     read -r -e -p "$(echo -e "${gl_bai}请输入关键字 (${gl_huang}0${gl_bai}返回): ")" keyword
-    [ "$keyword" ] && return 1
-    [ -z "$keyword" ] && return 1
+    # 空输入或输入 0 才返回；有关键字时继续搜索
+    [[ -z "$keyword" || "$keyword" == "0" ]] && return 1
     find /etc/nginx -type f -iname '*.conf' \
         -exec grep -iHn --color=always "${keyword}" {} +
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -53930,35 +54181,57 @@ install_nginx() {
     mf_pkg_install nginx
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     echo -e ""
+
+    # 变更前置：备份现有配置，失败即中止（避免覆盖后无法回滚）
+    echo -e "${gl_zi}>>> 备份现有配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+    nginx_ops_backup "pre-install" || { break_end; return 1; }
+
     echo -e "${gl_zi}>>> 下载配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    systemctl stop nginx
+    systemctl stop nginx 2>/dev/null
 
     sleep_fractional 3
-    iptables -A INPUT -p tcp --dport 80 -j ACCEPT
-    iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+    # 防火墙规则判重，避免重复安装累积规则
+    iptables -C INPUT -p tcp --dport 80 -j ACCEPT &>/dev/null || iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+    iptables -C INPUT -p tcp --dport 443 -j ACCEPT &>/dev/null || iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 
     rm -f /etc/nginx/nginx.conf /etc/nginx/sites-enabled/default
 
+    # 任一配置下载失败即回滚，避免留下半成品配置
     cd /etc/nginx || return
-    wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/nginx.conf
+    if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/nginx.conf; then
+        log_error "下载 nginx.conf 失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+    fi
 
     cd /etc/nginx/sites-enabled || return
-    wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/sites-enabled/default
+    if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/sites-enabled/default; then
+        log_error "下载 default 站点配置失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+    fi
 
     mkdir -pm 755 /etc/nginx/html && cd /etc/nginx/html || return
-    wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/html/index.html
+    if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/html/index.html; then
+        log_error "下载 index.html 失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+    fi
 
     mkdir -pm 755 /etc/nginx/keyfile && cd /etc/nginx/keyfile || return
-    wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/keyfile/mobufan.eu.org.pem
-    wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/keyfile/mobufan.eu.org.key
+    if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/keyfile/mobufan.eu.org.pem; then
+        log_error "下载证书失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+    fi
+    if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/keyfile/mobufan.eu.org.key; then
+        log_error "下载私钥失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+    fi
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     clear
     echo -e ""
-    echo -e "${gl_zi}>>> 重启Nginx ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
+    echo -e "${gl_zi}>>> 校验并启动 Nginx ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    nginx -t && systemctl restart nginx
+    if ! nginx_ops_apply systemd restart install; then
+        echo -e "${gl_hong}安装后校验/启动失败，配置已回滚，请检查日志${gl_bai}"
+        break_end
+        return 1
+    fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     local internal_ip
     internal_ip=$(get_internal_ip)
@@ -53991,12 +54264,20 @@ uninstall_nginx() {
         return 1
     fi
     clear
-    remove nginx
+    # 卸载前置：先停服务并备份配置，防止 purge 后无恢复余地
+    systemctl stop nginx 2>/dev/null
+    nginx_ops_backup "pre-uninstall"
     echo -e ""
     echo -e "${gl_zi}>>> 深度卸载 Nginx ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     apt remove --purge nginx nginx-common nginx-core -y
+    # 清理本脚本安装时放行的防火墙规则（存在才删，避免误删他人规则）
+    iptables -C INPUT -p tcp --dport 80 -j ACCEPT &>/dev/null && iptables -D INPUT -p tcp --dport 80 -j ACCEPT
+    iptables -C INPUT -p tcp --dport 443 -j ACCEPT &>/dev/null && iptables -D INPUT -p tcp --dport 443 -j ACCEPT
     log_ok "Nginx卸载完成"
+    if [[ -n "$NGINX_OPS_LAST_BACKUP" ]]; then
+        log_ok "卸载前配置备份：$NGINX_OPS_LAST_BACKUP"
+    fi
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     break_end
 }
@@ -54010,27 +54291,37 @@ linux_nginx_menu() {
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
         check_linux_distro
         view_nginx_status
+        nginx_ops_summary
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
+        echo -e "${gl_huang}【服务控制】${gl_bai}"
         echo -e "${gl_bufan}1.  ${gl_bai}停止Nginx           ${gl_bufan}2.  ${gl_bai}启动Nginx"
         echo -e "${gl_bufan}3.  ${gl_bai}测试Nginx并重启     ${gl_bufan}4.  ${gl_bai}查看Nginx运行状态"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
+        echo -e "${gl_huang}【端口与目录】${gl_bai}"
         echo -e "${gl_bufan}5.  ${gl_bai}查看80端口占用      ${gl_bufan}6.  ${gl_bai}搜索监听80端口的配置"
-        echo -e "${gl_bufan}7.  ${gl_bai}管理conf.d目录      ${gl_bufan}8.  ${gl_bai}管理html目录"
+        echo -e "${gl_bufan}7.  ${gl_bai}管理 conf.d 配置    ${gl_bufan}8.  ${gl_bai}管理 html 站点"
+        echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
+
+        echo -e "${gl_huang}【诊断与配置】${gl_bai}"
         echo -e "${gl_bufan}9.  ${gl_bai}查看nginx监听端口   ${gl_bufan}10. ${gl_bai}自动修复日志权限"
         echo -e "${gl_bufan}11. ${gl_bai}搜索配置文件        ${gl_bufan}12. ${gl_bai}配置文件管理器"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
+        echo -e "${gl_huang}【日志与证书】${gl_bai}"
         echo -e "${gl_bufan}13. ${gl_bai}访问日志实时监控    ${gl_bufan}14. ${gl_bai}错误日志实时监控"
-        echo -e "${gl_bufan}15. ${gl_bai}查看证书路径        ${gl_bufan}16. ${gl_bai}查看证书过期时间"
+        echo -e "${gl_bufan}15. ${gl_bai}查看证书路径        ${gl_bufan}16. ${gl_bai}查询指定证书过期"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
+        echo -e "${gl_huang}【网关与建站】${gl_bai}"
         echo -e "${gl_bufan}17. ${gl_bai}切换网关            ${gl_bufan}18. ${gl_bai}查看所有nginx服务"
-        echo -e "${gl_bufan}19. ${gl_bai}反代网站脚本Web     ${gl_bufan}20. ${gl_bai}反代网站脚本HTML"
-        echo -e "${gl_bufan}21. ${gl_bai}LDNMP建站           ${gl_bufan}22. ${gl_bai}查看所有证书过期时间"
+        echo -e "${gl_hong}19. ${gl_bai}反代配置(域名)      ${gl_hong}20. ${gl_bai}反代配置(静态)"
+        echo -e "${gl_hong}    注: 19/20 从 gitee 拉取远程脚本执行${gl_bai}"
+        echo -e "${gl_bufan}21. ${gl_bai}LDNMP 一键建站      ${gl_bufan}22. ${gl_bai}批量检查所有证书"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
+        echo -e "${gl_lv}b.  ${gl_bai}手动备份配置        ${gl_hong}r.  ${gl_bai}一键回滚配置"
         echo -e "${gl_lv}66. ${gl_bai}安装${gl_bufan}Nginx${gl_bai}           ${gl_hong}99. ${gl_bai}卸载${gl_bufan}Nginx${gl_bai}"
         echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
 
@@ -54055,13 +54346,15 @@ linux_nginx_menu() {
         13) monitor_nginx_access_logs ;;                                     # 访问日志实时监控
         14) monitor_nginx_error_logs ;;                                      # 错误日志实时监控
         15) show_ssl_certificate_paths ;;                                    # 查看证书路径
-        16) check_ssl_certificate_expiry ;;                                  # 查看证书过期时间
+        16) check_ssl_certificate_expiry ;;                                  # 查询指定证书过期
         17) gateway_menu ;;                                                  # 切换网关
         18) extract_nginx_links_simple "/etc/nginx/conf.d" ;;                # 查看所有nginx服务
-        19) mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/nginx/create_nginx_conf.sh" ;;     # 反代网站脚本Web
-        20) mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/nginx/create_nginx_html_conf.sh" ;; # 反代网站脚本HTML
-        21) linux_ldnmp ;;                                                   # LDNMP建站
-        22) view_cert_expiry ;;                                              # 查看所有证书过期时间
+        19) mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/nginx/create_nginx_conf.sh" ;;     # 反代配置(域名)[远程脚本]
+        20) mf_run_remote "https://gitee.com/meimolihan/script/raw/master/sh/nginx/create_nginx_html_conf.sh" ;; # 反代配置(静态)[远程脚本]
+        21) linux_ldnmp ;;                                                   # LDNMP 一键建站
+        22) view_cert_expiry ;;                                              # 批量检查所有证书
+        b | B | 24) nginx_ops_backup_menu ;;                                 # 手动备份配置
+        r | R | 23) nginx_ops_rollback_menu ;;                               # 一键回滚配置
         66) install_nginx ;;                                                 # 安装Nginx
         99) uninstall_nginx || continue ;;                                   # 卸载Nginx
         0) cancel_return "主菜单"; mobufan ;;
