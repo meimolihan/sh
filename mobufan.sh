@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="1.8.6"
+sh_v="1.8.7"
 
 list_color_init() {
     export gl_hui=$'\033[38;5;59m'
@@ -14868,12 +14868,15 @@ ldnmp_web_status() {
             read -rp "请输入你的域名: " yuming
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
+            # 在任何写入前备份，作为失败回滚点（apply 内部备份的是已改配置，属假回滚）
+            nginx_ops_backup "site-add-pre" || continue
+            local site_pre_backup="$NGINX_OPS_LAST_BACKUP"
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
             /usr/bin/install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
             /usr/bin/install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
             install_ssltls
             certs_status
-            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
+            nginx_ops_apply systemd reload site-mgmt "$site_pre_backup" || echo -e "${gl_hong}配置生效失败，请查看上方回滚结果${gl_bai}"
             ;;
         2)
             read -rp "请输入旧域名: " oddyuming
@@ -14882,6 +14885,9 @@ ldnmp_web_status() {
             read -rp "请输入新域名: " yuming
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
+            # 在任何写入前备份，作为失败回滚点
+            nginx_ops_backup "site-migrate-pre" || continue
+            local site_pre_backup="$NGINX_OPS_LAST_BACKUP"
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
             /usr/bin/install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
             /usr/bin/install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
@@ -14913,7 +14919,7 @@ ldnmp_web_status() {
             sed -i "s|/etc/nginx/keyfile/${oddyuming}_cert.pem|/etc/nginx/keyfile/${yuming}_cert.pem|g" /etc/nginx/conf.d/"$yuming".conf
             sed -i "s|/etc/nginx/keyfile/${oddyuming}_key.pem|/etc/nginx/keyfile/${yuming}_key.pem|g" /etc/nginx/conf.d/"$yuming".conf
 
-            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
+            nginx_ops_apply systemd reload site-mgmt "$site_pre_backup" || echo -e "${gl_hong}配置生效失败，请查看上方回滚结果${gl_bai}"
             ;;
         3)
             web_cache
@@ -14926,6 +14932,9 @@ ldnmp_web_status() {
             read -rp "请输入新域名: " yuming
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
+            # 在任何写入前备份，作为失败回滚点
+            nginx_ops_backup "site-alias-pre" || continue
+            local site_pre_backup="$NGINX_OPS_LAST_BACKUP"
             certbot certonly --webroot -w /var/www/html -d "$yuming" --agree-tos --non-interactive --email admin@"$yuming"
             /usr/bin/install -m 644 "/etc/letsencrypt/live/$yuming/fullchain.pem" "/etc/nginx/keyfile/${yuming}_cert.pem"
             /usr/bin/install -m 600 "/etc/letsencrypt/live/$yuming/privkey.pem" "/etc/nginx/keyfile/${yuming}_key.pem"
@@ -14935,7 +14944,7 @@ ldnmp_web_status() {
             sed -i "s|/etc/nginx/keyfile/${oddyuming}_cert.pem|/etc/nginx/keyfile/${yuming}_cert.pem|g" /etc/nginx/conf.d/"$yuming".conf
             sed -i "s|/etc/nginx/keyfile/${oddyuming}_key.pem|/etc/nginx/keyfile/${yuming}_key.pem|g" /etc/nginx/conf.d/"$yuming".conf
 
-            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
+            nginx_ops_apply systemd reload site-mgmt "$site_pre_backup" || echo -e "${gl_hong}配置生效失败，请查看上方回滚结果${gl_bai}"
             ;;
         5)
             tail -n 200 /var/log/nginx/access.log
@@ -14951,10 +14960,13 @@ ldnmp_web_status() {
             read -r -e -p "编辑站点配置，请输入你要编辑的域名: " yuming
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
+            # 在编辑器打开前备份，作为失败回滚点
+            nginx_ops_backup "site-edit-pre" || continue
+            local site_pre_backup="$NGINX_OPS_LAST_BACKUP"
 
             mf_pkg_install nano
             nano /etc/nginx/conf.d/"$yuming".conf
-            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
+            nginx_ops_apply systemd reload site-mgmt "$site_pre_backup" || echo -e "${gl_hong}配置生效失败，请查看上方回滚结果${gl_bai}"
             echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
             break_end
             ;;
@@ -14962,8 +14974,11 @@ ldnmp_web_status() {
             read -r -e -p "编辑站点配置，请输入你要编辑的域名: " yuming
             [ "$yuming" = "0" ] && continue
             [ -z "$yuming" ] && continue
+            # 在编辑器打开前备份，作为失败回滚点
+            nginx_ops_backup "site-edit-pre" || continue
+            local site_pre_backup="$NGINX_OPS_LAST_BACKUP"
             $EDITOR /etc/nginx/conf.d/"$yuming".conf
-            nginx_ops_apply systemd reload site-mgmt || echo -e "${gl_hong}配置生效失败，已自动回滚${gl_bai}"
+            nginx_ops_apply systemd reload site-mgmt "$site_pre_backup" || echo -e "${gl_hong}配置生效失败，请查看上方回滚结果${gl_bai}"
             ;;
         9)
             echo -e "正在尝试打开 phpMyAdmin ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
@@ -53780,9 +53795,14 @@ nginx_ops_rollback() {
         [[ "$quiet" = "silent" ]] || log_error "回滚失败：$backup"
         return 1
     fi
-    if nginx_ops_test systemd; then
-        systemctl reload nginx &>/dev/null || systemctl restart nginx &>/dev/null
+    # 回滚后必须校验配置可用；校验失败视为回滚失败，不再返回假成功
+    if ! nginx_ops_test systemd; then
+        [[ "$quiet" = "silent" ]] || log_error "回滚后配置校验失败：$backup"
+        return 1
     fi
+    systemctl reload nginx &>/dev/null || systemctl restart nginx &>/dev/null || {
+        [[ "$quiet" = "silent" ]] || log_warn "配置已回滚，但 Nginx 未能自动 reload/restart"
+    }
     [[ "$quiet" = "silent" ]] || log_ok "已回滚到备份：$backup"
     return 0
 }
@@ -53887,18 +53907,36 @@ nginx_ops_backup_menu() {
     break_end
 }
 
-# 统一生效：校验 → 备份 → reload/restart → 失败自动回滚
-# 用法：nginx_ops_apply [systemd|docker] [reload|restart] [备份标签]
+# 统一生效：校验 → reload/restart → 失败回滚到「修改前」备份
+# 用法：nginx_ops_apply [systemd|docker] [reload|restart] [备份标签] [修改前备份文件]
+# 关键：调用方若已改配置，必须先在改之前调用 nginx_ops_backup，并把
+#       NGINX_OPS_LAST_BACKUP 作为第 4 参数传入；否则只能备份到已改配置，回滚无效。
 nginx_ops_apply() {
     local mode="${1:-systemd}"
     local action="${2:-reload}"
     local tag="${3:-apply}"
+    local pre_backup="${4:-}"
+    local rollback_point="$pre_backup"
+
+    if [[ -z "$rollback_point" ]]; then
+        # 未改配置、仅执行服务动作的场景：当前配置即回滚点
+        nginx_ops_backup "$tag" || return 1
+        rollback_point="$NGINX_OPS_LAST_BACKUP"
+    fi
 
     if ! nginx_ops_test "$mode"; then
-        log_error "Nginx 配置校验失败，已中止生效（配置未改动）"
+        # 校验失败也要回滚：调用方很可能已经把坏配置写入磁盘
+        if [[ -n "$pre_backup" ]]; then
+            log_error "Nginx 配置校验失败，正在回滚到修改前配置..."
+            nginx_ops_rollback "$rollback_point" "silent" || log_warn "回滚失败，请手工恢复：$rollback_point"
+        else
+            log_error "Nginx 配置校验失败，已中止生效（当前配置未改动）"
+        fi
         return 1
     fi
-    nginx_ops_backup "$tag" || return 1
+
+    local rollback_desc="备份配置"
+    [[ -n "$pre_backup" ]] && rollback_desc="修改前配置"
 
     local ok=1
     case "$mode" in
@@ -53915,8 +53953,8 @@ nginx_ops_apply() {
     esac
 
     if [[ "$ok" -eq 0 ]]; then
-        log_error "${mode} nginx ${action} 失败，正在自动回滚配置..."
-        nginx_ops_rollback "$NGINX_OPS_LAST_BACKUP" "silent"
+        log_error "${mode} nginx ${action} 失败，正在回滚到${rollback_desc}..."
+        nginx_ops_rollback "$rollback_point" "silent" || log_warn "回滚失败，请手工恢复：$rollback_point"
         return 1
     fi
     log_ok "Nginx 配置已生效（${mode}/${action}）"
@@ -54194,6 +54232,8 @@ install_nginx() {
     echo -e "${gl_zi}>>> 备份现有配置 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
     nginx_ops_backup "pre-install" || { break_end; return 1; }
+    # 保存修改前备份路径，后续所有回滚都指向安装前配置（不依赖“最新备份”）
+    local install_pre_backup="$NGINX_OPS_LAST_BACKUP"
 
     echo -e "${gl_zi}>>> 下载配置文件 ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -54209,25 +54249,37 @@ install_nginx() {
     # 任一配置下载失败即回滚，避免留下半成品配置
     cd /etc/nginx || return
     if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/nginx.conf; then
-        log_error "下载 nginx.conf 失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+        log_error "下载 nginx.conf 失败，正在回滚配置"; nginx_ops_rollback "$install_pre_backup" "silent"; break_end; return 1
     fi
 
     cd /etc/nginx/sites-enabled || return
     if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/sites-enabled/default; then
-        log_error "下载 default 站点配置失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+        log_error "下载 default 站点配置失败，正在回滚配置"; nginx_ops_rollback "$install_pre_backup" "silent"; break_end; return 1
     fi
 
     mkdir -pm 755 /etc/nginx/html && cd /etc/nginx/html || return
     if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/html/index.html; then
-        log_error "下载 index.html 失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+        log_error "下载 index.html 失败，正在回滚配置"; nginx_ops_rollback "$install_pre_backup" "silent"; break_end; return 1
     fi
 
+    # 安全修复：不再从公开仓库下载私钥（该私钥已泄露、配套证书已于 2026-02-15 过期）。
+    # 默认站改用目标机本地生成的自签名占位证书；正式域名请用 certbot 申请。
     mkdir -pm 755 /etc/nginx/keyfile && cd /etc/nginx/keyfile || return
-    if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/keyfile/mobufan.eu.org.pem; then
-        log_error "下载证书失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
-    fi
-    if ! wget -c https://gitee.com/meimolihan/sh/raw/master/nginx/keyfile/mobufan.eu.org.key; then
-        log_error "下载私钥失败，正在回滚配置"; nginx_ops_rollback "" "silent"; break_end; return 1
+    if [[ ! -s mobufan.eu.org.key || ! -s mobufan.eu.org.pem ]]; then
+        if ! command -v openssl &>/dev/null; then
+            log_error "openssl 未安装，无法生成占位证书，正在回滚配置"
+            nginx_ops_rollback "$install_pre_backup" "silent"; break_end; return 1
+        fi
+        local placeholder_cn
+        placeholder_cn=$(hostname 2>/dev/null || echo localhost)
+        if ! openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
+            -keyout mobufan.eu.org.key -out mobufan.eu.org.pem \
+            -subj "/CN=${placeholder_cn}" 2>/dev/null; then
+            log_error "自签名占位证书生成失败，正在回滚配置"
+            nginx_ops_rollback "$install_pre_backup" "silent"; break_end; return 1
+        fi
+        chmod 600 mobufan.eu.org.key
+        log_warn "已生成自签名占位证书（10 年）；正式站点请用 certbot 申请，切勿使用公开私钥"
     fi
 
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
@@ -54235,8 +54287,8 @@ install_nginx() {
     echo -e ""
     echo -e "${gl_zi}>>> 校验并启动 Nginx ${gl_hong}.${gl_huang}.${gl_lv}.${gl_bai}"
     echo -e "${gl_bufan}————————————————————————————————————————————————${gl_bai}"
-    if ! nginx_ops_apply systemd restart install; then
-        echo -e "${gl_hong}安装后校验/启动失败，配置已回滚，请检查日志${gl_bai}"
+    if ! nginx_ops_apply systemd restart install "$install_pre_backup"; then
+        echo -e "${gl_hong}安装后校验/启动失败，请查看回滚结果并核对配置${gl_bai}"
         break_end
         return 1
     fi
